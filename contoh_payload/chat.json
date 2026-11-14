@@ -1,0 +1,9 @@
+{
+  "pertanyaan": "Kenapa batch FG-1013-07 ditolak QC?",
+  "konteks_fakta": [
+    "Batch FG-1013-07 tertahan 70 menit di Holding RT-26",
+    "Suhu maksimal selama holding 12,4 derajat, batas aman 8 derajat",
+    "Status QC: out-of-spec"
+  ],
+  "label_data": "simulasi"
+}

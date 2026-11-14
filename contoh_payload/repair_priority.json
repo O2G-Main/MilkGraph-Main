@@ -1,0 +1,11 @@
+{
+  "batch_id": "FG-1013-07",
+  "urutan_prioritas": [
+    { "rank": 1, "tindakan": "Lepas batch dari Holding RT-26", "alasan_kode": "SUHU_DILUAR_BATAS_TERLAMA" },
+    { "rank": 2, "tindakan": "Inspeksi unit pendingin RT-26", "alasan_kode": "SUMBER_PELANGGARAN" }
+  ],
+  "pelanggaran_sebelum": 3,
+  "pelanggaran_sesudah": 0,
+  "jumlah_constraint": 6,
+  "label_data": "simulasi"
+}

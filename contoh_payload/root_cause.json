@@ -1,0 +1,20 @@
+{
+  "batch_id": "FG-1013-07",
+  "komoditas": "susu",
+  "konteks": {
+    "qc_status": "out-of-spec",
+    "total_pack": 36100,
+    "kaki_perjalanan": [
+      { "dari": "Pengumpul A", "ke": "Holding RT-26", "durasi_menit": 70, "suhu_rata": 9.8, "suhu_maks": 12.4 },
+      { "dari": "Holding RT-26", "ke": "Pabrik", "durasi_menit": 45, "suhu_rata": 6.1, "suhu_maks": 7.0 }
+    ],
+    "pelanggaran_batas": [
+      { "parameter": "suhu", "batas": 8.0, "aktual_maks": 12.4, "durasi_diluar_batas_menit": 70 }
+    ]
+  },
+  "kandidat_akar_masalah": [
+    { "kode": "HOLDING_LAMA", "skor": 0.82, "bukti": ["Holding RT-26 menahan batch 1 jam 10 menit", "Suhu naik sampai 12,4 derajat selama holding"] },
+    { "kode": "RANTAI_DINGIN_PUTUS", "skor": 0.41, "bukti": ["Satu segmen tanpa catatan suhu"] }
+  ],
+  "label_data": "simulasi"
+}

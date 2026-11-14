@@ -1,0 +1,9 @@
+.venv
+.env
+__pycache__
+*.pyc
+.git
+.gitignore
+.pytest_cache
+.ruff_cache
+Kontrak API AI MilkGraph.md
