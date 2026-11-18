@@ -37,6 +37,15 @@ class RootCauseRequest(BaseModel):
     label_data: str
 
 
+class JevPenilaianAkarMasalah(BaseModel):
+    pilihan: str
+    probabilitas: dict[str, float] = Field(default_factory=dict)
+    confidence: float | None = None
+    keyakinan_skor: int | None = None
+    perlu_eskalasi: float | None = None
+    model: str | None = None
+
+
 class RootCauseResponse(BaseModel):
     batch_id: str
     penyebab_utama: str
@@ -44,6 +53,8 @@ class RootCauseResponse(BaseModel):
     rekomendasi: list[str]
     sumber: str
     label_data: str
+    jev: JevPenilaianAkarMasalah | None = None
+    selisih_dengan_be: bool = False
 
 
 class TindakanPrioritas(BaseModel):
@@ -61,11 +72,18 @@ class RepairPriorityRequest(BaseModel):
     label_data: str
 
 
+class JevPenilaianPrioritas(BaseModel):
+    keyakinan_skor: int | None = None
+    risiko_jika_ditunda: float | None = None
+    model: str | None = None
+
+
 class RepairPriorityResponse(BaseModel):
     batch_id: str
     penjelasan: str
     sumber: str
     label_data: str
+    jev: JevPenilaianPrioritas | None = None
 
 
 class ChatRequest(BaseModel):

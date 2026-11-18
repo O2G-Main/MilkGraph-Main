@@ -4,7 +4,7 @@ import secrets
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 
-from . import templates
+from . import jev, layanan
 from .schemas import (
     ChatRequest,
     ChatResponse,
@@ -17,16 +17,15 @@ from .schemas import (
 
 log = logging.getLogger("milkgraph-ai")
 
-# Mode template saja untuk sekarang. Jev belum dipanggil, jadi llm selalu "template".
-LLM_MODE = "template"
-
-app = FastAPI(title="milkgraph-ai", version="1.0.0")
+app = FastAPI(title="milkgraph-ai", version="1.1.0")
 
 
 @app.on_event("startup")
-def _cek_token() -> None:
+def _cek_env() -> None:
     if not os.environ.get("SERVICE_TOKEN"):
         log.warning("SERVICE_TOKEN kosong: pengecekan X-Service-Token dimatikan (hanya untuk tes lokal)")
+    if not jev.tersedia():
+        log.warning("JEV_API_KEY kosong: service berjalan mode template")
 
 
 def wajib_token(x_service_token: str | None = Header(default=None)) -> None:
@@ -39,7 +38,7 @@ def wajib_token(x_service_token: str | None = Header(default=None)) -> None:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", llm=LLM_MODE)
+    return HealthResponse(status="ok", llm="jev" if jev.tersedia() else "template")
 
 
 @app.post(
@@ -48,7 +47,7 @@ def health() -> HealthResponse:
     dependencies=[Depends(wajib_token)],
 )
 def narrate_root_cause(req: RootCauseRequest) -> RootCauseResponse:
-    return templates.narasi_akar_masalah(req)
+    return layanan.narasi_akar_masalah(req)
 
 
 @app.post(
@@ -57,9 +56,9 @@ def narrate_root_cause(req: RootCauseRequest) -> RootCauseResponse:
     dependencies=[Depends(wajib_token)],
 )
 def explain_repair_priority(req: RepairPriorityRequest) -> RepairPriorityResponse:
-    return templates.penjelasan_prioritas(req)
+    return layanan.penjelasan_prioritas(req)
 
 
 @app.post("/ai/chat", response_model=ChatResponse, dependencies=[Depends(wajib_token)])
 def chat(req: ChatRequest) -> ChatResponse:
-    return templates.jawaban_chat(req)
+    return layanan.jawaban_chat(req)

@@ -1,4 +1,4 @@
-"""Self-check: payload contoh kontrak v1 menghasilkan respons dengan field kontrak. Jalankan: python cek_kontrak.py"""
+"""Self-check: payload contoh kontrak v2 menghasilkan respons dengan field kontrak. Jalankan: python cek_kontrak.py"""
 
 import json
 from pathlib import Path
@@ -14,12 +14,14 @@ def muat(nama, model):
 
 
 rc = templates.narasi_akar_masalah(muat("root_cause.json", RootCauseRequest)).model_dump()
-assert set(rc) == {"batch_id", "penyebab_utama", "narasi", "rekomendasi", "sumber", "label_data"}
+assert set(rc) == {"batch_id", "penyebab_utama", "narasi", "rekomendasi", "sumber", "label_data", "jev", "selisih_dengan_be"}
 assert rc["penyebab_utama"] == "HOLDING_LAMA"  # kandidat pertama dari BE, urutan tidak diubah
+assert rc["jev"] is None and rc["selisih_dengan_be"] is False  # mode template: belum ada penilaian Jev
 
 rp = templates.penjelasan_prioritas(muat("repair_priority.json", RepairPriorityRequest)).model_dump()
-assert set(rp) == {"batch_id", "penjelasan", "sumber", "label_data"}
+assert set(rp) == {"batch_id", "penjelasan", "sumber", "label_data", "jev"}
 assert "dari 3 pelanggaran menjadi 0 dari total 6 constraint" in rp["penjelasan"]
+assert rp["jev"] is None
 
 ch = templates.jawaban_chat(muat("chat.json", ChatRequest)).model_dump()
 assert set(ch) == {"jawaban", "sumber", "label_data"}

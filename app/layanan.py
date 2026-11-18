@@ -1,0 +1,275 @@
+"""Orkestrasi endpoint: fakta dari BE dinilai Jev, narasi disusun template.
+
+Keputusan akhir tetap di BE (ranking graph dan solver CP-SAT) dan di manusia.
+Jev hanya menilai lewat pertanyaan bertipe (choice, score, noul); ia tidak
+menulis narasi dan tidak mengganti urutan atau penyebab utama dari BE.
+Kalau Jev tidak terpasang atau gagal dihubungi, hasil templates dipakai apa
+adanya dengan sumber "template". Desain mengikuti Kontrak API AI MilkGraph v2.
+"""
+
+import logging
+
+from . import jev, templates
+from .schemas import (
+    ChatRequest,
+    ChatResponse,
+    JevPenilaianAkarMasalah,
+    JevPenilaianPrioritas,
+    RepairPriorityRequest,
+    RepairPriorityResponse,
+    RootCauseRequest,
+    RootCauseResponse,
+)
+
+log = logging.getLogger("milkgraph-ai.layanan")
+
+
+def _label(kode: str) -> str:
+    return templates.LABEL_AKAR_MASALAH.get(kode, kode.replace("_", " ").lower())
+
+
+def _angka(x: float) -> str:
+    return f"{x:g}"
+
+
+def _parse_choice(jawaban) -> tuple[str | None, dict, float | None]:
+    if not isinstance(jawaban, dict):
+        return None, {}, None
+    pilihan = jawaban.get("choice") or jawaban.get("value")
+    probabilitas = jawaban.get("probabilities")
+    if not isinstance(probabilitas, dict):
+        probabilitas = {}
+    confidence = jawaban.get("confidence")
+    if not isinstance(pilihan, str):
+        return None, probabilitas, confidence
+    return pilihan, probabilitas, confidence
+
+
+def _parse_angka(jawaban, *kunci: str) -> float | None:
+    if not isinstance(jawaban, dict):
+        return None
+    for k in kunci:
+        nilai = jawaban.get(k)
+        if isinstance(nilai, (int, float)):
+            return float(nilai)
+    return None
+
+
+def _state_akar_masalah(req: RootCauseRequest) -> str:
+    k = req.konteks
+    baris = [
+        f"Batch {req.batch_id}, komoditas {req.komoditas}.",
+        f"Status QC: {k.qc_status}.",
+    ]
+    if k.total_pack is not None:
+        baris.append(f"Total kemasan: {k.total_pack} pack.")
+    for kaki in k.kaki_perjalanan:
+        teks = (
+            f"Perjalanan {kaki.dari} ke {kaki.ke}: "
+            f"durasi {_angka(kaki.durasi_menit)} menit"
+        )
+        if kaki.suhu_rata is not None:
+            teks += f", suhu rata-rata {_angka(kaki.suhu_rata)} derajat"
+        if kaki.suhu_maks is not None:
+            teks += f", suhu maksimum {_angka(kaki.suhu_maks)} derajat"
+        baris.append(teks + ".")
+    for p in k.pelanggaran_batas:
+        teks = (
+            f"Pelanggaran batas: parameter {p.parameter} melewati batas "
+            f"{_angka(p.batas)}, aktual maksimum {_angka(p.aktual_maks)}"
+        )
+        if p.durasi_diluar_batas_menit is not None:
+            teks += f", selama {_angka(p.durasi_diluar_batas_menit)} menit di luar batas"
+        baris.append(teks + ".")
+    baris.append("Kandidat akar masalah dari ranking backend (urutan skor menurun):")
+    for kandidat in req.kandidat_akar_masalah:
+        teks = f"- {kandidat.kode} ({_label(kandidat.kode)}), skor {_angka(kandidat.skor)}"
+        if kandidat.bukti:
+            teks += "; bukti: " + "; ".join(kandidat.bukti)
+        baris.append(teks)
+    return "\n".join(baris)
+
+
+def narasi_akar_masalah(req: RootCauseRequest) -> RootCauseResponse:
+    dasar = templates.narasi_akar_masalah(req)
+    if not jev.tersedia():
+        return dasar
+
+    questions = {
+        "penyebab_utama": {
+            "type": "choice",
+            "instructions": (
+                "Pilih penyebab akar masalah yang paling didukung oleh fakta "
+                "pada state. Nilai hanya dari fakta yang tertulis."
+            ),
+            "criteria": {
+                k.kode: _label(k.kode) for k in req.kandidat_akar_masalah
+            },
+        },
+        "keyakinan_diagnosis": {
+            "type": "score",
+            "instructions": (
+                "Nilai kekuatan bukti pada state untuk satu diagnosis akar "
+                "masalah yang konsisten."
+            ),
+            "criteria": jev.RUBRIK_SCORE,
+        },
+        "perlu_eskalasi": {
+            "type": "noul",
+            "instructions": (
+                "Apakah batch ini perlu dieskalasi untuk penarikan atau "
+                "penahanan lot turunan yang sudah terdistribusi ke hilir?"
+            ),
+        },
+    }
+    hasil = jev.panggil(_state_akar_masalah(req), questions)
+    if hasil is None:
+        return dasar
+    answers = hasil["answers"]
+
+    pilihan, probabilitas, confidence = _parse_choice(answers.get("penyebab_utama"))
+    kode_valid = {k.kode for k in req.kandidat_akar_masalah}
+    if pilihan is None or pilihan not in kode_valid:
+        log.warning("Pilihan Jev tidak cocok dengan kandidat BE: %r", pilihan)
+        return dasar
+
+    skor = _parse_angka(answers.get("keyakinan_diagnosis"), "score", "value")
+    penilaian = JevPenilaianAkarMasalah(
+        pilihan=pilihan,
+        probabilitas=probabilitas,
+        confidence=confidence,
+        keyakinan_skor=(
+            jev.skor_ke_100(skor, len(jev.RUBRIK_SCORE)) if skor is not None else None
+        ),
+        perlu_eskalasi=_parse_angka(answers.get("perlu_eskalasi"), "noul", "value"),
+        model=hasil.get("model"),
+    )
+
+    selisih = pilihan != req.kandidat_akar_masalah[0].kode
+    narasi = dasar.narasi
+    if selisih:
+        narasi += (
+            f" Catatan: penilaian Jev berbeda dari ranking backend, Jev memilih "
+            f"{_label(pilihan)}; perbedaan ini perlu ditinjau manusia sebelum "
+            f"ditindaklanjuti."
+        )
+
+    return dasar.model_copy(
+        update={
+            "sumber": "jev",
+            "jev": penilaian,
+            "selisih_dengan_be": selisih,
+            "narasi": narasi,
+        }
+    )
+
+
+def _state_prioritas(req: RepairPriorityRequest) -> str:
+    baris = [
+        f"Batch {req.batch_id}. Urutan prioritas perbaikan dari solver "
+        f"CP-SAT backend:"
+    ]
+    for t in sorted(req.urutan_prioritas, key=lambda x: x.rank):
+        baris.append(f"- Peringkat {t.rank}: {t.tindakan} (alasan: {t.alasan_kode})")
+    baris.append(
+        f"Pelanggaran constraint sebelum perbaikan: {req.pelanggaran_sebelum}; "
+        f"sesudah perbaikan: {req.pelanggaran_sesudah}; total constraint yang "
+        f"dicek solver: {req.jumlah_constraint}."
+    )
+    return "\n".join(baris)
+
+
+def penjelasan_prioritas(req: RepairPriorityRequest) -> RepairPriorityResponse:
+    dasar = templates.penjelasan_prioritas(req)
+    if not jev.tersedia():
+        return dasar
+
+    questions = {
+        "keyakinan_prioritas": {
+            "type": "score",
+            "instructions": (
+                "Nilai kekuatan fakta pada state dalam mendukung urutan "
+                "prioritas perbaikan dari solver."
+            ),
+            "criteria": jev.RUBRIK_SCORE,
+        },
+        "risiko_jika_ditunda": {
+            "type": "noul",
+            "instructions": (
+                "Apakah menunda tindakan prioritas pertama berisiko "
+                "memperbesar kerugian atau kerusakan batch?"
+            ),
+        },
+    }
+    hasil = jev.panggil(_state_prioritas(req), questions)
+    if hasil is None:
+        return dasar
+    answers = hasil["answers"]
+
+    skor = _parse_angka(answers.get("keyakinan_prioritas"), "score", "value")
+    risiko = _parse_angka(answers.get("risiko_jika_ditunda"), "noul", "value")
+    if skor is None and risiko is None:
+        return dasar
+
+    penilaian = JevPenilaianPrioritas(
+        keyakinan_skor=(
+            jev.skor_ke_100(skor, len(jev.RUBRIK_SCORE)) if skor is not None else None
+        ),
+        risiko_jika_ditunda=risiko,
+        model=hasil.get("model"),
+    )
+    return dasar.model_copy(update={"sumber": "jev", "jev": penilaian})
+
+
+def jawaban_chat(req: ChatRequest) -> ChatResponse:
+    dasar = templates.jawaban_chat(req)
+    fakta = [f.strip() for f in req.konteks_fakta if f.strip()]
+    if not fakta or not jev.tersedia():
+        return dasar
+
+    state = (
+        f"Pertanyaan pengguna: {req.pertanyaan}\n\nFakta yang tersedia:\n"
+        + "\n".join(f"{i}. {f}" for i, f in enumerate(fakta, 1))
+    )
+    questions = {
+        "konteks_menjawab": {
+            "type": "noul",
+            "instructions": (
+                "Apakah fakta pada state cukup untuk menjawab pertanyaan "
+                "pengguna?"
+            ),
+        },
+        "fakta_paling_relevan": {
+            "type": "choice",
+            "instructions": (
+                "Pilih fakta yang paling langsung menjawab pertanyaan pengguna."
+            ),
+            "criteria": {str(i): f for i, f in enumerate(fakta, 1)},
+        },
+    }
+    hasil = jev.panggil(state, questions)
+    if hasil is None:
+        return dasar
+    answers = hasil["answers"]
+
+    cukup = _parse_angka(answers.get("konteks_menjawab"), "noul", "value")
+    if cukup is not None and cukup < 0.5:
+        return ChatResponse(
+            jawaban="Data untuk menjawab pertanyaan ini belum tersedia.",
+            sumber="jev",
+            label_data=req.label_data,
+        )
+
+    pilihan, _, _ = _parse_choice(answers.get("fakta_paling_relevan"))
+    nomor_valid = {str(i) for i in range(1, len(fakta) + 1)}
+    if pilihan is None or pilihan not in nomor_valid:
+        return dasar
+
+    terpilih = fakta[int(pilihan) - 1].rstrip(".")
+    lain = [
+        f.rstrip(".")
+        for i, f in enumerate(fakta, 1)
+        if str(i) != pilihan
+    ]
+    jawaban = "Berdasarkan fakta yang tersedia: " + "; ".join([terpilih] + lain) + "."
+    return ChatResponse(jawaban=jawaban, sumber="jev", label_data=req.label_data)

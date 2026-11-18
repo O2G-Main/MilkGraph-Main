@@ -2,11 +2,13 @@
 
 Service AI untuk MilkGraph. Menerima fakta yang sudah dihitung Backend, lalu mengembalikan teks narasi. Stateless: tidak menyimpan data, tidak mengakses database.
 
-Kontrak antarmuka: dokumen "Kontrak API AI MilkGraph" v1, 14 November 2026. Kalau kontrak dan kode berbeda, kontrak yang benar.
+Kontrak antarmuka: dokumen "Kontrak API AI MilkGraph" v2, 18 November 2026. Kalau kontrak dan kode berbeda, kontrak yang benar.
 
 ## Status
 
-Mode template deterministik. Jev belum dipanggil, jadi `sumber` selalu `"template"` dan `/health` mengembalikan `"llm": "template"`.
+Jev (TypeSafe System One) terintegrasi sebagai penilai: fakta dari Backend dipetakan menjadi pertanyaan bertipe (choice, score, noul), jawaban terstruktur Jev dilampirkan pada respons (field `jev`), dan narasi tetap disusun template dari fakta. Penyebab utama selalu peringkat 1 dari Backend; kalau pilihan Jev berbeda, field `selisih_dengan_be` berisi true dan narasi mencatat perbedaan itu untuk ditinjau manusia.
+
+Kalau `JEV_API_KEY` belum terpasang atau Jev tidak terjangkau, service jatuh ke mode template murni: field `jev` berisi null dan `sumber` berisi `"template"`. `/health` mengembalikan `"llm": "jev"` bila key terpasang, `"template"` bila belum.
 
 ## Endpoint
 
@@ -32,12 +34,14 @@ JEV_MODEL=
 SERVICE_TOKEN=
 ```
 
+`JEV_BASE_URL` kosong berarti default `https://api.typesafe.ai`; `JEV_MODEL` kosong berarti default `jev-latest`.
+
 ## Jalan lokal
 
 ```sh
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt
-SERVICE_TOKEN=token-tes-lokal .venv/Scripts/python -m uvicorn app.main:app --host 127.0.0.1 --port 8090
+.venv/Scripts/python -m uvicorn app.main:app --port 8090
 ```
 
 Uji dengan payload contoh dari kontrak di `contoh_payload/`:
@@ -46,7 +50,7 @@ Uji dengan payload contoh dari kontrak di `contoh_payload/`:
 curl -s http://127.0.0.1:8090/health
 curl -s -X POST http://127.0.0.1:8090/ai/root-cause/narrate \
   -H "Content-Type: application/json" \
-  -H "X-Service-Token: token-tes-lokal" \
+  -H "X-Service-Token: <token-dari-env>" \
   --data-binary @contoh_payload/root_cause.json
 ```
 
@@ -63,19 +67,20 @@ docker build -t milkgraph-ai .
 docker run -d --name milkgraph-ai --env-file .env --network <network-backend> milkgraph-ai
 ```
 
-Port internal 8090. Container berada di docker network yang sama dengan Backend, dan Backend memanggil `http://milkgraph-ai:8090`. Jangan publish port ke publik.
+Port internal 8090. Container berada di docker network yang sama dengan Backend. Jangan publish port ke publik.
 
 ## Struktur
 
 ```
 app/main.py        endpoint dan cek token
 app/schemas.py     skema request dan respons sesuai kontrak
-app/templates.py   penyusun narasi template
+app/jev.py         client Jev System One (HTTP, tanpa dependensi baru)
+app/layanan.py     orkestrasi: fakta BE -> pertanyaan Jev -> narasi template
+app/templates.py   penyusun narasi template dan fallback
 cek_kontrak.py     self-check payload kontrak
 contoh_payload/    payload contoh dari kontrak
 ```
 
 ## Berikutnya
 
-- Integrasi Jev, dengan template tetap dipakai sebagai fallback saat Jev error atau tidak terjangkau.
 - `POST /ai/predict/volume`, skemanya dirinci setelah v1 jalan.
