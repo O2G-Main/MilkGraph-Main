@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { DEFAULT_LIMITS, type Limits } from "@/lib/rules";
+import { DEFAULT_LIMITS, SOP_CHANGEOVER, setProductionRules, type Limits } from "@/lib/rules";
+import { CIP_STANDARD, PAPER_STANDARD, type CipGroup, type ProductionRules, type ScheduleItem } from "@/lib/production";
 import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
 import type { Lot } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
@@ -10,7 +11,7 @@ import { createActions } from "@/lib/api/actions";
 import { mapApiState } from "@/lib/api/demo-state";
 import { invalidateResources, onApiEvent, setActiveRole, startEventStream } from "@/lib/api/resource";
 
-export type LogKind = "rencana" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
+export type LogKind = "rencana" | "jadwal" | "aturan" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
 export interface LogEntry { id: number; kind: LogKind; title: string; detail: string; note: string; by: string; role: string; at: string; tone: "ok" | "warn" | "crit" | "neutral" }
 /** adjust: pengaturan alat (mis. upgrade UHT-2) yang ikut dihitung saat keputusan diambil. */
 export interface PlanDecision { plan: string; status: "approved" | "rejected"; note: string; by: string; at: string; adjust?: string }
@@ -18,14 +19,29 @@ export type HoldStatus = "diajukan" | "aktif" | "ditolak" | "dilepas";
 export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; note: string; status: HoldStatus; by: string; at: string; review?: { note: string; by: string; at: string } }
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
 export interface DemoUser { id: string; name: string; role: RoleId; active: boolean }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
 const ACCOUNT_KEY = "milkgraph-account";
 const readAccount = () => { try { return localStorage.getItem(ACCOUNT_KEY); } catch { return null; } };
 const USERS: DemoUser[] = ROLE_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true }));
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null });
+/** Jadwal shift awal [simulasi]: F5 sengaja melebihi kapasitas karena baru jalan setelah UHT-3 CIP. */
+const SCHEDULE: ScheduleItem[] = [
+  { id: "JDW-01", line: "F1", sku: "UHT Full Cream 1 L", packs: 12_000, start: "14:00", end: "16:00" },
+  { id: "JDW-02", line: "F1", sku: "UHT Cokelat 200 ml", packs: 33_000, start: "16:35", end: "22:00" },
+  { id: "JDW-03", line: "F2", sku: "UHT Stroberi 200 ml", packs: 240_000, start: "14:00", end: "22:00" },
+  { id: "JDW-04", line: "F4", sku: "UHT Stroberi Kids 105 ml", packs: 135_000, start: "14:00", end: "22:00" },
+  { id: "JDW-05", line: "F5", sku: "UHT Cokelat 200 ml", packs: 230_000, start: "15:10", end: "22:00" },
+  { id: "JDW-06", line: "F7", sku: "UHT Low Fat 1 L", packs: 48_000, start: "14:00", end: "22:00" },
+  { id: "JDW-07", line: "F8", sku: "UHT Low Fat 250 ml", packs: 160_000, start: "15:05", end: "22:00" },
+];
+export const DEFAULT_RULES: ProductionRules = {
+  changeover: { ...SOP_CHANGEOVER }, paper: PAPER_STANDARD,
+  cip: Object.fromEntries(Object.entries(CIP_STANDARD).map(([k, v]) => [k, v.minutes])) as Record<CipGroup, number>,
+};
+const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -50,12 +66,14 @@ function load() {
   } catch { state = initial(Date.now()); }
   state = { ...state, account: readAccount() };
   setAccess(state.access);
+  applyRules(state.rules);
   return state;
 }
 function save(next: DemoState) {
   state = next;
   try { if (next.account) localStorage.setItem(ACCOUNT_KEY, next.account); else localStorage.removeItem(ACCOUNT_KEY); } catch { /* mode privat */ }
   setAccess(next.access);
+  applyRules(next.rules);
   if (!API_MODE) {
     try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* mode privat: demo tetap jalan tanpa simpan */ }
   }
@@ -83,7 +101,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account });
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -267,3 +285,34 @@ export const login = async (userId: string, password: string) => {
   save({ ...load(), account: user.id });
 };
 export const logout = () => save({ ...load(), account: null });
+
+/** Penjadwalan dan Aturan Produksi (Planner). Tersimpan di browser; mode API belum punya endpoint-nya. */
+const shiftText = (i: Pick<ScheduleItem, "line" | "sku" | "packs" | "start" | "end">) => `${i.line}, ${i.sku}, ${new Intl.NumberFormat("id-ID").format(i.packs)} pak, ${i.start.replace(":", ".")}-${i.end.replace(":", ".")}`;
+export const saveScheduleItem = (item: Omit<ScheduleItem, "id"> & { id?: string }) => {
+  const isNew = !item.id;
+  const id = item.id ?? `JDW-${String(Date.now()).slice(-5)}`;
+  act(
+    s => ({ schedule: isNew ? [...s.schedule, { ...item, id }] : s.schedule.map(x => x.id === id ? { ...item, id } : x) }),
+    { kind: "jadwal", title: isNew ? "Jadwal produksi ditambahkan" : "Jadwal produksi diubah", detail: shiftText(item), note: "", tone: "neutral" },
+  );
+};
+export const removeScheduleItem = (id: string) => {
+  const item = load().schedule.find(x => x.id === id);
+  if (!item) return;
+  act(
+    s => ({ schedule: s.schedule.filter(x => x.id !== id) }),
+    { kind: "jadwal", title: "Jadwal produksi dihapus", detail: shiftText(item), note: "", tone: "warn" },
+  );
+};
+export const setChangeoverRule = (key: string, minutes: number) => act(
+  s => ({ rules: { ...s.rules, changeover: { ...s.rules.changeover, [key]: minutes } } }),
+  { kind: "aturan", title: "Durasi changeover diubah", detail: `${key.replace(">", " ke ")}: ${minutes} menit`, note: "", tone: "neutral" },
+);
+export const setPaperRule = (minutes: number) => act(
+  s => ({ rules: { ...s.rules, paper: minutes } }),
+  { kind: "aturan", title: "Durasi ganti roll kemasan diubah", detail: `${minutes} menit`, note: "", tone: "neutral" },
+);
+export const setCipRule = (group: CipGroup, minutes: number) => act(
+  s => ({ rules: { ...s.rules, cip: { ...s.rules.cip, [group]: minutes } } }),
+  { kind: "aturan", title: "Durasi CIP diubah", detail: `${CIP_STANDARD[group].label}: ${minutes} menit`, note: "", tone: "neutral" },
+);

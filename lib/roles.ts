@@ -1,5 +1,6 @@
 export type RoleId = "superadmin" | "planner" | "receiving" | "supervisor" | "qa";
 export type Permission =
+  | "schedule.edit" | "rules.edit" | "plan.simulate"
   | "demand.send" | "plan.decide" | "constraint.edit" | "hold.submit" | "hold.review" | "lab.decide" | "instruction.ack"
   | "users.manage" | "master.manage" | "integration.manage" | "audit.view";
 
@@ -16,11 +17,14 @@ export const SUPERADMIN: RoleId = "superadmin";
 
 /** Superadmin selalu ada di setiap izin; matriks di halaman Pengguna tidak bisa mencabutnya. */
 export const PERMISSIONS: Record<Permission, { label: string; roles: RoleId[] }> = {
+  "schedule.edit": { label: "Menambah dan mengubah target serta jadwal produksi", roles: ["superadmin", "planner"] },
+  "rules.edit": { label: "Mengatur durasi changeover dan CIP sesuai standar", roles: ["superadmin", "planner"] },
+  "plan.simulate": { label: "Mengubah parameter simulasi, waktu maintenance, dan kapasitas alat", roles: ["superadmin", "planner"] },
   "demand.send": { label: "Mengirim kebutuhan susu ke farm", roles: ["superadmin", "planner"] },
   "plan.decide": { label: "Menyetujui atau menolak rekomendasi rencana", roles: ["superadmin", "planner"] },
   "constraint.edit": { label: "Mengubah batas constraint", roles: ["superadmin", "planner"] },
   "instruction.ack": { label: "Mengonfirmasi instruksi dari rencana yang disetujui", roles: ["superadmin", "receiving", "supervisor"] },
-  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin", "planner", "supervisor", "qa"] },
+  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin", "supervisor", "qa"] },
   "hold.review": { label: "Menyetujui, menolak, atau melepas hold", roles: ["superadmin", "qa"] },
   "lab.decide": { label: "Merilis atau menolak hasil lab penerimaan RT", roles: ["superadmin", "qa"] },
   "users.manage": { label: "Mengelola pengguna dan hak akses peran", roles: ["superadmin"] },
@@ -42,3 +46,9 @@ export const rolesFor = (permission: Permission): RoleId[] => {
 export const can = (role: RoleId, permission: Permission) => role === SUPERADMIN || rolesFor(permission).includes(role);
 /** Kalimat untuk tombol yang dinonaktifkan karena peran. */
 export const whoCan = (permission: Permission) => `Hanya ${rolesFor(permission).map(r => ROLES[r].label).join(" atau ")} yang dapat melakukan ini.`;
+
+/** Halaman yang disembunyikan per peran (menu dan akses langsung lewat URL). Superadmin melihat semuanya. */
+export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
+  planner: ["/qc-produk", "/master-data", "/sumber-data", "/pengguna"],
+};
+export const canSee = (role: RoleId, href: string) => !HIDDEN_PAGES[role]?.includes(href);

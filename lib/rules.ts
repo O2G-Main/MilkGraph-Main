@@ -35,6 +35,11 @@ const BREAKDOWN = { line: "Filling F1", start: 210, end: 240 };
 /** Matriks SOP changeover (menit) per transisi produk [asumsi], sama dengan halaman Lini Filling. */
 export const SOP_CHANGEOVER: Record<string, number> = { "UHT Full Cream 1 L>UHT Cokelat 200 ml": 35, "UHT Full Cream 1 L>UHT Stroberi 200 ml": 40, "UHT Cokelat 200 ml>UHT Full Cream 1 L": 45, "UHT Cokelat 200 ml>UHT Stroberi 200 ml": 25, "UHT Stroberi 200 ml>UHT Full Cream 1 L": 50, "UHT Stroberi 200 ml>UHT Cokelat 200 ml": 30 };
 const LINES = ["Filling F1", "Filling F2", "Filling F4"];
+/** Aturan Produksi yang diatur Planner: menimpa SOP changeover dan durasi CIP bay di cek kelayakan. */
+let production: { changeover: Record<string, number>; bayCip: number | null } = { changeover: {}, bayCip: null };
+export const setProductionRules = (next: { changeover?: Record<string, number>; bayCip?: number | null } | undefined) => {
+  production = { changeover: next?.changeover ?? {}, bayCip: next?.bayCip ?? null };
+};
 
 const clock = (offset: number) => `${13 + Math.floor(offset / 60)}.${String(offset % 60).padStart(2, "0")}`;
 const hours = (minutes: number) => minutes % 60 ? `${Math.floor(minutes / 60)} jam ${minutes % 60} menit` : `${Math.floor(minutes / 60)} jam`;
@@ -77,9 +82,12 @@ export function evaluate(plan: Plan, view: View, limits: Limits): Record<Constra
   const holding: Check = { ok: left >= 0 && bufferOk, text: `${rt26} ${buffer}` };
 
   const cips = blocks.filter(b => b.type === "cip");
-  const clash = unloads.filter(b => b.label.startsWith("RT") && cips.some(c => c.resource === b.resource && overlaps(b, c.start, c.end + limits.cipBuffer)));
-  const cipEnd = Math.max(...cips.map(c => c.end)) + limits.cipBuffer;
-  const buffered = limits.cipBuffer ? `, ditambah jeda ${limits.cipBuffer} menit` : "";
+  // CIP lebih pendek dari standar Aturan Produksi diperpanjang sampai standar.
+  const extra = (c: Block) => production.bayCip === null ? 0 : Math.max(0, production.bayCip - (c.end - c.start));
+  const clash = unloads.filter(b => b.label.startsWith("RT") && cips.some(c => c.resource === b.resource && overlaps(b, c.start, c.end + extra(c) + limits.cipBuffer)));
+  const cipEnd = Math.max(...cips.map(c => c.end + extra(c))) + limits.cipBuffer;
+  const longer = Math.max(0, ...cips.map(extra));
+  const buffered = `${longer ? `, diperpanjang ${longer} menit sesuai standar CIP ${production.bayCip} menit` : ""}${limits.cipBuffer ? `, ditambah jeda ${limits.cipBuffer} menit` : ""}`;
   const broken = limits.breakdownF1 ? blocks.filter(b => b.resource === BREAKDOWN.line && b.type !== "starvation" && overlaps(b, BREAKDOWN.start, BREAKDOWN.end)) : [];
   const breakdown = broken.length ? ` Breakdown F1 pukul ${clock(BREAKDOWN.start)}-${clock(BREAKDOWN.end)} memotong ${broken.map(b => b.label).join(" dan ")}, jadi jadwal F1 perlu disusun ulang.` : limits.breakdownF1 ? ` Breakdown F1 pukul ${clock(BREAKDOWN.start)}-${clock(BREAKDOWN.end)} tidak memotong jadwal.` : "";
   const cipText = clash.length
@@ -94,7 +102,8 @@ export function evaluate(plan: Plan, view: View, limits: Limits): Record<Constra
   const sop = changes.map(b => {
     const run = blocks.filter(x => x.resource === b.resource && x.type === "process");
     const from = run.filter(x => x.end <= b.start).sort((x, y) => y.end - x.end)[0], to = run.filter(x => x.start >= b.end).sort((x, y) => x.start - y.start)[0];
-    const need = from && to ? SOP_CHANGEOVER[`${from.label}>${to.label}`] ?? 0 : 0;
+    const key = from && to ? `${from.label}>${to.label}` : "";
+    const need = key ? production.changeover[key] ?? SOP_CHANGEOVER[key] ?? 0 : 0;
     return { block: b, need, ok: b.end - b.start >= need };
   });
   const first = sop[0];

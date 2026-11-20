@@ -12,6 +12,7 @@ import type { Plan } from "@/mock/types";
 import type { Adjustments } from "./adjust";
 import { rankUpgrades } from "./recommend";
 import { useRencana } from "./rencana-state";
+import { can, whoCan } from "@/lib/roles";
 import { withAdjust } from "./with-adjust";
 
 const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -23,6 +24,7 @@ const kind = (id: string) => ASSETS.find(a => a.id === id)?.kind ?? "filler";
  */
 export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: number) => void }) {
   const { adj, setAdj, plans, planId } = useRencana();
+  const allowed = can(useDemo().role, "plan.simulate");
   const demo = useDemo();
   const plan = (plans?.find(p => p.id === planId) ?? plans?.[0]) as unknown as Plan | undefined;
   const { picks, skips, tried } = rankUpgrades(asepticTanks, fillers, adj);
@@ -61,7 +63,7 @@ export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: n
             <span>{fmt(p.from)} ke {fmt(p.from + p.gain)} L/jam (naik {p.pct}%)</span>
             <span>sekitar +{fmt(p.gain * 8)} L per shift 8 jam</span>
           </div>
-          <button type="button" className="button secondary" onClick={() => onTry(p.id, p.pct, p.from + p.gain)}><Icon icon={Plus} size={16} />Terapkan ke rencana</button>
+          <button type="button" className="button secondary" disabled={!allowed} title={allowed ? undefined : whoCan("plan.simulate")} onClick={() => onTry(p.id, p.pct, p.from + p.gain)}><Icon icon={Plus} size={16} />Terapkan ke rencana</button>
         </li>;
       })}
     </ol> : <p className="card upgrade-empty">Tidak ada upgrade lain yang menambah produksi dengan pengaturan sekarang.</p>

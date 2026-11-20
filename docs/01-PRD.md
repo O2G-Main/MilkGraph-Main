@@ -48,7 +48,9 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 | | Simulasi 3D | `/simulasi` | Dibangun | `04` §15 |
 | | Bay & Tangki | `/tangki` | Dibangun | `04` §4 |
 | | Lini Filling | `/filling` | Dibangun | `04` §4 |
-| Perencanaan | Rencana & What-if | `/rencana` | Dibangun | `04` §5-6 |
+| Perencanaan | Penjadwalan | `/penjadwalan` | Dibangun (lokal, belum ada endpoint) | - |
+| | Aturan Produksi | `/aturan-produksi` | Dibangun (lokal, belum ada endpoint) | - |
+| | Rencana & What-if | `/rencana` | Dibangun | `04` §5-6 |
 | | Pasokan & Permintaan | `/pasokan` | Dibangun | `04` §7 |
 | | Constraint | `/constraint` | Dibangun | `04` §5 |
 | | Riwayat Persetujuan | `/persetujuan` | Dibangun | `04` §11 |
@@ -58,22 +60,37 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 | Data | Context Graph | `/graph` | Dibangun | `04` §12 |
 | | Sumber Data | `/sumber-data` | Dibangun | `04` §13 |
 | Sistem | Pengguna & Peran | `/pengguna` | Dibangun | `04` §14 |
+| (di luar shell) | Login | `/login` | Dibangun (demo, tanpa autentikasi) | - |
 
-Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backend). Keputusan di satu halaman terlihat di halaman lain dan tercatat di Riwayat Persetujuan. Shell: sidebar 5 grup, top bar (chip Data simulasi, shift, notifikasi, avatar), kartu akun untuk ganti peran, Panduan demo dengan "Atur ulang demo".
+Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backend). Keputusan di satu halaman terlihat di halaman lain dan tercatat di Riwayat Persetujuan. Shell: sidebar 5 grup, top bar (chip Data simulasi, shift, notifikasi, avatar), kartu akun membuka konfirmasi keluar, Panduan demo dengan "Atur ulang demo". Masuk lewat `/login`: email dipilih dari akun per peran, kata sandi demo terisi otomatis; yang belum masuk diarahkan ke `/login`.
 
 ### 5.2 Peran dan hak akses (`lib/roles.ts`)
 
-| Keputusan | Planner PPIC | Koordinator receiving | Supervisor produksi | QA/Lab |
-|---|---|---|---|---|
-| Kirim kebutuhan susu ke farm | ya | | | |
-| Setujui/tolak rekomendasi rencana | ya | | | |
-| Ubah batas constraint | ya | | | |
-| Konfirmasi instruksi dari rencana disetujui | | ya (instruksi bay) | ya (instruksi filling) | |
-| Ajukan daftar hold | ya | | ya | ya |
-| Setujui/tolak/lepas hold | | | | ya |
-| Rilis/tolak hasil lab RT | | | | ya |
+Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin dan Planner PPIC. Tiga peran lain masih memakai hak akses lama sampai didefinisikan.
 
-Pengguna demo: Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Supervisor produksi), Sri Lestari (QA/Lab).
+| Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Supervisor produksi | QA/Lab |
+|---|---|---|---|---|---|
+| Tambah/ubah target dan jadwal produksi | ya | ya | | | |
+| Atur durasi changeover dan CIP (tidak boleh di bawah standar) | ya | ya | | | |
+| Ubah parameter simulasi, waktu maintenance, kapasitas alat | ya | ya | | | |
+| Kirim kebutuhan susu ke farm | ya | ya | | | |
+| Setujui/tolak rekomendasi rencana | ya | ya | | | |
+| Ubah batas constraint | ya | ya | | | |
+| Konfirmasi instruksi dari rencana disetujui | ya | | ya (instruksi bay) | ya (instruksi filling) | |
+| Ajukan daftar hold | ya | | | ya | ya |
+| Setujui/tolak/lepas hold | ya | | | | ya |
+| Rilis/tolak hasil lab RT | ya | | | | ya |
+| Kelola pengguna dan hak akses peran | ya | | | | |
+| Kelola master data, konfigurasi integrasi | ya | | | | |
+| Lihat riwayat seluruh perubahan dan persetujuan | ya | ya | ya | ya | ya |
+
+**Menu per peran** (`HIDDEN_PAGES` di `lib/roles.ts`): halaman yang disembunyikan juga diblokir bila dibuka lewat URL.
+- Superadmin: semua menu.
+- Planner PPIC: tanpa QC Barang Jadi, Master Alat, Sumber Data, dan Pengguna & Peran. Penerimaan, Kondisi Alat, dan Traceability hanya untuk dilihat. Beranda Planner menampilkan KPI kelayakan rencana, jadwal, kecukupan susu, dan lini filling jalan, lalu daftar keputusan diurutkan dari yang paling mendesak.
+
+Aturan Produksi ikut dipakai di cek kelayakan Rencana: durasi changeover menimpa SOP, dan CIP bay yang lebih pendek dari standar diperpanjang sampai standar.
+
+Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Supervisor produksi), Sri Lestari (QA/Lab). Superadmin bisa menambah pengguna dan mengubah matriks hak akses di Pengguna & Peran.
 
 ### 5.3 Isi per halaman
 

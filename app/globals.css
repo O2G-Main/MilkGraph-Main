@@ -263,11 +263,11 @@ tbody tr:hover { background: color-mix(in oklab, var(--color-surface) 70%, trans
 .footer-divider { color: var(--color-border); margin: 0 6px; }
 .workspace-footer .status-dot { color: var(--color-status-ok); }
 .collapsed { --sidebar-width: 86px; }
-.collapsed .sidebar { padding-left: 16px; padding-right: 16px; }
-.collapsed .sidebar .nav-label { display: none; }
-.collapsed .sidebar .brand-row { margin-left: 0; }
-.collapsed .sidebar .nav-item { width: 54px; padding: 0; justify-content: center; }
-.collapsed .sidebar .account { padding: 4px; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) { padding-left: 16px; padding-right: 16px; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-label { display: none; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .brand-row { margin-left: 0; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-item { width: 54px; padding: 0; justify-content: center; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .account { padding: 4px; }
 .modal { border: 0; padding: 0; width: min(520px,calc(100vw - 32px)); max-height: calc(100dvh - 48px); background: var(--glass-strong); -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5); color: var(--color-on-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); margin: auto; }
 .modal::backdrop, .mobile-drawer::backdrop { background: color-mix(in srgb,var(--color-on-surface) 40%,transparent); backdrop-filter: blur(4px); }
 .modal-body { padding: 28px; }
@@ -1012,7 +1012,7 @@ tfoot td:first-child { padding-left: 0; }
 .nav-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; line-height: 1.25; }
 .nav-text small { font-size: 12px; font-weight: 400; color: var(--color-on-surface-muted); overflow: hidden; text-overflow: ellipsis; }
 .nav-item.active .nav-text small { color: var(--color-on-surface-muted); }
-.collapsed .sidebar .nav-item { min-height: 54px; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-item { min-height: 54px; }
 @media (max-width: 1199px) and (min-width: 768px) { .auto-sidebar .sidebar .nav-item { min-height: 54px; } }
 
 /* Tombol dan tautan: lebih besar dan jelas bisa diklik. Sekunder bergaris tepi, tautan teks berupa pill hijau muda, ikon tautan hijau. */
@@ -1225,9 +1225,9 @@ button.flow-node { pointer-events: all; font: inherit; cursor: pointer; }
 .nav-rail-link { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--color-on-surface-muted); transition: background-color 160ms ease, color 160ms ease; }
 .nav-rail-link:hover { color: var(--color-on-surface); background: color-mix(in oklab, var(--color-surface-muted) 70%, transparent); }
 .nav-rail-link[aria-current="page"] { color: var(--color-primary); background: var(--color-accent-soft); }
-.collapsed .sidebar .nav-section[data-open]:has(.nav-rail) { width: 54px; border-radius: 27px; background: var(--glass-chip); box-shadow: var(--glass-rim), var(--shadow-chip); }
-.collapsed .sidebar .nav-section[data-open]:has(.nav-rail) .nav-item.active { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.collapsed .sidebar .nav-section[data-open] .nav-rail { display: flex; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-section[data-open]:has(.nav-rail) { width: 54px; border-radius: 27px; background: var(--glass-chip); box-shadow: var(--glass-rim), var(--shadow-chip); }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-section[data-open]:has(.nav-rail) .nav-item.active { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-section[data-open] .nav-rail { display: flex; }
 @media (max-width: 1199px) and (min-width: 768px) {
   .auto-sidebar .sidebar .nav-section[data-open]:has(.nav-rail) { width: 54px; border-radius: 27px; background: var(--glass-chip); box-shadow: var(--glass-rim), var(--shadow-chip); }
   .auto-sidebar .sidebar .nav-section[data-open]:has(.nav-rail) .nav-item.active { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -1584,3 +1584,46 @@ html:has(.login-page) { background: var(--color-canvas); }
 .login-divider::before, .login-divider::after { content: ""; flex: 1; border-top: 1px dashed color-mix(in oklab, var(--color-on-surface-muted) 30%, transparent); }
 .login-foot { margin: 0; font-size: 11px; color: var(--color-on-surface-muted); text-align: center; text-wrap: pretty; }
 @media (max-width: 480px) { .login-card { padding: 24px 20px; } .login-field .field-control, .login-field input { font-size: 16px; } }
+
+/* Penjadwalan dan Aturan Produksi (Planner) */
+.schedule-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+.schedule-stats .card { display: flex; flex-direction: column; gap: 4px; }
+.schedule-stats strong { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.schedule-stats strong small { font-size: 13px; font-weight: 500; color: var(--color-on-surface-muted); }
+.schedule-table td { vertical-align: top; }
+.schedule-table .table-sub { display: block; margin-top: 6px; max-width: 360px; white-space: normal; }
+.schedule-table .table-action { white-space: nowrap; text-align: right; }
+.schedule-form { display: grid; gap: 14px; }
+.schedule-form label { display: block; }
+.schedule-form .field-label { margin-bottom: 6px; }
+.schedule-form input[type=number], .rule-input input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, var(--color-on-surface-muted) 45%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 14px; color: var(--color-on-surface); font-variant-numeric: tabular-nums; }
+.schedule-form input:focus-visible, .rule-input input:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.schedule-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rules-card { margin-bottom: 16px; }
+.rules-table td { vertical-align: middle; }
+.rule-input { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rule-input input { width: 88px; min-height: 36px; }
+.rule-input input[aria-invalid=true] { border-color: var(--color-status-crit); }
+.rule-input .button { min-height: 36px; padding: 0 12px; font-size: 12px; }
+.rule-error { flex-basis: 100%; }
+@media (max-width: 767px) { .schedule-stats { grid-template-columns: minmax(0,1fr); } }
+
+/* KPI Beranda khusus Planner */
+.planner-kpis { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.planner-kpi { color: inherit; text-decoration: none; transition: box-shadow 180ms var(--ease), transform 180ms var(--ease); }
+.planner-kpi:hover { transform: translateY(-1px); box-shadow: var(--glass-rim), var(--shadow-chip); }
+.planner-kpi:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.planner-kpi-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-on-surface-muted); }
+.planner-kpi-go { margin-left: auto; }
+.planner-kpi.crit strong { color: var(--color-status-crit); }
+.planner-kpi.warn strong { color: var(--color-status-warn); }
+.planner-kpi.ok strong { color: var(--color-status-ok); }
+@media (max-width: 1199px) { .planner-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 767px) { .planner-kpis { grid-template-columns: minmax(0,1fr); } }
+@media (prefers-reduced-motion: reduce) { .planner-kpi:hover { transform: none; } }
+.schedule-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Sidebar hover: selalu ciut 86px; saat di-hover atau difokus lewat keyboard melebar, dan halaman ikut bergeser menyesuaikan lebarnya. */
+.hover-sidebar .sidebar { transition: width 220ms var(--ease), flex-basis 220ms var(--ease), padding 220ms var(--ease); }
+.hover-sidebar .sidebar:is(:hover, :has(:focus-visible)) { width: 296px; flex-basis: 296px; padding-left: 20px; padding-right: 20px; }
+@media (prefers-reduced-motion: reduce) { .hover-sidebar .sidebar { transition: none; } }

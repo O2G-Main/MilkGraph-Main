@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, Menu, X, CircleHelp, ArrowUpRight, Clock3, RotateCcw, ArrowLeft, LogOut } from "lucide-react";
-import { findNav, isDetail, pageTitle } from "@/lib/nav";
+import { Bell, ChevronDown, Menu, X, CircleHelp, ArrowUpRight, Clock3, RotateCcw, ArrowLeft, LogOut, Lock } from "lucide-react";
+import { findNav, isDetail, pageTitle, visibleNav } from "@/lib/nav";
 import { BranchedNav } from "@/components/shell/branched-nav";
 import { scenario } from "@/lib/data";
 import { Badge, Icon, Modal, SourceModal } from "@/components/ui";
 import { initialsOf, isSignedIn, logout, resetDemo, useDemo } from "@/lib/demo";
-import { ROLES, type RoleId } from "@/lib/roles";
+import { ROLES, canSee, type RoleId } from "@/lib/roles";
 import { violations } from "@/lib/rules";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -59,7 +59,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
   const fromMenu = () => setTrail(t => ({ ...t, viaMenu: true }));
   const prev = trail.stack.at(-1);
-  const [collapsed, setCollapsed] = useState<boolean | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [panel, setPanel] = useState<"shift" | "notifications" | "profile" | "help" | null>(null);
   const [source, setSource] = useState<string | null>(null);
@@ -139,7 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   function renderNavigation(mobile = false) {
     return <>
       <div className="brand-row"><Link href="/" className="brand" aria-label="MilkGraph, Beranda" onClick={() => { setDrawer(false); fromMenu(); }}><svg className="brand-symbol" viewBox="44 60 184 136" aria-hidden="true"><path fill="var(--color-surface-inverse)" d="M44 116A56 56 0 0 1 156 116V196H116V116A16 16 0 0 0 84 116H44ZM116 196V116A56 56 0 0 1 228 116V196H188V116A16 16 0 0 0 156 116V196Z" /><circle fill="var(--color-accent-fill)" cx="64" cy="176" r="20" /></svg><span className="nav-label">MilkGraph<span className="brand-caption">Dairy operations</span></span></Link>{mobile && <button className="icon-button" aria-label="Tutup menu" onClick={() => setDrawer(false)}><Icon icon={X} /></button>}</div>
-      <BranchedNav pathname={pathname} onNavigate={() => { setDrawer(false); fromMenu(); }} />
+      <BranchedNav items={visibleNav(demo.role)} pathname={pathname} onNavigate={() => { setDrawer(false); fromMenu(); }} />
       <div className="sidebar-bottom"><button className="nav-item help" onClick={() => { setDrawer(false); setPanel("help"); }} aria-label="Panduan demo"><span className="nav-icon"><Icon icon={CircleHelp} size={22} /></span><span className="nav-label">Panduan demo</span></button><button className="account" onClick={() => { setDrawer(false); setPanel("profile"); }} aria-label={`Keluar dari akun ${me.user}`}><span className="avatar">{me.initials}</span><span className="account-copy nav-label"><strong>{me.user}</strong><span>{me.label}</span></span><Icon icon={ChevronDown} size={15} className="nav-label" /></button></div>
     </>;
   }
@@ -147,13 +146,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (onLogin) return <>{children}</>;
   if (!account) return null;
 
-  return <div className={`app-frame ${collapsed === null ? "auto-sidebar" : collapsed ? "collapsed" : "expanded"}`}>
+  return <div className="app-frame collapsed hover-sidebar">
     <a className="skip-link" href="#main-content">Lewati ke konten</a>
     <aside className="sidebar" id="desktop-navigation">{renderNavigation()}</aside>
     <div className="workspace">
       <header className="topbar">
         <div className="topbar-start">
-          <button className="icon-button desktop-toggle" aria-label="Buka atau ciutkan sidebar" aria-expanded={collapsed === null ? undefined : !collapsed} aria-controls="desktop-navigation" onClick={() => setCollapsed(collapsed === null ? window.innerWidth >= 1200 : !collapsed)}><Icon icon={collapsed === false ? ChevronsLeft : ChevronsRight} /></button>
           <button ref={menuButton} className="icon-button mobile-menu" aria-label="Buka menu" aria-expanded={drawer} aria-controls="mobile-navigation" onClick={() => setDrawer(true)}><Icon icon={Menu} /></button>
           <span className="breadcrumb">{current.item.tabs.length > 1 && <>{current.item.label}<span>/</span></>}{pathname === current.tab.href ? <strong>{current.tab.label}</strong> : <Link href={current.tab.href} onClick={fromMenu}>{current.tab.label}</Link>}</span>
         </div>
@@ -170,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main id="main-content" tabIndex={-1}>
         {prev ? <button type="button" className="back-link" onClick={() => router.back()}><Icon icon={ArrowLeft} size={16} />Kembali ke {pageTitle(prev)}</button>
           : isDetail(pathname) && <Link className="back-link" href={current.tab.href} onClick={fromMenu}><Icon icon={ArrowLeft} size={16} />Kembali ke {current.tab.label}</Link>}
-        {children}
+        {canSee(demo.role, current.tab.href) ? children : <section className="callout" role="alert"><Icon icon={Lock} size={18} /><div><strong>Halaman ini tidak tersedia untuk {me.label}</strong><p>Menu ini di luar tugas peranmu. Hubungi Superadmin kalau kamu butuh aksesnya.</p></div><Link className="text-link" href="/">Kembali ke Beranda<Icon icon={ArrowUpRight} size={14} /></Link></section>}
       </main>
       <footer className="workspace-footer"><span>MilkGraph <span className="footer-divider">/</span> Context graph operasional pabrik susu</span><span>{snapshotFooter} <span className="status-dot" /></span></footer>
     </div>

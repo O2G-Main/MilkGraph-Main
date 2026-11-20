@@ -32,6 +32,27 @@
     }
   },
   "permissions": {
+    "schedule.edit": {
+      "label": "Menambah dan mengubah target serta jadwal produksi",
+      "roles": [
+        "superadmin",
+        "planner"
+      ]
+    },
+    "rules.edit": {
+      "label": "Mengatur durasi changeover dan CIP sesuai standar",
+      "roles": [
+        "superadmin",
+        "planner"
+      ]
+    },
+    "plan.simulate": {
+      "label": "Mengubah parameter simulasi, waktu maintenance, dan kapasitas alat",
+      "roles": [
+        "superadmin",
+        "planner"
+      ]
+    },
     "demand.send": {
       "label": "Mengirim kebutuhan susu ke farm",
       "roles": [
@@ -65,7 +86,6 @@
       "label": "Mengajukan daftar hold dari hasil trace",
       "roles": [
         "superadmin",
-        "planner",
         "supervisor",
         "qa"
       ]

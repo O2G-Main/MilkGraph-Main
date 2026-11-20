@@ -1,7 +1,8 @@
+import { canSee, type RoleId } from "@/lib/roles";
 import {
   LayoutDashboard, Box, Factory, CalendarClock, GitBranch, Settings,
   Truck, ListOrdered, Workflow, Gauge, TestTubeDiagonal,
-  History, Share2, FlaskConical, PackageX, Database, Library, Users, TrendingUp, Waypoints, ClipboardCheck,
+  History, Share2, FlaskConical, PackageX, Database, Library, Users, TrendingUp, Waypoints, ClipboardCheck, CalendarRange, Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,10 +16,15 @@ export const navigation: NavItem[] = [
   { label: "Simulasi 3D", hint: "Plant dan bottleneck", icon: Box, tabs: [{ label: "Simulasi 3D", href: "/simulasi" }] },
   { label: "Penerimaan", hint: "Truk dan tes lab", icon: Truck, tabs: [{ label: "Antrean Truk", href: "/receiving", icon: ListOrdered }, { label: "Tes Lab", href: "/lab", icon: FlaskConical }] },
   { label: "Operasional", hint: "Alur dan kondisi produksi", icon: Factory, tabs: [{ label: "Alur", href: "/alur", icon: Workflow }, { label: "Kondisi Alat", href: "/kondisi-alat", icon: Gauge, match: ["/tangki", "/filling"] }, { label: "QC Barang Jadi", href: "/qc-produk", icon: TestTubeDiagonal }, { label: "Master Alat", href: "/master-data", icon: Library }] },
-  { label: "Rencana", hint: "Upgrade dan keputusan", icon: CalendarClock, tabs: [{ label: "Alur rencana", href: "/rencana/alur", icon: Waypoints }, { label: "Rekomendasi upgrade", href: "/rencana/upgrade", icon: TrendingUp }, { label: "Kelayakan & keputusan", href: "/rencana", icon: ClipboardCheck, match: ["/pasokan", "/constraint", "/persetujuan"] }] },
+  { label: "Rencana", hint: "Jadwal dan keputusan", icon: CalendarClock, tabs: [{ label: "Penjadwalan", href: "/penjadwalan", icon: CalendarRange }, { label: "Aturan Produksi", href: "/aturan-produksi", icon: Timer }, { label: "Alur rencana", href: "/rencana/alur", icon: Waypoints }, { label: "Rekomendasi upgrade", href: "/rencana/upgrade", icon: TrendingUp }, { label: "Kelayakan & keputusan", href: "/rencana", icon: ClipboardCheck, match: ["/pasokan", "/constraint", "/persetujuan"] }] },
   { label: "Traceability", hint: "Riwayat asal produksi", icon: GitBranch, tabs: [{ label: "Riwayat Produksi", href: "/riwayat-produksi", icon: History, match: ["/trace"] }, { label: "Context Graph", href: "/graph", icon: Share2 }, { label: "Hold Produk", href: "/hold", icon: PackageX }] },
   { label: "Pengaturan", hint: "Sumber data dan akses", icon: Settings, tabs: [{ label: "Sumber Data", href: "/sumber-data", icon: Database }, { label: "Pengguna & Peran", href: "/pengguna", icon: Users }] },
 ];
+
+/** Menu yang boleh dilihat peran ini; menu induk tanpa tab tersisa ikut hilang. */
+export const visibleNav = (role: RoleId) => navigation
+  .map(item => ({ ...item, tabs: item.tabs.filter(t => canSee(role, t.href)) }))
+  .filter(item => item.tabs.length > 0);
 
 /** Menu dan tab yang cocok dengan path; jatuh ke Beranda bila tidak ada. */
 export function findNav(pathname: string) {

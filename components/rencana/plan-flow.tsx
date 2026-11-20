@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useState } from "react";
 import { Clock3, RotateCcw, Trash2, TriangleAlert, Wrench, X, Zap } from "lucide-react";
-import { Badge, Icon } from "@/components/ui";
+import { Badge, Icon, RoleNote } from "@/components/ui";
+import { can } from "@/lib/roles";
 import { Select } from "@/components/ui/fields";
 import { Equipment, KIND_LABEL } from "@/components/trace/equipment";
 import { FlowCanvas, type AsideProps } from "@/components/alur/flow-canvas";
@@ -26,6 +27,8 @@ const Ctx = createContext<{ adj: Adjustments; set: (id: string, a: Adjust) => vo
 /** Panel atur alat: upgrade kapasitas dan maintenance. Efeknya langsung terlihat di alur pada jam yang dipilih. */
 function PlanEditor({ asset, onClose }: AsideProps) {
   const { adj, set, jump } = useContext(Ctx);
+  const { role } = useDemo();
+  const allowed = can(role, "plan.simulate");
   const a = adj[asset.id] ?? {};
   const update = (patch: Partial<Adjust>) => set(asset.id, { ...a, ...patch });
   const setMaint = (m: Adjust["maintenance"]) => { update({ maintenance: m }); if (m) jump(Number(m.start.slice(0, 2)) * 60 + Number(m.start.slice(3)) - 780 + 5); };
@@ -44,8 +47,9 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       <button className="icon-button" aria-label="Tutup panel atur alat" onClick={onClose}><Icon icon={X} size={18} /></button>
     </header>
     <Badge tone={asset.tone}>Di jam ini: {asset.status}</Badge>
+    <RoleNote permission="plan.simulate" />
 
-    <fieldset className="plan-field">
+    <fieldset className="plan-field" disabled={!allowed}>
       <legend><Icon icon={Zap} size={15} />Kapasitas</legend>
       {room ? <>
         <div className="plan-cap">
@@ -64,7 +68,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       </> : <p className="small muted">Laju alat ini (L/jam) belum ada di data, jadi kapasitasnya belum bisa diatur [simulasi].</p>}
     </fieldset>
 
-    <fieldset className="plan-field">
+    <fieldset className="plan-field" disabled={!allowed}>
       <legend><Icon icon={Wrench} size={15} />Maintenance</legend>
       <label className="check-row"><input type="checkbox" checked={!!a.maintenance} onChange={e => setMaint(e.target.checked ? { start: "15.00", minutes: 30 } : undefined)} />Jadwalkan maintenance di shift ini</label>
       {a.maintenance && <>
@@ -76,7 +80,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       </>}
     </fieldset>
 
-    {(a.upgrade || a.maintenance) && <button type="button" className="button secondary wide" onClick={() => set(asset.id, {})}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</button>}
+    {allowed && (a.upgrade || a.maintenance) && <button type="button" className="button secondary wide" onClick={() => set(asset.id, {})}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</button>}
   </aside>;
 }
 
@@ -125,7 +129,7 @@ export function PlanFlow({ plan, adj, setAdj, view, setView, mode = "2d" }: { pl
   const apply = (id: string, a: Adjust) => { set(id, { ...adj[id], ...a }); setPicked(id); if (a.maintenance) setT(toOffset(a.maintenance.start) + 5); };
   return <Ctx.Provider value={{ adj, set, jump: setT }}>
     <div className="plan-layout">
-    <PlanChat onAsk={(q, d) => answer({ plan, adj, limits: demo.limits, evaluate, need: { before: transferNeed("before"), after: transferNeed("after") }, tanks: asepticTanks, fillers, links: LINKS, assets: ASSETS }, view, q, d)} onApply={apply} />
+    <PlanChat canApply={can(demo.role, "plan.simulate")} onAsk={(q, d) => answer({ plan, adj, limits: demo.limits, evaluate, need: { before: transferNeed("before"), after: transferNeed("after") }, tanks: asepticTanks, fillers, links: LINKS, assets: ASSETS }, view, q, d)} onApply={apply} />
     <div className="plan-main">
     <section className="plan-summary" aria-live="polite">
       {(["before", "after"] as const).map(v => <button key={v} type="button" className={`card plan-metric ${view === v ? "selected" : ""}`} aria-pressed={view === v} onClick={() => setView(v)}>
