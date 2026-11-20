@@ -1,7 +1,10 @@
-export type RoleId = "planner" | "receiving" | "supervisor" | "qa";
-export type Permission = "demand.send" | "plan.decide" | "constraint.edit" | "hold.submit" | "hold.review" | "lab.decide" | "instruction.ack";
+export type RoleId = "superadmin" | "planner" | "receiving" | "supervisor" | "qa";
+export type Permission =
+  | "demand.send" | "plan.decide" | "constraint.edit" | "hold.submit" | "hold.review" | "lab.decide" | "instruction.ack"
+  | "users.manage" | "master.manage" | "integration.manage" | "audit.view";
 
 export const ROLES: Record<RoleId, { label: string; user: string; initials: string; focus: string }> = {
+  superadmin: { label: "Superadmin", user: "Bagas Wicaksono", initials: "BW", focus: "Mengelola pengguna, peran, master data, dan konfigurasi integrasi. Semua menu dan tindakan terbuka, termasuk riwayat seluruh perubahan dan persetujuan." },
   planner: { label: "Planner PPIC", user: "Rino Akbar Hanif", initials: "RA", focus: "Rencana shift yang layak dan keputusan saat gangguan." },
   receiving: { label: "Koordinator receiving", user: "Dimas Prasetyo", initials: "DP", focus: "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time." },
   supervisor: { label: "Supervisor produksi", user: "Hendra Kusuma", initials: "HK", focus: "Lokasi bottleneck dan dampaknya ke lini filling." },
@@ -9,16 +12,33 @@ export const ROLES: Record<RoleId, { label: string; user: string; initials: stri
 };
 export const ROLE_IDS = Object.keys(ROLES) as RoleId[];
 export type Role = (typeof ROLES)[RoleId];
+export const SUPERADMIN: RoleId = "superadmin";
 
+/** Superadmin selalu ada di setiap izin; matriks di halaman Pengguna tidak bisa mencabutnya. */
 export const PERMISSIONS: Record<Permission, { label: string; roles: RoleId[] }> = {
-  "demand.send": { label: "Mengirim kebutuhan susu ke farm", roles: ["planner"] },
-  "plan.decide": { label: "Menyetujui atau menolak rekomendasi rencana", roles: ["planner"] },
-  "constraint.edit": { label: "Mengubah batas constraint", roles: ["planner"] },
-  "instruction.ack": { label: "Mengonfirmasi instruksi dari rencana yang disetujui", roles: ["receiving", "supervisor"] },
-  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["planner", "supervisor", "qa"] },
-  "hold.review": { label: "Menyetujui, menolak, atau melepas hold", roles: ["qa"] },
-  "lab.decide": { label: "Merilis atau menolak hasil lab penerimaan RT", roles: ["qa"] },
+  "demand.send": { label: "Mengirim kebutuhan susu ke farm", roles: ["superadmin", "planner"] },
+  "plan.decide": { label: "Menyetujui atau menolak rekomendasi rencana", roles: ["superadmin", "planner"] },
+  "constraint.edit": { label: "Mengubah batas constraint", roles: ["superadmin", "planner"] },
+  "instruction.ack": { label: "Mengonfirmasi instruksi dari rencana yang disetujui", roles: ["superadmin", "receiving", "supervisor"] },
+  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin", "planner", "supervisor", "qa"] },
+  "hold.review": { label: "Menyetujui, menolak, atau melepas hold", roles: ["superadmin", "qa"] },
+  "lab.decide": { label: "Merilis atau menolak hasil lab penerimaan RT", roles: ["superadmin", "qa"] },
+  "users.manage": { label: "Mengelola pengguna dan hak akses peran", roles: ["superadmin"] },
+  "master.manage": { label: "Mengelola master data", roles: ["superadmin"] },
+  "integration.manage": { label: "Mengelola konfigurasi integrasi sumber data", roles: ["superadmin"] },
+  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "supervisor", "qa"] },
 };
-export const can = (role: RoleId, permission: Permission) => PERMISSIONS[permission].roles.includes(role);
+/** Izin yang hanya boleh dipegang Superadmin, supaya tidak ada yang mengunci dirinya keluar dari pengelolaan akses. */
+export const LOCKED: Permission[] = ["users.manage"];
+
+export type AccessMap = Partial<Record<Permission, RoleId[]>>;
+let access: AccessMap = {};
+/** Dipanggil state demo setiap kali Superadmin mengubah matriks hak akses. */
+export const setAccess = (next: AccessMap | undefined) => { access = next ?? {}; };
+export const rolesFor = (permission: Permission): RoleId[] => {
+  const roles = access[permission] ?? PERMISSIONS[permission].roles;
+  return roles.includes(SUPERADMIN) ? roles : [SUPERADMIN, ...roles];
+};
+export const can = (role: RoleId, permission: Permission) => role === SUPERADMIN || rolesFor(permission).includes(role);
 /** Kalimat untuk tombol yang dinonaktifkan karena peran. */
-export const whoCan = (permission: Permission) => `Hanya ${PERMISSIONS[permission].roles.map(r => ROLES[r].label).join(" atau ")} yang dapat melakukan ini.`;
+export const whoCan = (permission: Permission) => `Hanya ${rolesFor(permission).map(r => ROLES[r].label).join(" atau ")} yang dapat melakukan ini.`;

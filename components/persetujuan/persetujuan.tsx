@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, ClipboardCheck, Download, FlaskConical, PackageX, SlidersHorizontal } from "lucide-react";
+import { CalendarClock, ClipboardCheck, Download, FlaskConical, PackageX, SlidersHorizontal, UserCog } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useDemo, type LogEntry, type LogKind } from "@/lib/demo";
 import { pastLog } from "@/mock/ops";
@@ -15,6 +15,7 @@ const KINDS: Record<LogKind, { label: string; icon: LucideIcon }> = {
   lab: { label: "Lab", icon: FlaskConical },
   constraint: { label: "Constraint", icon: SlidersHorizontal },
   instruksi: { label: "Instruksi", icon: ClipboardCheck },
+  akses: { label: "Akses", icon: UserCog },
 };
 type Filter = LogKind | "semua";
 const csvCell = (v: string) => `"${v.replace(/"/g, '""')}"`;

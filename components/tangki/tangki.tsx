@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight, Check, ClipboardList, Clock3, Container, Lock
 import { scenario } from "@/lib/data";
 import { number, time } from "@/lib/format";
 import { acknowledge, useDemo } from "@/lib/demo";
-import { ROLES } from "@/lib/roles";
+import { ROLES, SUPERADMIN } from "@/lib/roles";
 import { instructions } from "@/lib/rules";
 import { cipLog as mockCipLog, midTanks as mockMidTanks, type MidTank } from "@/mock/ops";
 import type { Block, Tone } from "@/mock/types";
@@ -105,7 +105,7 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
         acked: demo.acks.includes(i.id),
       }));
 
-  const allowed = demo.role === role;
+  const allowed = demo.role === role || demo.role === SUPERADMIN;
 
   if (!approved) {
     return (

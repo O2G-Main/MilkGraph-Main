@@ -1,5 +1,11 @@
 {
   "roles": {
+    "superadmin": {
+      "label": "Superadmin",
+      "user": "Bagas Wicaksono",
+      "initials": "BW",
+      "focus": "Mengelola pengguna, peran, master data, dan konfigurasi integrasi. Semua menu dan tindakan terbuka, termasuk riwayat seluruh perubahan dan persetujuan."
+    },
     "planner": {
       "label": "Planner PPIC",
       "user": "Rino Akbar Hanif",
@@ -29,24 +35,28 @@
     "demand.send": {
       "label": "Mengirim kebutuhan susu ke farm",
       "roles": [
+        "superadmin",
         "planner"
       ]
     },
     "plan.decide": {
       "label": "Menyetujui atau menolak rekomendasi rencana",
       "roles": [
+        "superadmin",
         "planner"
       ]
     },
     "constraint.edit": {
       "label": "Mengubah batas constraint",
       "roles": [
+        "superadmin",
         "planner"
       ]
     },
     "instruction.ack": {
       "label": "Mengonfirmasi instruksi dari rencana yang disetujui",
       "roles": [
+        "superadmin",
         "receiving",
         "supervisor"
       ]
@@ -54,6 +64,7 @@
     "hold.submit": {
       "label": "Mengajukan daftar hold dari hasil trace",
       "roles": [
+        "superadmin",
         "planner",
         "supervisor",
         "qa"
@@ -62,12 +73,42 @@
     "hold.review": {
       "label": "Menyetujui, menolak, atau melepas hold",
       "roles": [
+        "superadmin",
         "qa"
       ]
     },
     "lab.decide": {
       "label": "Merilis atau menolak hasil lab penerimaan RT",
       "roles": [
+        "superadmin",
+        "qa"
+      ]
+    },
+    "users.manage": {
+      "label": "Mengelola pengguna dan hak akses peran",
+      "roles": [
+        "superadmin"
+      ]
+    },
+    "master.manage": {
+      "label": "Mengelola master data",
+      "roles": [
+        "superadmin"
+      ]
+    },
+    "integration.manage": {
+      "label": "Mengelola konfigurasi integrasi sumber data",
+      "roles": [
+        "superadmin"
+      ]
+    },
+    "audit.view": {
+      "label": "Melihat riwayat seluruh perubahan dan persetujuan",
+      "roles": [
+        "superadmin",
+        "planner",
+        "receiving",
+        "supervisor",
         "qa"
       ]
     }

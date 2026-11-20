@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { DEFAULT_LIMITS, type Limits } from "@/lib/rules";
-import { ROLES, type RoleId } from "@/lib/roles";
+import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
 import type { Lot } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { apiGet } from "@/lib/api/client";
@@ -10,18 +10,22 @@ import { createActions } from "@/lib/api/actions";
 import { mapApiState } from "@/lib/api/demo-state";
 import { invalidateResources, onApiEvent, setActiveRole, startEventStream } from "@/lib/api/resource";
 
-export type LogKind = "rencana" | "hold" | "lab" | "constraint" | "instruksi";
+export type LogKind = "rencana" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
 export interface LogEntry { id: number; kind: LogKind; title: string; detail: string; note: string; by: string; role: string; at: string; tone: "ok" | "warn" | "crit" | "neutral" }
 /** adjust: pengaturan alat (mis. upgrade UHT-2) yang ikut dihitung saat keputusan diambil. */
 export interface PlanDecision { plan: string; status: "approved" | "rejected"; note: string; by: string; at: string; adjust?: string }
 export type HoldStatus = "diajukan" | "aktif" | "ditolak" | "dilepas";
 export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; note: string; status: HoldStatus; by: string; at: string; review?: { note: string; by: string; at: string } }
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[] }
+export interface DemoUser { id: string; name: string; role: RoleId; active: boolean }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [] });
+const ACCOUNT_KEY = "milkgraph-account";
+const readAccount = () => { try { return localStorage.getItem(ACCOUNT_KEY); } catch { return null; } };
+const USERS: DemoUser[] = ROLE_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true }));
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -36,16 +40,22 @@ function load() {
       if (role && role in ROLES) state = { ...state, role: role as RoleId };
     } catch { /* private mode */ }
     setActiveRole(state.role);
+    state = { ...state, account: readAccount() };
     return state;
   }
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as DemoState | null;
     state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits } } : initial(Date.now());
+    if (!(state.role in ROLES)) state = { ...state, role: "planner" };
   } catch { state = initial(Date.now()); }
+  state = { ...state, account: readAccount() };
+  setAccess(state.access);
   return state;
 }
 function save(next: DemoState) {
   state = next;
+  try { if (next.account) localStorage.setItem(ACCOUNT_KEY, next.account); else localStorage.removeItem(ACCOUNT_KEY); } catch { /* mode privat */ }
+  setAccess(next.access);
   if (!API_MODE) {
     try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* mode privat: demo tetap jalan tanpa simpan */ }
   }
@@ -73,7 +83,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save(mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }));
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -130,7 +140,8 @@ export const resetDemo = async () => {
     invalidateResources();
     return;
   }
-  save(initial(Date.now()));
+  const { account, role } = load();
+  save({ ...initial(Date.now()), account, role });
 };
 
 export const decidePlan = async (plan: string, label: string, status: PlanDecision["status"], note: string, adjust?: string) => {
@@ -218,3 +229,41 @@ export const sendDemand = async (detail: string) => {
   }
   act(() => ({}), { kind: "rencana", title: "Kebutuhan susu dikirim ke farm", detail, note: "", tone: "ok" });
 };
+
+/** Pengelolaan pengguna dan hak akses (Superadmin). Mode API belum punya endpoint-nya, jadi hanya tersimpan di browser. */
+export const addUser = (name: string, role: RoleId) => act(
+  s => ({ users: [...s.users, { id: `USR-${Date.now()}`, name, role, active: true }] }),
+  { kind: "akses", title: "Pengguna ditambahkan", detail: `${name} sebagai ${ROLES[role].label}`, note: "", tone: "ok" },
+);
+export const updateUser = (id: string, change: Partial<Pick<DemoUser, "role" | "active">>) => {
+  const user = load().users.find(u => u.id === id);
+  if (!user) return;
+  const detail = change.role ? `${user.name}: ${ROLES[user.role].label} jadi ${ROLES[change.role].label}` : `${user.name} ${change.active ? "diaktifkan kembali" : "dinonaktifkan"}`;
+  act(
+    s => ({ users: s.users.map(u => u.id === id ? { ...u, ...change } : u) }),
+    { kind: "akses", title: change.role ? "Peran pengguna diubah" : change.active ? "Pengguna diaktifkan" : "Pengguna dinonaktifkan", detail, note: "", tone: change.active === false ? "warn" : "neutral" },
+  );
+};
+export const togglePermission = (permission: Permission, role: RoleId) => {
+  const has = rolesFor(permission).includes(role);
+  act(
+    s => ({ access: { ...s.access, [permission]: has ? rolesFor(permission).filter(r => r !== role) : [...rolesFor(permission), role] } }),
+    { kind: "akses", title: has ? "Hak akses dicabut" : "Hak akses diberikan", detail: `${ROLES[role].label}: ${PERMISSIONS[permission].label.toLowerCase()}`, note: "", tone: has ? "warn" : "ok" },
+  );
+};
+
+/** Login demo: email memilih akun, kata sandi mengikuti peran. Belum ada autentikasi sungguhan. */
+export const emailOf = (name: string) => `${name.toLowerCase().replace(/[^a-z\s]/g, "").trim().split(/\s+/).slice(0, 2).join(".")}@milkgraph.id`;
+export const demoPassword = (role: RoleId) => `MilkGraph-${role}-2026`;
+export const initialsOf = (name: string) => name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("");
+export const isSignedIn = () => {
+  const s = load();
+  return s.users.some(u => u.id === s.account && u.active);
+};
+export const login = async (userId: string, password: string) => {
+  const user = load().users.find(u => u.id === userId && u.active);
+  if (!user || password !== demoPassword(user.role)) throw new Error("Email atau kata sandi tidak cocok.");
+  await setRole(user.role);
+  save({ ...load(), account: user.id });
+};
+export const logout = () => save({ ...load(), account: null });
