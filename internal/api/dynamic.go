@@ -462,6 +462,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	s.registerTransfers(register)
 	s.registerRantaiVolume(register)
 	s.registerPOs(register)
+	s.registerImportCSV(register)
 	s.registerSchedules(register)
 	s.registerDashboard(register)
 	s.registerJadwalNarasi(register)
