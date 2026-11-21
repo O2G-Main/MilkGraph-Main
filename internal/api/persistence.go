@@ -25,7 +25,12 @@ func (s *Server) Bootstrap(ctx context.Context) error {
 		}
 		logs = append(logs, b)
 	}
-	return s.DB.SeedAudit(ctx, logs)
+	if err := s.DB.SeedAudit(ctx, logs); err != nil {
+		return err
+	}
+	// Migrasi aditif grant import.csv untuk registri role yang sudah
+	// tersimpan sebelum permission itu ada (lihat roles.go).
+	return s.pastikanGrantImportCSV(ctx)
 }
 func (s *Server) state(ctx context.Context, entity, id string, target any) error {
 	if s.DB == nil {

@@ -246,6 +246,32 @@ func (s *Server) authorize(r *http.Request, perm string) error {
 	return nil
 }
 
+// authorizeAny adalah gerbang ATAU: role lolos bila memegang salah satu
+// permission yang disebut. Dipakai endpoint Import CSV, yang pintunya
+// permission utamanya (plan.decide untuk PO, rt.manage untuk kedatangan
+// RT) ATAU permission khusus import.csv, supaya Supervisor dan Manager
+// dapat mengimpor tanpa ikut memegang plan.decide.
+func (s *Server) authorizeAny(r *http.Request, perms ...string) error {
+	auth, err := s.authenticate(r)
+	if err != nil {
+		return err
+	}
+	for _, perm := range perms {
+		ok, err := s.roleCan(r.Context(), auth.Role, perm)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+	}
+	return &apiError{
+		status:  403,
+		code:    "FORBIDDEN",
+		message: s.whoCanAnyMessage(r.Context(), perms...),
+	}
+}
+
 func (s *Server) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")

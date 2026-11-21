@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"milkgraph/internal/store"
 )
 
 func TestSeedRegistriRoleMatriks(t *testing.T) {
@@ -12,18 +14,18 @@ func TestSeedRegistriRoleMatriks(t *testing.T) {
 		t.Fatalf("registri seed harus 8 role, dapat %d", len(reg))
 	}
 	ingin := map[string][]string{
-		"superadmin": {"constraint.edit", "cost.edit", "demand.send", "downtime.record", "hold.review", "hold.submit", "instruction.ack", "lab.decide", "plan.decide", "role.manage", "rt.manage", "transfer.record"},
+		"superadmin": {"constraint.edit", "cost.edit", "demand.send", "downtime.record", "hold.review", "hold.submit", "import.csv", "instruction.ack", "lab.decide", "plan.decide", "role.manage", "rt.manage", "transfer.record"},
 		// Basis roles.json (demand.send, plan.decide, constraint.edit,
 		// hold.submit) + ekstensi Tahap 3.
-		"planner":    {"constraint.edit", "demand.send", "hold.submit", "instruction.ack", "plan.decide", "rt.manage", "transfer.record"},
+		"planner":    {"constraint.edit", "demand.send", "hold.submit", "import.csv", "instruction.ack", "plan.decide", "rt.manage", "transfer.record"},
 		"receiving":  {"hold.submit", "instruction.ack", "rt.manage", "transfer.record"},
 		"lab":        {"lab.decide"},
 		"operator":   {"downtime.record", "instruction.ack", "transfer.record"},
 		"qa":         {"constraint.edit", "hold.review", "hold.submit", "lab.decide"},
-		"supervisor": {"cost.edit", "hold.review", "hold.submit", "instruction.ack"},
+		"supervisor": {"cost.edit", "hold.review", "hold.submit", "import.csv", "instruction.ack"},
 		// Manager adalah alias FE untuk Supervisor/Manager: grant-nya
 		// harus persis supervisor.
-		"manager": {"cost.edit", "hold.review", "hold.submit", "instruction.ack"},
+		"manager": {"cost.edit", "hold.review", "hold.submit", "import.csv", "instruction.ack"},
 	}
 	for _, rec := range reg {
 		want, ok := ingin[rec.RoleID]
@@ -59,7 +61,7 @@ func TestRolesShapeDanKatalog(t *testing.T) {
 	if planner["label"] != "Planner PPIC" || planner["user"] != "Rina Wulandari" || planner["initials"] != "RW" || planner["builtin"] != true {
 		t.Errorf("entri planner kehilangan field lama/baru: %v", planner)
 	}
-	if len(arr(planner["permissions"])) != 7 {
+	if len(arr(planner["permissions"])) != 8 {
 		t.Errorf("permissions planner di GET /roles: %v", planner["permissions"])
 	}
 	sa := obj(roles["superadmin"])
@@ -72,6 +74,20 @@ func TestRolesShapeDanKatalog(t *testing.T) {
 	}
 	if holders := arr(obj(perms["role.manage"])["roles"]); len(holders) != 1 || holders[0] != "superadmin" {
 		t.Errorf("role.manage hanya boleh dipegang superadmin: %v", holders)
+	}
+	// import.csv dipegang planner, supervisor, manager, superadmin saja;
+	// receiving tidak, karena akses import RT-nya lewat rt.manage.
+	holdersImport := arr(obj(perms["import.csv"])["roles"])
+	wantImport := []string{"superadmin", "planner", "supervisor", "manager"}
+	if len(holdersImport) != len(wantImport) {
+		t.Errorf("pemegang import.csv = %v, mau %v", holdersImport, wantImport)
+	} else {
+		for i, id := range wantImport {
+			if holdersImport[i] != id {
+				t.Errorf("pemegang import.csv = %v, mau %v", holdersImport, wantImport)
+				break
+			}
+		}
 	}
 
 	w = durableRequest(h, "GET", "/permissions", "qa", "")
@@ -273,5 +289,112 @@ func TestRoleCRUDDenganDB(t *testing.T) {
 	w = durableRequest(h, "GET", "/roles", "superadmin", "")
 	if strings.Contains(w.Body.String(), `"auditor"`) {
 		t.Fatalf("auditor masih tampil di GET /roles: %s", w.Body.String())
+	}
+}
+
+func TestGabungGrantImportCSV(t *testing.T) {
+	// Registri lama tersimpan: belum ada import.csv di mana pun, plus
+	// satu role kustom yang tidak boleh disentuh merge.
+	lama := []RoleRecord{
+		{RoleID: "superadmin", Nama: "Superadmin", Builtin: true, Permissions: []string{"plan.decide", "role.manage"}},
+		{RoleID: "planner", Nama: "Planner PPIC", Builtin: true, Permissions: []string{"plan.decide"}},
+		{RoleID: "receiving", Nama: "Penerimaan", Builtin: true, Permissions: []string{"rt.manage"}},
+		{RoleID: "supervisor", Nama: "Supervisor", Builtin: true, Permissions: []string{"cost.edit"}},
+		{RoleID: "manager", Nama: "Supervisor/Manager", Builtin: true, Permissions: []string{"cost.edit"}},
+		{RoleID: "auditor", Nama: "Auditor", Builtin: false, Permissions: []string{"transfer.record"}},
+	}
+	gabung, berubah := gabungGrantImportCSV(clone(lama))
+	if !berubah {
+		t.Fatal("merge pertama harus melaporkan perubahan")
+	}
+	for _, rec := range gabung {
+		switch rec.RoleID {
+		case "superadmin", "planner", "supervisor", "manager":
+			if !punyaPermission(rec, "import.csv") {
+				t.Errorf("%s harus menerima import.csv: %v", rec.RoleID, rec.Permissions)
+			}
+		case "receiving", "auditor":
+			if punyaPermission(rec, "import.csv") {
+				t.Errorf("%s tidak boleh menerima import.csv: %v", rec.RoleID, rec.Permissions)
+			}
+		}
+		// Murni aditif: tidak ada permission lama yang hilang.
+		for _, lamaRec := range lama {
+			if lamaRec.RoleID != rec.RoleID {
+				continue
+			}
+			for _, p := range lamaRec.Permissions {
+				if !punyaPermission(rec, p) {
+					t.Errorf("%s kehilangan permission %s", rec.RoleID, p)
+				}
+			}
+		}
+	}
+	// Idempoten: merge kedua atas hasil pertama tanpa perubahan.
+	if _, berubah2 := gabungGrantImportCSV(gabung); berubah2 {
+		t.Error("merge kedua harus tanpa perubahan")
+	}
+}
+
+func TestMigrasiGrantImportCSVDB(t *testing.T) {
+	db := testDB(t)
+	if err := db.Reset(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	s := &Server{Mode: "demo", DB: db}
+
+	// Simulasikan registri lama yang sudah tersimpan di state store:
+	// seed saat ini dengan import.csv dibuang dari semua role.
+	lama := seedRoleRegistry()
+	for i := range lama {
+		tanpa := []string{}
+		for _, p := range lama[i].Permissions {
+			if p != "import.csv" {
+				tanpa = append(tanpa, p)
+			}
+		}
+		lama[i].Permissions = tanpa
+	}
+	if _, err := s.change(ctx, "role", "current", func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {
+		return store.Change{Value: lama}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Sebelum migrasi, supervisor tertolak gerbang import (403).
+	h := s.Handler()
+	w := importRequest(h, "/pos/import?commit=false", "supervisor", csvPOValid)
+	if w.Code != 403 {
+		t.Fatalf("sebelum migrasi, import PO supervisor harus 403, dapat %d: %s", w.Code, w.Body.String())
+	}
+
+	// Migrasi startup menambal registri tersimpan.
+	if err := s.pastikanGrantImportCSV(ctx); err != nil {
+		t.Fatal(err)
+	}
+	reg, err := s.roleRegistry(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"planner", "supervisor", "manager", "superadmin"} {
+		rec, ok := cariRole(reg, id)
+		if !ok || !punyaPermission(rec, "import.csv") {
+			t.Errorf("sesudah migrasi %s harus memegang import.csv: %v", id, rec.Permissions)
+		}
+	}
+	if rec, _ := cariRole(reg, "receiving"); punyaPermission(rec, "import.csv") {
+		t.Errorf("receiving tidak boleh menerima import.csv: %v", rec.Permissions)
+	}
+
+	// Sesudah migrasi, supervisor lolos gerbang import.
+	w = importRequest(h, "/pos/import?commit=false", "supervisor", csvPOValid)
+	if w.Code != 200 {
+		t.Fatalf("sesudah migrasi, import PO supervisor harus 200, dapat %d: %s", w.Code, w.Body.String())
+	}
+
+	// Bootstrap penuh juga aman dijalankan sesudah migrasi (idempoten).
+	if err := s.Bootstrap(ctx); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -244,3 +244,60 @@ func TestImportRTDenganDB(t *testing.T) {
 		}
 	}
 }
+
+func TestImportGerbangPermissionKhusus(t *testing.T) {
+	h := (&Server{Mode: "demo"}).Handler()
+	// Pratinjau (commit=false) cukup untuk membuktikan gerbang: lolos
+	// gerbang berarti 200, tertolak berarti 403.
+	kasus := []struct {
+		nama, path, role string
+		want             int
+	}{
+		// import.csv: supervisor dan manager lolos kedua import walau
+		// tidak memegang plan.decide maupun rt.manage.
+		{"supervisor PO", "/pos/import?commit=false", "supervisor", 200},
+		{"supervisor RT", "/supply/rt-arrivals/import?commit=false", "supervisor", 200},
+		{"manager PO", "/pos/import?commit=false", "manager", 200},
+		{"manager RT", "/supply/rt-arrivals/import?commit=false", "manager", 200},
+		// Pemegang lama tetap lolos.
+		{"superadmin PO", "/pos/import?commit=false", "superadmin", 200},
+		{"superadmin RT", "/supply/rt-arrivals/import?commit=false", "superadmin", 200},
+		{"planner PO", "/pos/import?commit=false", "planner", 200},
+		{"planner RT", "/supply/rt-arrivals/import?commit=false", "planner", 200},
+		// Receiving tetap lolos RT lewat rt.manage, tetap tertolak PO.
+		{"receiving RT", "/supply/rt-arrivals/import?commit=false", "receiving", 200},
+		{"receiving PO", "/pos/import?commit=false", "receiving", 403},
+		// Role lain tertolak kedua import.
+		{"qa PO", "/pos/import?commit=false", "qa", 403},
+		{"qa RT", "/supply/rt-arrivals/import?commit=false", "qa", 403},
+		{"lab PO", "/pos/import?commit=false", "lab", 403},
+		{"lab RT", "/supply/rt-arrivals/import?commit=false", "lab", 403},
+		{"operator PO", "/pos/import?commit=false", "operator", 403},
+		{"operator RT", "/supply/rt-arrivals/import?commit=false", "operator", 403},
+	}
+	for _, c := range kasus {
+		csv := csvPOValid
+		if strings.HasPrefix(c.path, "/supply") {
+			csv = csvRTValid
+		}
+		w := importRequest(h, c.path, c.role, csv)
+		if w.Code != c.want {
+			t.Errorf("%s: import %s sebagai %s = %d, mau %d: %s", c.nama, c.path, c.role, w.Code, c.want, w.Body.String())
+		}
+	}
+
+	// Gerbang endpoint non-import tidak ikut berubah: import.csv tidak
+	// memberi plan.decide atau rt.manage.
+	w := durableRequest(h, "POST", "/pos", "supervisor", `{"lines":[{"sku":"UHT-CH-250-LOCAL","qty_liter":100}],"due_datetime":"2026-10-15T08:00:00+07:00"}`)
+	if w.Code != 403 {
+		t.Errorf("supervisor POST /pos biasa harus tetap 403, dapat %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "POST", "/supply/rt-arrivals", "supervisor", `{"farm_name":"Farm X","rt_id":"RT-01","volume_l":1000,"depart_at":"2026-10-14T10:00:00+07:00","target_arrival":"2026-10-14T13:00:00+07:00","estimated_arrival":"2026-10-14T13:00:00+07:00"}`)
+	if w.Code != 403 {
+		t.Errorf("supervisor POST rt-arrival biasa harus tetap 403, dapat %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "POST", "/schedules/generate", "manager", `{}`)
+	if w.Code != 403 {
+		t.Errorf("manager generate jadwal harus tetap 403, dapat %d: %s", w.Code, w.Body.String())
+	}
+}

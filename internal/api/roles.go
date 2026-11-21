@@ -45,7 +45,7 @@ type PermissionInfo struct {
 
 // katalogPermission adalah daftar lengkap permission yang dikenal sistem.
 // Tujuh pertama berasal dari seed/roles.json (label dipertahankan persis);
-// lima terakhir adalah permission tulis fitur Tahap 3.
+// enam terakhir adalah permission tulis fitur Tahap 3.
 var katalogPermission = []PermissionInfo{
 	{Name: "demand.send", Label: "Mengirim kebutuhan susu ke farm"},
 	{Name: "plan.decide", Label: "Menyetujui atau menolak rekomendasi rencana"},
@@ -59,6 +59,7 @@ var katalogPermission = []PermissionInfo{
 	{Name: "downtime.record", Label: "Mencatat kejadian downtime alat"},
 	{Name: "cost.edit", Label: "Mengelola item biaya operasional"},
 	{Name: "role.manage", Label: "Mengelola role dan hak akses pengguna"},
+	{Name: "import.csv", Label: "Mengimpor data PO dan jadwal kedatangan RT dari file CSV"},
 }
 
 func permissionDikenal(name string) bool {
@@ -97,14 +98,20 @@ func permissionDikenal(name string) bool {
 //     sebagai role bawaan tersendiri dengan grant persis supervisor
 //     supaya X-Demo-Role: manager sah tanpa FE mengubah id-nya; temuan
 //     audit FE/BE Tahap 3 (login Manager 401/422) ditutup dari sini.
+//   - import.csv (planner, supervisor, manager; superadmin lewat katalog
+//     penuh): permission khusus Import CSV. Sengaja terpisah dari
+//     plan.decide supaya Supervisor dan Manager dapat mengimpor PO dan
+//     jadwal kedatangan RT tanpa ikut memegang hak menyetujui rencana.
+//     Receiving tidak menerima import.csv: akses import RT-nya tetap
+//     lewat rt.manage seperti sebelumnya.
 var ekstensiRoleTahap3 = map[string][]string{
-	"planner":    {"instruction.ack", "rt.manage", "transfer.record"},
+	"planner":    {"instruction.ack", "rt.manage", "transfer.record", "import.csv"},
 	"receiving":  {"hold.submit", "rt.manage", "transfer.record"},
 	"lab":        {"lab.decide"},
 	"operator":   {"downtime.record", "instruction.ack", "transfer.record"},
 	"qa":         {"constraint.edit"},
-	"supervisor": {"cost.edit", "hold.review"},
-	"manager":    {"cost.edit", "hold.review", "hold.submit", "instruction.ack"},
+	"supervisor": {"cost.edit", "hold.review", "import.csv"},
+	"manager":    {"cost.edit", "hold.review", "hold.submit", "instruction.ack", "import.csv"},
 }
 
 // urutanRoleSeed adalah urutan tampil registri bawaan.
@@ -160,6 +167,89 @@ func seedRoleRegistry() []RoleRecord {
 	return out
 }
 
+// grantWajibImportCSV adalah role bawaan yang wajib memegang permission
+// import.csv. Dipakai seed (lewat ekstensiRoleTahap3 dan katalog penuh
+// superadmin) dan migrasi aditif registri tersimpan di bawah.
+var grantWajibImportCSV = []string{"planner", "supervisor", "manager", "superadmin"}
+
+func punyaPermission(rec RoleRecord, perm string) bool {
+	for _, p := range rec.Permissions {
+		if p == perm {
+			return true
+		}
+	}
+	return false
+}
+
+// gabungGrantImportCSV menambahkan import.csv ke role bawaan wajib yang
+// belum memegangnya. Murni aditif: tidak menghapus permission apa pun,
+// tidak mengubah nama atau status role, dan role kustom (builtin=false)
+// tidak disentuh. Mengembalikan daftar hasil dan apakah ada perubahan.
+func gabungGrantImportCSV(list []RoleRecord) ([]RoleRecord, bool) {
+	berubah := false
+	for i, rec := range list {
+		if !rec.Builtin || punyaPermission(rec, "import.csv") {
+			continue
+		}
+		wajib := false
+		for _, id := range grantWajibImportCSV {
+			if rec.RoleID == id {
+				wajib = true
+			}
+		}
+		if !wajib {
+			continue
+		}
+		rec.Permissions = append(append([]string{}, rec.Permissions...), "import.csv")
+		sort.Strings(rec.Permissions)
+		list[i] = rec
+		berubah = true
+	}
+	return list, berubah
+}
+
+// pastikanGrantImportCSV menerapkan gabungGrantImportCSV ke registri yang
+// sudah tersimpan di state store; dipanggil saat startup dari Bootstrap.
+//
+// Latar: roleRegistry() memakai isi state store apa adanya bila registri
+// pernah ditulis (mis. Superadmin pernah mengubah role lewat CRUD), jadi
+// grant baru di seed kode tidak otomatis sampai ke registri live. Fungsi
+// ini menambal tepat celah itu untuk grant import.csv saja:
+//   - registri belum pernah ditulis: tidak disentuh, fallback seed yang
+//     berlaku dan seed sudah memuat import.csv;
+//   - registri tersimpan dan semua role wajib sudah memegang import.csv:
+//     tidak ada penulisan;
+//   - selain itu registri digabung lalu disimpan kembali lewat transaksi
+//     s.change yang sama seperti CRUD role.
+//
+// Konsekuensi yang disadari: untuk empat role bawaan ini import.csv
+// diperlakukan sebagai grant wajib sistem, jadi pencabutan manual lewat
+// editor role akan ditambahkan lagi pada startup berikutnya.
+func (s *Server) pastikanGrantImportCSV(ctx context.Context) error {
+	if s.DB == nil {
+		return nil
+	}
+	var stored []RoleRecord
+	if err := s.state(ctx, "role", "current", &stored); err != nil {
+		return err
+	}
+	if len(stored) == 0 {
+		return nil
+	}
+	if _, berubah := gabungGrantImportCSV(clone(stored)); !berubah {
+		return nil
+	}
+	_, err := s.change(ctx, "role", "current", func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {
+		list, err := basisRoles(raw)
+		if err != nil {
+			return store.Change{}, err
+		}
+		list, _ = gabungGrantImportCSV(list)
+		return store.Change{Value: list, Event: "role.import-csv-granted"}, nil
+	})
+	return err
+}
+
 // roleRegistry membaca registri aktif: isi state store bila ada, jika
 // tidak fallback ke seed. Tanpa DB fungsi ini murni mengembalikan seed.
 func (s *Server) roleRegistry(ctx context.Context) ([]RoleRecord, error) {
@@ -206,17 +296,32 @@ func (s *Server) roleCan(ctx context.Context, roleID, perm string) (bool, error)
 // whoCanMessage menyusun pesan 403 dengan format yang sama seperti
 // domain.WhoCan, tetapi nama role diambil dari registri aktif.
 func (s *Server) whoCanMessage(ctx context.Context, perm string) string {
+	return s.whoCanAnyMessage(ctx, perm)
+}
+
+// whoCanAnyMessage seperti whoCanMessage untuk gerbang ATAU (authorizeAny):
+// nama yang disebut adalah semua role yang memegang salah satu permission,
+// mengikuti urutan registri.
+func (s *Server) whoCanAnyMessage(ctx context.Context, perms ...string) string {
 	reg, err := s.roleRegistry(ctx)
 	if err != nil {
-		return domain.WhoCan(domain.Permission(perm))
+		if len(perms) > 0 {
+			return domain.WhoCan(domain.Permission(perms[0]))
+		}
+		return "Hanya pengguna berwenang yang dapat melakukan ini."
 	}
 	names := []string{}
 	for _, rec := range reg {
+		pegang := false
 		for _, p := range rec.Permissions {
-			if p == perm {
-				names = append(names, rec.Nama)
-				break
+			for _, perm := range perms {
+				if p == perm {
+					pegang = true
+				}
 			}
+		}
+		if pegang {
+			names = append(names, rec.Nama)
 		}
 	}
 	if len(names) == 0 {

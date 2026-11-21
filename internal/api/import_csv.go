@@ -350,8 +350,17 @@ func validasiImportRT(baris [][]string, kolom map[string]int, existing []RTArriv
 	return laporan, baru
 }
 
+// Gerbang kedua endpoint import adalah ATAU, dicek di dalam handler lewat
+// authorizeAny (register hanya menerima satu permission): permission utama
+// ATAU import.csv. Import PO: plan.decide atau import.csv. Import
+// kedatangan RT: rt.manage atau import.csv. Endpoint non-import tidak
+// berubah: POST /pos tetap plan.decide, POST /supply/rt-arrivals tetap
+// rt.manage.
 func (s *Server) registerImportCSV(register func(string, string, endpoint)) {
-	register("POST /api/v1/pos/import", "plan.decide", func(r *http.Request) (any, error) {
+	register("POST /api/v1/pos/import", "", func(r *http.Request) (any, error) {
+		if err := s.authorizeAny(r, "plan.decide", "import.csv"); err != nil {
+			return nil, err
+		}
 		commit := r.URL.Query().Get("commit") == "true"
 		if commit {
 			if err := s.dbRequired(); err != nil {
@@ -401,7 +410,10 @@ func (s *Server) registerImportCSV(register func(string, string, endpoint)) {
 		}
 		return laporan, nil
 	})
-	register("POST /api/v1/supply/rt-arrivals/import", "rt.manage", func(r *http.Request) (any, error) {
+	register("POST /api/v1/supply/rt-arrivals/import", "", func(r *http.Request) (any, error) {
+		if err := s.authorizeAny(r, "rt.manage", "import.csv"); err != nil {
+			return nil, err
+		}
 		commit := r.URL.Query().Get("commit") == "true"
 		if commit {
 			if err := s.dbRequired(); err != nil {
