@@ -20,7 +20,8 @@ export function ExecKpis({ items }: { items: ExecKpi[] }) {
       <span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span>
       {k.value === null
         ? <strong className="exec-kpi-empty">Belum ada</strong>
-        : <strong><CountUp to={k.value} separator="." decimals={k.decimals} duration={1.2} suffix={k.suffix} />{k.of && <small> {k.of}</small>}</strong>}
+        // CountUp memakai titik sebagai pemisah desimal; angka berdesimal ditulis statis dengan format Indonesia.
+        : <strong>{k.decimals ? `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: k.decimals }).format(k.value)}${k.suffix ?? ""}` : <CountUp to={k.value} separator="." duration={1.2} suffix={k.suffix} />}{k.of && <small> {k.of}</small>}</strong>}
       {k.progress !== undefined && <span className="exec-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, k.progress))}%` }} /></span>}
       <span className="small muted">{k.note}</span>
     </Link>
@@ -80,6 +81,30 @@ export function SupplyCard({ cover, planned, need, farms }: { cover: number; pla
 
 /* ---------- Mesin: donut status lini + downtime per penyebab ---------- */
 export type StateSlice = { key: string; label: string; count: number; color: string; lines: string[] };
+/** Warna infografis (palet divalidasi): hijau = baik, hijau muda = berjalan, kuning = perlu dicek, abu = netral, merah = kritis. */
+export const C = { ok: "var(--color-primary)", soft: "#6FBF8B", warn: "#B7791F", gray: "#CBD3CD", crit: "var(--color-status-crit)" };
+
+/** Donut dengan total di tengah dan legenda berangka. Irisan 0 disembunyikan tapi tetap tercantum di legenda. */
+export type DonutSeg = { key: string; label: string; count: number; color: string };
+export function Donut({ segs, unit, caption }: { segs: DonutSeg[]; unit: string; caption?: string }) {
+  const shown = segs.filter(s => s.count);
+  const total = segs.reduce((s, x) => s + x.count, 0);
+  return <div className="exec-machine">
+    <figure className="exec-donut" aria-label={segs.map(s => `${s.label} ${s.count}`).join(", ")}>
+      <ResponsiveContainer width="100%" height={180}>
+        <PieChart>
+          <Pie data={shown} dataKey="count" nameKey="label" innerRadius="64%" outerRadius="96%" paddingAngle={shown.length > 1 ? 2 : 0} cornerRadius={4} {...GAP}>
+            {shown.map(s => <Cell key={s.key} fill={s.color} />)}
+          </Pie>
+          <Tooltip content={({ active, payload }) => active && payload?.length ? <div className="lc-tooltip"><span>{String(payload[0].name)}</span><strong>{String(payload[0].value)} {unit}</strong></div> : null} />
+        </PieChart>
+      </ResponsiveContainer>
+      <figcaption><strong><CountUp to={total} duration={1} /></strong><span>{caption ?? unit}</span></figcaption>
+    </figure>
+    <Legend items={segs.map(s => ({ label: s.label, color: s.color, value: String(s.count) }))} />
+  </div>;
+}
+
 /** Bullet bar HTML: satu baris per item, isi relatif terhadap `max`, garis putus-putus opsional di `mark`. */
 export type BulletRow = { key: string; label: string; value: number; text: string; sub?: string; color: string; href?: string };
 export function Bullets({ rows, max, mark, labelWidth = 40, label }: { rows: BulletRow[]; max: number; mark?: number; labelWidth?: number; label: string }) {

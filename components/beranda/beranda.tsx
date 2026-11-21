@@ -23,6 +23,7 @@ import { ExecKpis, MachineCard, ScheduleCard, SupplyCard, TargetCard, type ExecK
 import { API_MODE } from "@/lib/api/client";
 import { ExecutiveDashboardApi, ExecutiveKpis } from "./executive-api";
 import { BerandaApiAttention, BerandaApiHero, BerandaApiMenus } from "./beranda-api";
+import { ROLE_DASHBOARD_API } from "./role-api";
 
 type Item = { icon: LucideIcon; title: string; meta: string; tone: Tone; href: string };
 const plan = scenario.plans[0];
@@ -286,6 +287,9 @@ export function Beranda() {
   const seePlan = canSee(demo.role, "/rencana");
   const heroHref = seePlan ? "/rencana" : isLab || isQa ? "/lab" : isOperator ? "/penjadwalan" : "/receiving";
 
+  // Mode API: tiap role punya infografis sendiri dari endpoint urusannya (role buatan Superadmin memakai versi umum).
+  const RoleDashboard = ROLE_DASHBOARD_API[demo.role];
+
   return <div className="page-enter">
     <PageHeading title={isManager ? "Executive Dashboard" : "Beranda"} subtitle={isManager
       ? `Halo, ${me.user.split(" ")[0]}. Ringkasan pasokan, penggunaan mesin, jadwal, dan pencapaian target Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
@@ -298,6 +302,7 @@ export function Beranda() {
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
     {/* Manager: infografis. Mode API sepenuhnya dari GET /dashboard/executive, mode lokal dari data demo. */}
     {isManager && API_MODE ? <ExecutiveDashboardApi attention={<BerandaApiAttention role={demo.role} title="Perlu perhatian" />} />
+    : API_MODE && RoleDashboard ? <RoleDashboard attention={<BerandaApiAttention role={demo.role} title={attentionTitle} subtitle={attentionSubtitle} />} />
     : isManager ? <>
       <ExecKpis items={execKpis} />
       <div className="exec-grid">
