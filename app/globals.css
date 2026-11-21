@@ -862,8 +862,6 @@ button.recommendation-saving { min-height: 36px; }
 .split-even { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-bottom: 16px; align-items: start; }
 .tanks-grid.single { grid-template-columns: minmax(0,1fr); }
 .page-enter > .kg-layout { margin-top: 16px; }
-.role-note { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0; font-size: 12px; color: var(--color-status-warn); }
-.role-note svg { margin-top: 2px; }
 .instruction-card { margin-bottom: 16px; }
 .instruction-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .instruction-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-md); background: color-mix(in oklab, var(--color-surface) 70%, transparent); box-shadow: var(--glass-rim); }
@@ -1596,7 +1594,7 @@ html:has(.login-page) { background: var(--color-canvas); }
 .schedule-form { display: grid; gap: 14px; }
 .schedule-form label { display: block; }
 .schedule-form .field-label { margin-bottom: 6px; }
-.schedule-form input[type=number], .rule-input input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, var(--color-on-surface-muted) 45%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 14px; color: var(--color-on-surface); font-variant-numeric: tabular-nums; }
+.schedule-form input, .rule-input input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, var(--color-on-surface-muted) 45%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 14px; color: var(--color-on-surface); font-variant-numeric: tabular-nums; }
 .schedule-form input:focus-visible, .rule-input input:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 .schedule-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .rules-card { margin-bottom: 16px; }
@@ -1627,3 +1625,8 @@ html:has(.login-page) { background: var(--color-canvas); }
 .hover-sidebar .sidebar { transition: width 220ms var(--ease), flex-basis 220ms var(--ease), padding 220ms var(--ease); }
 .hover-sidebar .sidebar:is(:hover, :has(:focus-visible)) { width: 296px; flex-basis: 296px; padding-left: 20px; padding-right: 20px; }
 @media (prefers-reduced-motion: reduce) { .hover-sidebar .sidebar { transition: none; } }
+.queue-actions { white-space: nowrap; } .queue-actions > * + * { margin-left: 6px; } .queue-actions .button { min-height: 34px; padding: 0 12px; font-size: 12px; }
+.tank-room .tank-bar { display: block; height: 8px; margin: 6px 0 4px; border-radius: var(--radius-full); background: var(--color-surface-muted); overflow: hidden; }
+.tank-room .tank-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-status-ok); }
+.tank-room .tank-bar > span.warn { background: var(--color-status-warn); }
+.tank-room .tank-bar > span.crit { background: var(--color-status-crit); }

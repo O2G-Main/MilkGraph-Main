@@ -10,7 +10,7 @@ import { can } from "@/lib/roles";
 import { DEFAULT_LIMITS, evaluate, violations, type ConstraintId, type Limits } from "@/lib/rules";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, RoleNote, SectionTitle, SourceButton, SourceModal } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle, SourceButton, SourceModal } from "@/components/ui";
 
 type NumberKey = { [K in keyof Limits]: Limits[K] extends number ? K : never }[keyof Limits];
 type ToggleKey = { [K in keyof Limits]: Limits[K] extends boolean ? K : never }[keyof Limits];
@@ -214,14 +214,15 @@ export function Constraint() {
   return (
     <div className="page-enter">
       <PageHeading title="Constraint" subtitle="Bisakah rencana berjalan sesuai jadwal? Enam constraint diuji pada setiap rencana. Ubah batasnya, lihat dampaknya langsung, lalu simpan.">
-        <button className="button secondary" disabled={!allowed || isDefault || saving} onClick={() => setDraft(defaultLimits)}>
+        {allowed && <>
+        <button className="button secondary" disabled={isDefault || saving} onClick={() => setDraft(defaultLimits)}>
           <Icon icon={RotateCcw} size={16} />Nilai awal
         </button>
-        <button className="button primary" disabled={!allowed || !dirty || saving} onClick={handleSave}>
+        <button className="button primary" disabled={!dirty || saving} onClick={handleSave}>
           <Icon icon={Save} size={16} />Simpan batas
         </button>
+        </>}
       </PageHeading>
-      <RoleNote permission="constraint.edit" />
       {actionError && (
         <div className="decision-banner warn" role="alert">
           <Icon icon={X} />
@@ -290,29 +291,29 @@ export function Constraint() {
                           {currentVal !== defVal && ` · awal ${displayDef}`} [asumsi]
                         </small>
                       </span>
-                      <input
+                      {allowed && <input
                         type="range"
                         aria-label={p.label}
                         min={min}
                         max={max}
                         step={step}
                         value={currentVal}
-                        disabled={!allowed || saving}
+                        disabled={saving}
                         onChange={e => edit({ [key]: Number(e.target.value) })}
                         aria-valuetext={displayCurrent}
-                      />
+                      />}
                     </label>
                   );
                 }
                 const hint = "hint" in p ? p.hint : "";
                 return (
                   <label key={p.key} className="limit-check">
-                    <input
+                    {allowed ? <input
                       type="checkbox"
                       checked={Boolean(limits[key])}
-                      disabled={!allowed || saving}
+                      disabled={saving}
                       onChange={e => edit({ [key]: e.target.checked })}
-                    />
+                    /> : <Badge tone={limits[key] ? "warn" : "neutral"}>{limits[key] ? "Aktif" : "Tidak"}</Badge>}
                     <span>{p.label}<small>{hint}</small></span>
                   </label>
                 );

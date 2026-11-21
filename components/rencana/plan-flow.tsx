@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { Clock3, RotateCcw, Trash2, TriangleAlert, Wrench, X, Zap } from "lucide-react";
-import { Badge, Icon, RoleNote } from "@/components/ui";
+import { Badge, Icon } from "@/components/ui";
 import { can } from "@/lib/roles";
 import { Select } from "@/components/ui/fields";
 import { Equipment, KIND_LABEL } from "@/components/trace/equipment";
@@ -47,9 +47,9 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       <button className="icon-button" aria-label="Tutup panel atur alat" onClick={onClose}><Icon icon={X} size={18} /></button>
     </header>
     <Badge tone={asset.tone}>Di jam ini: {asset.status}</Badge>
-    <RoleNote permission="plan.simulate" />
 
-    <fieldset className="plan-field" disabled={!allowed}>
+    {allowed && <>
+    <fieldset className="plan-field">
       <legend><Icon icon={Zap} size={15} />Kapasitas</legend>
       {room ? <>
         <div className="plan-cap">
@@ -68,7 +68,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       </> : <p className="small muted">Laju alat ini (L/jam) belum ada di data, jadi kapasitasnya belum bisa diatur [simulasi].</p>}
     </fieldset>
 
-    <fieldset className="plan-field" disabled={!allowed}>
+    <fieldset className="plan-field">
       <legend><Icon icon={Wrench} size={15} />Maintenance</legend>
       <label className="check-row"><input type="checkbox" checked={!!a.maintenance} onChange={e => setMaint(e.target.checked ? { start: "15.00", minutes: 30 } : undefined)} />Jadwalkan maintenance di shift ini</label>
       {a.maintenance && <>
@@ -80,6 +80,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       </>}
     </fieldset>
 
+    </>}
     {allowed && (a.upgrade || a.maintenance) && <button type="button" className="button secondary wide" onClick={() => set(asset.id, {})}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</button>}
   </aside>;
 }

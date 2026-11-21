@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, ClipboardCheck, Download, FlaskConical, PackageX, SlidersHorizontal, UserCog, CalendarRange, Timer } from "lucide-react";
+import { CalendarClock, ClipboardCheck, Download, FlaskConical, PackageX, SlidersHorizontal, UserCog, CalendarRange, Timer, Truck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useDemo, type LogEntry, type LogKind } from "@/lib/demo";
 import { pastLog } from "@/mock/ops";
@@ -13,6 +13,7 @@ const KINDS: Record<LogKind, { label: string; icon: LucideIcon }> = {
   rencana: { label: "Rencana", icon: CalendarClock },
   jadwal: { label: "Jadwal", icon: CalendarRange },
   aturan: { label: "Aturan", icon: Timer },
+  penerimaan: { label: "Penerimaan", icon: Truck },
   hold: { label: "Hold", icon: PackageX },
   lab: { label: "Lab", icon: FlaskConical },
   constraint: { label: "Constraint", icon: SlidersHorizontal },

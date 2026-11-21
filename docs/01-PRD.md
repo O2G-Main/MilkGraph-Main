@@ -45,6 +45,9 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 | Grup | Halaman | Route | Status mockup | Kontrak BE |
 |---|---|---|---|---|
 | Operasional | Receiving Flow | `/` | Dibangun | `04` §3 |
+| Penerimaan | Jadwal Kedatangan RT | `/kedatangan` | Dibangun (lokal, belum ada endpoint) | - |
+| | Antrean Truk (catat tiba, umur susu, bongkar) | `/receiving` | Dibangun; catatan lapangan lokal | `04` §3 |
+| | Transfer & Volume | `/transfer` | Dibangun (lokal, belum ada endpoint) | - |
 | | Simulasi 3D | `/simulasi` | Dibangun | `04` §15 |
 | | Bay & Tangki | `/tangki` | Dibangun | `04` §4 |
 | | Lini Filling | `/filling` | Dibangun | `04` §4 |
@@ -66,10 +69,13 @@ Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backe
 
 ### 5.2 Peran dan hak akses (`lib/roles.ts`)
 
-Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin dan Planner PPIC. Tiga peran lain masih memakai hak akses lama sampai didefinisikan.
+Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC, dan Koordinator receiving. Supervisor produksi dan QA/Lab masih memakai hak akses lama sampai didefinisikan.
 
 | Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Supervisor produksi | QA/Lab |
 |---|---|---|---|---|---|
+| Tambah/ubah jadwal kedatangan RT, estimasi tiba, status perjalanan | ya | | ya | | |
+| Catat kedatangan aktual, awal umur susu, dan proses bongkar | ya | | ya | | |
+| Catat transfer susu dari RT ke tangki penerimaan | ya | | ya | | |
 | Tambah/ubah target dan jadwal produksi | ya | ya | | | |
 | Atur durasi changeover dan CIP (tidak boleh di bawah standar) | ya | ya | | | |
 | Ubah parameter simulasi, waktu maintenance, kapasitas alat | ya | ya | | | |
@@ -84,9 +90,12 @@ Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin dan Planner P
 | Kelola master data, konfigurasi integrasi | ya | | | | |
 | Lihat riwayat seluruh perubahan dan persetujuan | ya | ya | ya | ya | ya |
 
-**Menu per peran** (`HIDDEN_PAGES` di `lib/roles.ts`): halaman yang disembunyikan juga diblokir bila dibuka lewat URL.
+**Menu per peran** (`HIDDEN_PAGES` di `lib/roles.ts`): halaman yang disembunyikan tidak ada di sidebar, dan bila dibuka lewat URL langsung dialihkan ke Beranda. Yang tidak tersedia untuk peran tidak ditampilkan sama sekali: tombol keputusan, kontrol ubah, dan tautan ke halaman tersembunyi (`PageLink`) hilang, bukan dikunci.
 - Superadmin: semua menu.
 - Planner PPIC: tanpa QC Barang Jadi, Master Alat, Sumber Data, dan Pengguna & Peran. Penerimaan, Kondisi Alat, dan Traceability hanya untuk dilihat. Beranda Planner menampilkan KPI kelayakan rencana, jadwal, kecukupan susu, dan lini filling jalan, lalu daftar keputusan diurutkan dari yang paling mendesak.
+- Koordinator receiving: hanya Beranda, Penerimaan (Jadwal Kedatangan RT, Antrean Truk, Transfer & Volume, Tes Lab untuk dilihat), dan Kondisi Alat (termasuk Bay & Tangki untuk melihat kesiapan bay dan tangki serta mengonfirmasi instruksi bay). Riwayat Persetujuan tetap bisa dibuka lewat Beranda. Beranda receiving menampilkan KPI RT di plant, holding paling mendesak, bay siap, dan ruang tangki penerimaan, lalu daftar urut urgensi: RT dekat batas holding, instruksi bay, bay CIP, tangki hampir penuh, transfer yang belum dicatat, tunggu lab, dan RT berikutnya.
+
+Penerimaan: RT yang dicatat tiba pindah dari jadwal ke antrean di tahap Sampling. Bongkar hanya bisa dimulai setelah RT dirilis lab, di bay yang tidak sedang CIP atau dipakai RT lain. Umur susu berhenti dihitung saat bongkar selesai. Transfer ditolak bila melebihi sisa ruang tangki dan diberi peringatan bila selisih dengan volume timbang lebih dari 0,5%.
 
 Aturan Produksi ikut dipakai di cek kelayakan Rencana: durasi changeover menimpa SOP, dan CIP bay yang lebih pendek dari standar diperpanjang sampai standar.
 

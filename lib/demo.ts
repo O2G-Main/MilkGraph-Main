@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { DEFAULT_LIMITS, SOP_CHANGEOVER, setProductionRules, type Limits } from "@/lib/rules";
 import { CIP_STANDARD, PAPER_STANDARD, type CipGroup, type ProductionRules, type ScheduleItem } from "@/lib/production";
+import { ARRIVAL_STATUS, clock, type Arrival, type ReceivingState, type RtRecord, type Transfer } from "@/lib/receiving";
 import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
 import type { Lot } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
@@ -11,7 +12,7 @@ import { createActions } from "@/lib/api/actions";
 import { mapApiState } from "@/lib/api/demo-state";
 import { invalidateResources, onApiEvent, setActiveRole, startEventStream } from "@/lib/api/resource";
 
-export type LogKind = "rencana" | "jadwal" | "aturan" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
+export type LogKind = "rencana" | "jadwal" | "aturan" | "penerimaan" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
 export interface LogEntry { id: number; kind: LogKind; title: string; detail: string; note: string; by: string; role: string; at: string; tone: "ok" | "warn" | "crit" | "neutral" }
 /** adjust: pengaturan alat (mis. upgrade UHT-2) yang ikut dihitung saat keputusan diambil. */
 export interface PlanDecision { plan: string; status: "approved" | "rejected"; note: string; by: string; at: string; adjust?: string }
@@ -19,7 +20,7 @@ export type HoldStatus = "diajukan" | "aktif" | "ditolak" | "dilepas";
 export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; note: string; status: HoldStatus; by: string; at: string; review?: { note: string; by: string; at: string } }
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
 export interface DemoUser { id: string; name: string; role: RoleId; active: boolean }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
@@ -40,8 +41,25 @@ export const DEFAULT_RULES: ProductionRules = {
   changeover: { ...SOP_CHANGEOVER }, paper: PAPER_STANDARD,
   cip: Object.fromEntries(Object.entries(CIP_STANDARD).map(([k, v]) => [k, v.minutes])) as Record<CipGroup, number>,
 };
+/** Penerimaan [simulasi]: 4 RT dalam perjalanan (tiba 15.05 - 16.20) dan 3 RT masih loading, sama dengan alur penerimaan. */
+const RECEIVING: ReceivingState = {
+  arrivals: [
+    { id: "RT-31", farm: "KUD Ngantang", volume: 10_800, depart: "13:25", eta: "15:05", milkStart: "07:40", status: "perjalanan", note: "" },
+    { id: "RT-32", farm: "Farm Sumberejo", volume: 9_700, depart: "13:50", eta: "15:30", milkStart: "08:30", status: "perjalanan", note: "" },
+    { id: "RT-33", farm: "Farm Tutur", volume: 9_400, depart: "14:15", eta: "15:55", milkStart: "09:20", status: "perjalanan", note: "" },
+    { id: "RT-34", farm: "Farm Pujon Kidul", volume: 10_200, depart: "14:30", eta: "16:20", milkStart: "07:50", status: "perjalanan", note: "Alcohol test positif 9 Okt, sampling diperketat" },
+    { id: "RT-35", farm: "Farm Ngadirejo", volume: 8_900, depart: "15:40", eta: "17:10", milkStart: "10:30", status: "loading", note: "" },
+    { id: "RT-36", farm: "KUD Ngantang", volume: 11_000, depart: "16:05", eta: "17:45", milkStart: "11:15", status: "loading", note: "" },
+    { id: "RT-37", farm: "Farm Sumberejo", volume: 9_800, depart: "16:40", eta: "18:20", milkStart: "12:00", status: "loading", note: "" },
+  ],
+  records: {},
+  transfers: [
+    { id: "TRF-01", rt: "RT-21", tank: "RMT-2", volume: 10_400, start: "13:20", end: "13:50", counted: true },
+    { id: "TRF-02", rt: "RT-22", tank: "RMT-1", volume: 9_800, start: "13:55", end: "14:25", counted: true },
+  ],
+};
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -101,7 +119,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules });
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -315,4 +333,25 @@ export const setPaperRule = (minutes: number) => act(
 export const setCipRule = (group: CipGroup, minutes: number) => act(
   s => ({ rules: { ...s.rules, cip: { ...s.rules.cip, [group]: minutes } } }),
   { kind: "aturan", title: "Durasi CIP diubah", detail: `${CIP_STANDARD[group].label}: ${minutes} menit`, note: "", tone: "neutral" },
+);
+
+/** Penerimaan (Koordinator receiving). Tersimpan di browser; mode API belum punya endpoint-nya. */
+const recv = (s: DemoState, patch: Partial<ReceivingState>) => ({ receiving: { ...s.receiving, ...patch } });
+const num = (n: number) => new Intl.NumberFormat("id-ID").format(n);
+export const saveArrival = (item: Arrival, isNew: boolean) => act(
+  s => recv(s, { arrivals: isNew ? [...s.receiving.arrivals, item] : s.receiving.arrivals.map(a => a.id === item.id ? item : a) }),
+  { kind: "penerimaan", title: isNew ? "Jadwal kedatangan RT ditambahkan" : "Jadwal kedatangan RT diubah", detail: `${item.id} dari ${item.farm}, ${num(item.volume)} L, ETA ${clock(item.eta)}, ${ARRIVAL_STATUS[item.status].label.toLowerCase()}`, note: item.note, tone: item.status === "batal" ? "warn" : "neutral" },
+);
+/** Kedatangan aktual: RT berpindah dari jadwal ke antrean truk. */
+export const recordArrival = (id: string, record: Pick<RtRecord, "arrivedAt" | "milkStart" | "volume" | "temperature">) => act(
+  s => recv(s, { arrivals: s.receiving.arrivals.map(a => a.id === id ? { ...a, status: "tiba" } : a), records: { ...s.receiving.records, [id]: { ...s.receiving.records[id], ...record } } }),
+  { kind: "penerimaan", title: "Kedatangan RT dicatat", detail: `${id} tiba pukul ${clock(record.arrivedAt ?? "")}, awal umur susu ${clock(record.milkStart ?? "")}${record.volume ? `, ${num(record.volume)} L` : ""}`, note: "", tone: "ok" },
+);
+export const updateRtRecord = (id: string, patch: RtRecord, title: string, detail: string) => act(
+  s => recv(s, { records: { ...s.receiving.records, [id]: { ...s.receiving.records[id], ...patch } } }),
+  { kind: "penerimaan", title, detail: `${id}, ${detail}`, note: "", tone: "neutral" },
+);
+export const addTransfer = (t: Omit<Transfer, "id" | "counted">) => act(
+  s => recv(s, { transfers: [...s.receiving.transfers, { ...t, id: `TRF-${String(s.receiving.transfers.length + 1).padStart(2, "0")}`, counted: false }] }),
+  { kind: "penerimaan", title: "Transfer susu dicatat", detail: `${t.rt} ke ${t.tank}, ${num(t.volume)} L, ${clock(t.start)}-${clock(t.end)}`, note: "", tone: "ok" },
 );

@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode, type ComponentProps } from "react";
-import { ArrowUpRight, X, Database, Lock, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, X, Database, type LucideIcon } from "lucide-react";
 import { scenario } from "@/lib/data";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { Source } from "@/mock/types";
 import type { Block, Tone } from "@/mock/types";
 import { time } from "@/lib/format";
+import Link from "next/link";
 import { useDemo } from "@/lib/demo";
-import { can, whoCan, type Permission } from "@/lib/roles";
+import { findNav } from "@/lib/nav";
+import { canSee } from "@/lib/roles";
+
+/** Tautan ke halaman lain yang hanya muncul bila halaman itu terbuka untuk peran aktif. `inline`: tampilkan teksnya saja tanpa tautan. */
+export function PageLink({ inline, ...props }: ComponentProps<typeof Link> & { inline?: boolean }) {
+  const { role } = useDemo();
+  const path = String(props.href).split(/[?#]/)[0];
+  if (canSee(role, findNav(path).tab.href)) return <Link {...props} />;
+  return inline ? <>{props.children}</> : null;
+}
 
 export function Icon({ icon: Glyph, size = 18, ...props }: { icon: LucideIcon; size?: number } & ComponentProps<"svg">) {
   return <Glyph size={size} strokeWidth={1.75} aria-hidden="true" {...props} />;
@@ -62,12 +72,6 @@ export function Toggle<T extends string>({ value, options, onChange, label }: { 
 }
 export function PageHeading({ title, subtitle, children }: { title: string; subtitle: string; children?: ReactNode }) {
   return <div className="page-heading"><div><h1>{title}</h1><p>{subtitle}</p></div>{children && <div className="page-actions">{children}</div>}</div>;
-}
-/** Keterangan saat peran aktif tidak boleh melakukan aksi di halaman ini. */
-export function RoleNote({ permission }: { permission: Permission }) {
-  const { role } = useDemo();
-  if (can(role, permission)) return null;
-  return <p className="role-note"><Icon icon={Lock} size={14} /><span>{whoCan(permission)} Ganti peran lewat kartu akun di sidebar.</span></p>;
 }
 /** Gantt 13.00 - 20.00 dengan garis "sekarang"; blok bisa diklik untuk membuka sumbernya. */
 export function Timeline({ blocks, resources, onSource }: { blocks: Block[]; resources: string[]; onSource: (id: string) => void }) {

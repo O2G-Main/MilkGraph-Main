@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRight, CalendarRange, ChevronRight, Container, Droplets, Factory, FlaskConical, Hourglass, PackageX, Send, ShieldAlert, TriangleAlert, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, CalendarRange, ChevronRight, Container, Droplets, Factory, FlaskConical, Hourglass, PackageX, Send, ShieldAlert, TriangleAlert, Truck, Wrench, type LucideIcon } from "lucide-react";
+import { applyQueue, clock, tankRoom } from "@/lib/receiving";
 import { scenario } from "@/lib/data";
 import { duration } from "@/lib/format";
 import { useDemo } from "@/lib/demo";
 import { visibleNav } from "@/lib/nav";
-import { ROLES } from "@/lib/roles";
-import { holdingLeft, violations } from "@/lib/rules";
+import { ROLES, canSee } from "@/lib/roles";
+import { holdingLeft, instructions, violations } from "@/lib/rules";
 import { checkSchedule } from "@/lib/production";
 import { PROCESS_LOSS, dataSources, demandPlan, farms, fillers, labResults, pastLog } from "@/mock/ops";
 import { BOTTLENECKS } from "@/mock/site";
@@ -91,14 +92,50 @@ export function Beranda() {
     { icon: Container, title: "Bay 2 sedang CIP", meta: bay.delta, tone: "warn", href: "/tangki" },
   ];
 
-  const shown = isPlanner ? plannerAttention : attention;
+  // Koordinator receiving: urutan urgensi = susu yang bisa terbuang (holding time), bay dan tangki yang menahan bongkar, lalu RT berikutnya.
+  const isReceiving = demo.role === "receiving";
+  const queue = applyQueue(scenario.tankers, demo.receiving, demo.limits.holdingMin);
+  const inPlant = queue.filter(r => r.stage !== "Selesai bongkar");
+  const urgent = [...inPlant].sort((a, b) => b.ageMin - a.ageMin);
+  const worst = urgent[0];
+  const occupied = new Set(queue.flatMap(r => r.stage === "Unloading" ? [r.bay ?? scenario.assets.find(a => a.kind === "Bay" && a.status.includes(r.id))?.id] : []));
+  const bays = scenario.assets.filter(a => a.kind === "Bay");
+  const freeBays = bays.filter(b => !occupied.has(b.id) && b.status !== "CIP");
+  const tanks = scenario.assets.filter(a => a.kind === "Buffer").map(a => ({ id: a.id, fill: a.fill, capacity: a.capacity }));
+  const room = tankRoom(tanks, demo.receiving.transfers);
+  const freeL = tanks.reduce((s, t) => s + Math.max(0, room[t.id].free), 0);
+  const fullest = tanks.reduce((a, b) => (room[b.id].fill / b.capacity > room[a.id].fill / a.capacity ? b : a));
+  const fullPct = Math.round(room[fullest.id].fill / fullest.capacity * 100);
+  const coming = demo.receiving.arrivals.filter(a => a.status === "perjalanan").sort((a, b) => a.eta.localeCompare(b.eta));
+  const moved = new Set(demo.receiving.transfers.map(t => t.rt));
+  const unmoved = queue.filter(r => r.stage === "Selesai bongkar" && !moved.has(r.id));
+  const bayAcks = approved ? instructions(plan).filter(i => i.role === "receiving" && !demo.acks.includes(i.id)) : [];
+  const receivingKpis: typeof plannerKpis = [
+    { icon: Truck, label: "RT di plant", value: String(inPlant.length), unit: "RT", note: `${inPlant.filter(r => r.stage === "Sampling" || r.stage === "Lab test").length} menunggu lab, ${inPlant.filter(r => r.stage === "Released").length} siap bongkar`, tone: "neutral", href: "/receiving" },
+    { icon: Hourglass, label: "Holding paling mendesak", value: worst ? duration(Math.max(0, demo.limits.holdingMin - worst.ageMin)) : "-", unit: "", note: worst ? `${worst.id}, umur susu ${worst.age}` : "Tidak ada RT di plant", tone: worst?.tone ?? "ok", href: "/receiving" },
+    { icon: Container, label: "Bay siap", value: `${freeBays.length}/${bays.length}`, unit: "bay", note: bays.filter(b => b.status === "CIP").map(b => `${b.id} CIP, ${b.info.toLowerCase()}`).join(". ") || "Tidak ada bay CIP", tone: freeBays.length ? "ok" : "warn", href: "/tangki" },
+    { icon: Droplets, label: "Ruang tangki penerimaan", value: `${fmt(freeL)}`, unit: "L", note: `${fullest.id} ${fullPct}% penuh`, tone: fullPct >= 95 ? "crit" : fullPct >= 85 ? "warn" : "ok", href: "/transfer" },
+  ];
+  const receivingAttention: Item[] = [
+    ...urgent.filter(r => r.tone !== "ok").slice(0, 2).map(r => ({ icon: Hourglass, title: `${r.id} sisa holding ${duration(Math.max(0, demo.limits.holdingMin - r.ageMin))}`, meta: `${r.stage}${r.stage === "Released" ? `, sudah dirilis lab dan menunggu bay ${r.wait} menit` : ""}. Umur susu ${r.age}`, tone: r.tone as Tone, href: "/receiving" })),
+    ...bayAcks.map(i => ({ icon: Container, title: "Instruksi bay dari rencana belum dikonfirmasi", meta: i.text, tone: "warn" as Tone, href: "/tangki" })),
+    ...bays.filter(b => b.status === "CIP").map(b => ({ icon: Container, title: `${b.id} sedang CIP`, meta: `${b.info}. Bongkar berikutnya pakai bay lain`, tone: "warn" as Tone, href: "/tangki" })),
+    ...(fullPct >= 85 ? [{ icon: Droplets, title: `${fullest.id} ${fullPct}% penuh`, meta: `Arahkan transfer berikutnya ke tangki lain. Sisa total ${fmt(freeL)} L`, tone: (fullPct >= 95 ? "crit" : "warn") as Tone, href: "/transfer" }] : []),
+    ...unmoved.map(r => ({ icon: Droplets, title: `${r.id} selesai bongkar, transfer belum dicatat`, meta: `${fmt(r.volume)} L perlu dicatat ke tangki penerimaan`, tone: "warn" as Tone, href: "/transfer" })),
+    ...inPlant.filter(r => r.stage === "Lab test" && r.wait >= 60).map(r => ({ icon: FlaskConical, title: `${r.id} menunggu lab ${r.wait} menit`, meta: "Belum bisa dibongkar sebelum dirilis QA", tone: "neutral" as Tone, href: "/lab" })),
+    ...coming.slice(0, 2).map(a => ({ icon: Truck, title: `${a.id} tiba pukul ${clock(a.eta)}`, meta: `${a.farm}, ${fmt(a.volume)} L. Siapkan sampling`, tone: "neutral" as Tone, href: "/kedatangan" })),
+  ];
+  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : attention;
+  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : null;
+  const seePlan = canSee(demo.role, "/rencana");
 
   return <div className="page-enter">
     <PageHeading title="Beranda" subtitle={isPlanner
       ? `Halo, ${me.user.split(" ")[0]}. Kelayakan rencana, jadwal, dan pasokan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
+      : isReceiving ? `Halo, ${me.user.split(" ")[0]}. RT di plant, bay, tangki, dan kedatangan berikutnya Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
-    {isPlanner
-      ? <div className="schedule-stats planner-kpis">{plannerKpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
+    {kpis
+      ? <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
       : <MetricGrid onSource={setSource} />}
 
     <div className="home-top">
@@ -106,9 +143,9 @@ export function Beranda() {
         <h2>{approved ? <>Rekomendasi disetujui,<br />RT-26 pindah ke Bay 1.</> : <>Rencana tidak layak,<br />{broken} constraint dilanggar.</>}</h2>
         <div className="incident-time"><span><Icon icon={Hourglass} size={15} />Sisa holding time RT-26</span><strong>{duration(left)}</strong></div>
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
-        <Link href="/rencana" className="button inverse">{approved ? "Lihat rencana" : "Periksa rencana"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
+        <Link href={seePlan ? "/rencana" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
       </section>
-      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : "Perlu perhatian"} subtitle={isPlanner ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : "Perlu perhatian"} subtitle={isPlanner || isReceiving ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
       </Card>
     </div>

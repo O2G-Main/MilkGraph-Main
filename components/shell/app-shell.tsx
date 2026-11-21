@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, Menu, X, CircleHelp, ArrowUpRight, Clock3, RotateCcw, ArrowLeft, LogOut, Lock } from "lucide-react";
+import { Bell, ChevronDown, Menu, X, CircleHelp, ArrowUpRight, Clock3, RotateCcw, ArrowLeft, LogOut } from "lucide-react";
 import { findNav, isDetail, pageTitle, visibleNav } from "@/lib/nav";
 import { BranchedNav } from "@/components/shell/branched-nav";
 import { scenario } from "@/lib/data";
 import { Badge, Icon, Modal, SourceModal } from "@/components/ui";
 import { initialsOf, isSignedIn, logout, resetDemo, useDemo } from "@/lib/demo";
-import { ROLES, canSee, type RoleId } from "@/lib/roles";
+import { ROLES, canOpen, type RoleId } from "@/lib/roles";
 import { violations } from "@/lib/rules";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -87,6 +87,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!onLogin && !isSignedIn()) router.replace("/login");
   }, [onLogin, router, demo.account, demo.users]);
+
+  // Halaman di luar peran tidak ditampilkan sama sekali: langsung kembali ke Beranda.
+  const allowedPage = canOpen(demo.role, pathname, current.tab.href);
+  useEffect(() => {
+    if (!onLogin && account && !allowedPage) router.replace("/");
+  }, [onLogin, account, allowedPage, router]);
 
   const broken = violations(scenario.plans[0], "before", demo.limits);
 
@@ -168,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main id="main-content" tabIndex={-1}>
         {prev ? <button type="button" className="back-link" onClick={() => router.back()}><Icon icon={ArrowLeft} size={16} />Kembali ke {pageTitle(prev)}</button>
           : isDetail(pathname) && <Link className="back-link" href={current.tab.href} onClick={fromMenu}><Icon icon={ArrowLeft} size={16} />Kembali ke {current.tab.label}</Link>}
-        {canSee(demo.role, current.tab.href) ? children : <section className="callout" role="alert"><Icon icon={Lock} size={18} /><div><strong>Halaman ini tidak tersedia untuk {me.label}</strong><p>Menu ini di luar tugas peranmu. Hubungi Superadmin kalau kamu butuh aksesnya.</p></div><Link className="text-link" href="/">Kembali ke Beranda<Icon icon={ArrowUpRight} size={14} /></Link></section>}
+        {allowedPage && children}
       </main>
       <footer className="workspace-footer"><span>MilkGraph <span className="footer-divider">/</span> Context graph operasional pabrik susu</span><span>{snapshotFooter} <span className="status-dot" /></span></footer>
     </div>

@@ -1,18 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, ArrowUpRight, Check, ClipboardList, Clock3, Container, Lock, SprayCan, Thermometer, Truck, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, ClipboardList, Clock3, Container, SprayCan, Thermometer, Truck, X } from "lucide-react";
 import { scenario } from "@/lib/data";
 import { number, time } from "@/lib/format";
 import { acknowledge, useDemo } from "@/lib/demo";
-import { ROLES, SUPERADMIN } from "@/lib/roles";
+import { SUPERADMIN } from "@/lib/roles";
 import { instructions } from "@/lib/rules";
 import { cipLog as mockCipLog, midTanks as mockMidTanks, type MidTank } from "@/mock/ops";
 import type { Block, Tone } from "@/mock/types";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, SectionTitle, SourceModal, Timeline } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal, Timeline } from "@/components/ui";
 
 const MID_STATE: Record<string, { label: string; tone: Tone }> = {
   terisi: { label: "Terisi", tone: "ok" },
@@ -115,9 +114,9 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
           <strong>Belum ada rencana yang disetujui</strong>
           <p>Jadwal di halaman ini mengikuti rencana awal (FIFO). Instruksi muncul setelah planner menyetujui rekomendasi solver.</p>
         </div>
-        <Link className="text-link" href="/rencana">
+        <PageLink className="text-link" href="/rencana">
           Buka Rencana & What-if<Icon icon={ArrowRight} size={14} />
-        </Link>
+        </PageLink>
       </section>
     );
   }
@@ -163,10 +162,10 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
               </span>
               {acked ? (
                 <Badge tone="ok">Dikonfirmasi</Badge>
-              ) : (
+              ) : allowed && (
                 <button
                   className="button secondary"
-                  disabled={!allowed || ackingId === item.id}
+                  disabled={ackingId === item.id}
                   onClick={() => handleAck(item.id, item.text)}
                 >
                   Konfirmasi
@@ -176,12 +175,6 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
           );
         })}
       </ul>
-      {!allowed && (
-        <p className="role-note">
-          <Icon icon={Lock} size={14} />
-          <span>Hanya {ROLES[role].label} yang mengonfirmasi instruksi ini. Ganti peran lewat kartu akun di sidebar.</span>
-        </p>
-      )}
     </Card>
   );
 }
@@ -296,7 +289,7 @@ export function Tangki() {
         <SectionTitle
           title="Jadwal bongkar dan CIP"
           subtitle={ganttSubtitle}
-          action={<Link className="text-link" href="/rencana">Bandingkan rencana<Icon icon={ArrowRight} size={14} /></Link>}
+          action={<PageLink className="text-link" href="/rencana">Bandingkan rencana<Icon icon={ArrowRight} size={14} /></PageLink>}
         />
         <Timeline blocks={blocks as unknown as Block[]} resources={["Bay 1", "Bay 2", "Bay 3"]} onSource={setSource} />
       </Card>

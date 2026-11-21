@@ -10,7 +10,7 @@ import { EvidenceGraph } from "./evidence-graph";
 import { lotAction } from "./genealogy";
 import { MassBalance, NodeDetail, TraceTable } from "./trace-views";
 import { submitHold, useDemo, type Hold } from "@/lib/demo";
-import { can, whoCan } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { API_MODE, apiGet, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { Answer, Scenario } from "@/mock/types";
@@ -152,7 +152,7 @@ export function Trace() {
   return <div className="page-enter">
     <div className="page-heading trace-heading"><div><h1>Traceability</h1><p>Asal dan sebaran volume susu di setiap lot.</p></div>
       <form className="trace-ask" onSubmit={e => { e.preventDefault(); ask(question); }}><label htmlFor="question" className="sr-only">Pertanyaan tentang genealogi atau rencana</label><div className="question-field"><Icon icon={Search} /><input id="question" value={question} onChange={e => setQuestion(e.target.value)} placeholder="Tanya asal lot, RT, atau aset..." autoComplete="off" list="trace-examples" /><button aria-label="Kirim pertanyaan" className="send-button" disabled={!question.trim() || loading}><Icon icon={Send} size={18} /></button></div><datalist id="trace-examples">{templates.map(a => <option key={a.id} value={a.question} />)}</datalist></form>
-      <button className="button primary" disabled={!!holdSent || !mayHold || submittingHold} title={mayHold ? undefined : whoCan("hold.submit")} onClick={() => { setHoldNote(""); setHoldError(null); setHoldDialog(true); }}><Icon icon={PackageX} />Ajukan daftar hold</button>
+      {mayHold && <button className="button primary" disabled={!!holdSent || submittingHold} onClick={() => { setHoldNote(""); setHoldError(null); setHoldDialog(true); }}><Icon icon={PackageX} />Ajukan daftar hold</button>}
     </div>
     <section className="qc-trigger compact" aria-label="Pemicu trace"><span className="qc-trigger-icon"><Icon icon={FlaskConical} size={18} /></span><p><Badge tone="crit">QC out-of-spec</Badge> <strong className="mono">{qcEvent.lot}</strong> · {qcEvent.test}: {qcEvent.result}</p><SourceButton id={qcEvent.source} onSelect={setSource} compact /></section>
     {holdSent && <div className="decision-banner warn" role="status"><Icon icon={PackageX} /><span><strong>{holdSent.id} diajukan ke QA/Lab oleh {holdSent.by}, {holdSent.at}</strong><span>{lots.length} lot · {number(packs)} pak · {holdSent.status === "diajukan" ? "menunggu QA" : holdSent.status === "aktif" ? "hold aktif" : "hold dilepas"}. <Link className="inline-link" href="/hold">Buka daftar hold</Link></span></span></div>}

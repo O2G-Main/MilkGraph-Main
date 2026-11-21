@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { Check, MessageSquareText, SendHorizontal, Sparkles } from "lucide-react";
 import { Icon } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
-import { whoCan } from "@/lib/roles";
 import { ASSETS, STAGES } from "@/lib/assets";
 import { badgeOf, type Adjust } from "./adjust";
 import type { Proposal, Reply } from "./plan-answer";
@@ -67,9 +66,9 @@ export function PlanChat({ onAsk, onApply, canApply = true }: {
           const key = `${i}-${p.id}`, done = applied.has(key);
           return <div key={key} className="plan-proposal">
             <div><strong className="mono">{p.id}</strong> {badgeOf(p.adjust)}{p.reason && <small>{p.reason}</small>}</div>
-            <button type="button" className={`button ${done ? "secondary" : "primary"}`} disabled={done || !canApply} title={canApply ? undefined : whoCan("plan.simulate")} onClick={() => { onApply(p.id, p.adjust); setApplied(s => new Set(s).add(key)); }}>
+            {canApply && <button type="button" className={`button ${done ? "secondary" : "primary"}`} disabled={done} onClick={() => { onApply(p.id, p.adjust); setApplied(s => new Set(s).add(key)); }}>
               {done ? <><Icon icon={Check} size={15} />Diterapkan</> : "Terapkan di alur"}
-            </button>
+            </button>}
           </div>;
         })}
       </li>)}

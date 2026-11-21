@@ -7,7 +7,7 @@ import { setChangeoverRule, setCipRule, setPaperRule, useDemo } from "@/lib/demo
 import { can } from "@/lib/roles";
 import { SOP_CHANGEOVER } from "@/lib/rules";
 import { CIP_STANDARD, PAPER_STANDARD, belowStandard, type CipGroup } from "@/lib/production";
-import { Badge, Card, Icon, PageHeading, RoleNote, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle } from "@/components/ui";
 
 /** Isian menit per aturan: tidak boleh di bawah standar yang disepakati, disimpan per baris. */
 function RuleInput({ label, value, standard, onSave, allowed }: { label: string; value: number; standard: number; onSave: (minutes: number) => void; allowed: boolean }) {
@@ -36,7 +36,6 @@ export function AturanProduksi() {
   return (
     <div className="page-enter">
       <PageHeading title="Aturan Produksi" subtitle="Durasi changeover dan CIP yang dipakai saat menyusun jadwal. Nilainya boleh lebih lama dari standar yang disepakati, tapi tidak boleh lebih singkat." />
-      <RoleNote permission="rules.edit" />
       <Card className="rules-card">
         <SectionTitle title="Changeover antar-produk" subtitle="Dipakai di Penjadwalan untuk jeda antar-order dan di cek kelayakan Rencana." action={<Link className="text-link" href="/penjadwalan">Lihat jadwal<Icon icon={ArrowRight} size={14} /></Link>} />
         <div className="table-wrap">

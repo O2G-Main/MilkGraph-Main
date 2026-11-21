@@ -9,7 +9,7 @@ import { demandPlan as mockDemandPlan, farms as mockFarms, fillers as mockFiller
 import type { Tone } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, RoleNote, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle } from "@/components/ui";
 import { LineChart } from "./line-chart";
 
 type DemandLine = {
@@ -125,11 +125,10 @@ export function Pasokan() {
   return (
     <div className="page-enter">
       <PageHeading title="Pasokan & Permintaan" subtitle="Rencana kirim farm, kebutuhan susu dari rencana produksi, dan kapasitas pabrik dalam satu tempat untuk PPIC.">
-        <button className="button primary" disabled={!allowed || !!sent || sending} onClick={handleSend}>
+        {allowed && <button className="button primary" disabled={!!sent || sending} onClick={handleSend}>
           <Icon icon={Send} size={16} />{sent ? `Terkirim ${sent.at}` : "Kirim kebutuhan ke farm"}
-        </button>
+        </button>}
       </PageHeading>
-      <RoleNote permission="demand.send" />
       {actionError && (
         <div className="decision-banner warn" role="alert">
           <Icon icon={X} />

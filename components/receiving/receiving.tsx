@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ArrowUpRight, CalendarClock, Droplets, FlaskConical, Hourglass, MapPin, PackageCheck, PackageOpen, ShieldCheck, TriangleAlert, Truck } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarClock, Droplets, FlaskConical, Hourglass, MapPin, PackageCheck, PackageOpen, Pencil, ShieldCheck, TriangleAlert, Truck } from "lucide-react";
+import { can, canSee } from "@/lib/roles";
+import { applyQueue, clock, type QueueRow } from "@/lib/receiving";
+import { ArriveDialog, RtDialog, type RtAction } from "./queue-actions";
 import { scenario } from "@/lib/data";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -96,9 +99,16 @@ function ReceivingContent({
   filter: string;
   setFilter: (v: string) => void;
 }) {
-  const stages = ["Semua tahap", ...new Set(scenarioData.tankers.map(t => t.stage))];
+  // Antrean memakai catatan Koordinator receiving: RT yang dicatat tiba, umur susu, dan proses bongkar.
+  const rows = applyQueue(scenarioData.tankers, demo.receiving, demo.limits.holdingMin);
+  const stages = ["Semua tahap", ...new Set(rows.map(t => t.stage))];
   const approved = demo.decisions.find(d => d.plan === "current" && d.status === "approved");
-  const tankers = scenarioData.tankers.filter(t => filter === stages[0] || t.stage === filter);
+  const tankers = rows.filter(t => filter === stages[0] || t.stage === filter);
+  const mayRecord = can(demo.role, "queue.record");
+  const seePlan = canSee(demo.role, "/rencana");
+  const [dialog, setDialog] = useState<{ row: QueueRow; action: RtAction } | "tiba" | null>(null);
+  const scenarioBay = useMemo(() => Object.fromEntries(scenarioData.assets.flatMap(a => { const rt = a.kind === "Bay" ? a.status.match(/RT-\d+/)?.[0] : undefined; return rt ? [[rt, a.id]] : []; })), [scenarioData]);
+  const bayOf = (r: QueueRow) => r.bay ?? (r.stage === "Unloading" ? scenarioBay[r.id] : undefined);
   // Next phase PDF: antrean juga bisa dilihat dalam 3D, dari data yang sama dengan tabel.
   const [mode, setMode] = useState<"tabel" | "3d">("tabel");
   const [picked, setPicked] = useState<string | null>(null);
@@ -117,9 +127,10 @@ function ReceivingContent({
           <p>Alur RT dari farm sampai tangki, diperbarui {now}</p>
         </div>
         <div className="page-actions">
-          <Link className="button primary" href="/rencana">
+          {mayRecord && <button className="button primary" onClick={() => setDialog("tiba")}><Icon icon={Truck} />Catat kedatangan</button>}
+          {seePlan && <Link className={`button ${mayRecord ? "secondary" : "primary"}`} href="/rencana">
             <Icon icon={CalendarClock} />Periksa rencana<Icon icon={ArrowUpRight} size={16} />
-          </Link>
+          </Link>}
         </div>
       </div>
       <MetricGrid metrics={scenarioData.metrics} onSource={setSource} />
@@ -163,22 +174,30 @@ function ReceivingContent({
                   <th className="numeric">Tunggu</th>
                   <th className="numeric">Umur susu</th>
                   <th className="numeric">Suhu</th>
+                  {mayRecord && <th>Proses</th>}
                   <th><span className="sr-only">Bukti</span></th>
                 </tr>
               </thead>
               <tbody>
                 {tankers.map(rt => (
                   <tr key={rt.id}>
-                    <td><strong className="mono">{rt.id}</strong><span className="table-sub">{rt.farm}</span></td>
+                    <td><strong className="mono">{rt.id}</strong><span className="table-sub">{rt.farm}{rt.arrivedAt ? `, tiba ${clock(rt.arrivedAt)}` : ""}</span></td>
                     <td data-label="Volume" className="numeric">{number(rt.volume)} L</td>
-                    <td data-label="Tahap"><Badge tone={rt.tone}>{rt.stage}</Badge></td>
+                    <td data-label="Tahap"><Badge tone={rt.tone}>{rt.stage}</Badge>{bayOf(rt) && <span className="table-sub">{bayOf(rt)}{rt.unloadStart ? ` sejak ${clock(rt.unloadStart)}` : ""}{rt.unloadEnd ? `, selesai ${clock(rt.unloadEnd)}` : ""}</span>}</td>
                     <td data-label="Tunggu" className="numeric">{rt.wait} mnt</td>
-                    <td data-label="Umur susu" className={`numeric ${rt.tone === "crit" ? "crit-text" : ""}`}>{rt.age}</td>
+                    <td data-label="Umur susu" className={`numeric ${rt.tone === "crit" ? "crit-text" : rt.tone === "warn" ? "warn-text" : ""}`}>{rt.age}<span className="table-sub">awal {clock(rt.milkStart)}</span></td>
                     <td data-label="Suhu" className="numeric">{number(rt.temperature)} °C</td>
+                    {mayRecord && <td data-label="Proses" className="queue-actions">
+                      {rt.stage === "Released" && <button className="button primary" onClick={() => setDialog({ row: rt, action: "mulai" })}>Mulai bongkar</button>}
+                      {rt.stage === "Unloading" && <button className="button primary" onClick={() => setDialog({ row: rt, action: "selesai" })}>Selesai bongkar</button>}
+                      {rt.stage === "Selesai bongkar" && <Link className="text-link" href="/transfer">Catat transfer</Link>}
+                      {(rt.stage === "Sampling" || rt.stage === "Lab test") && <span className="small muted">Tunggu rilis lab</span>}
+                      <button className="icon-button" aria-label={`Ubah catatan tiba dan umur susu ${rt.id}`} onClick={() => setDialog({ row: rt, action: "catatan" })}><Icon icon={Pencil} size={15} /></button>
+                    </td>}
                     <td className="table-action">
-                      <button className="icon-button" aria-label={`Lihat bukti ${rt.id}`} onClick={() => setSource(rt.source)}>
+                      {rt.source && <button className="icon-button" aria-label={`Lihat bukti ${rt.id}`} onClick={() => setSource(rt.source)}>
                         <Icon icon={ArrowUpRight} size={16} />
-                      </button>
+                      </button>}
                     </td>
                   </tr>
                 ))}
@@ -186,8 +205,9 @@ function ReceivingContent({
             </table>
           </div>}
           <div className="table-footer">
-            <span>{tankers.length} dari {scenarioData.tankers.length} RT di plant. Batas holding time {duration(demo.limits.holdingMin)} [asumsi].</span>
-            <Link href="/rencana" className="text-link">Susun ulang antrean<Icon icon={ArrowRight} size={14} /></Link>
+            <span>{tankers.length} dari {rows.length} RT di plant. Batas holding time {duration(demo.limits.holdingMin)} [asumsi].</span>
+            {seePlan ? <Link href="/rencana" className="text-link">Susun ulang antrean<Icon icon={ArrowRight} size={14} /></Link>
+              : <Link href="/kedatangan" className="text-link">Jadwal kedatangan<Icon icon={ArrowRight} size={14} /></Link>}
           </div>
         </Card>
         <section className="incident-card" id="peringatan">
@@ -213,12 +233,14 @@ function ReceivingContent({
             ))}
           </div>
           <p className="incident-links">Rincian tunggu lab ada di <Link href="/lab">Tes Lab</Link>, dan kondisi bay di <Link href="/tangki">Bay &amp; Tangki</Link>.</p>
-          <Link href="/rencana" className="button inverse">
-            Periksa kelayakan rencana<span className="button-circle"><Icon icon={ArrowUpRight} /></span>
+          <Link href={seePlan ? "/rencana" : "/tangki"} className="button inverse">
+            {seePlan ? "Periksa kelayakan rencana" : "Lihat kesiapan bay"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span>
           </Link>
         </section>
       </div>
       <SourceModal id={source} onClose={() => setSource(null)} />
+      {dialog === "tiba" && <ArriveDialog onClose={() => setDialog(null)} />}
+      {dialog && dialog !== "tiba" && <RtDialog row={dialog.row} action={dialog.action} rows={rows} bayOf={bayOf} onClose={() => setDialog(null)} />}
     </div>
   );
 }

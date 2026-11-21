@@ -10,7 +10,7 @@ import { can } from "@/lib/roles";
 import { pastHolds } from "@/mock/ops";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, Modal, PageHeading, RoleNote, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 import { GenealogyReport, lotAction } from "@/components/trace/genealogy";
 
@@ -104,9 +104,8 @@ export function HoldList() {
         <p className="small muted">Pemicu {open.trigger}. Diajukan {open.by}, {open.at}.{open.note && ` "${open.note}"`}</p>
         <ul className="hold-list">{open.lots.map(lot => { const at = getLotLocation(lot.id); return <li key={lot.id}><span className="mono">{lot.id}</span><span>{lot.percent}% {open.rt} · {number(lot.packs)} pak</span><span className={at.shipped ? "crit-text" : ""}>{at.shipped ? "Recall" : "Hold"}: {at.place}</span></li>; })}</ul><button className="text-link" onClick={() => setReport(true)}><Icon icon={FileText} size={15} />Laporan genealogi</button>
         {open.review && <p className="small"><strong>{STATUS[open.status].label}</strong> oleh {open.review.by}, {open.review.at}. {open.review.note}</p>}
-        {editable && open.status === "diajukan" && <div className="page-actions"><button className="button secondary" disabled={!allowed || submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("ditolak"); }}><Icon icon={X} size={16} />Tolak</button><button className="button primary" disabled={!allowed || submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("aktif"); }}><Icon icon={Check} size={16} />Setujui hold</button></div>}
-        {editable && open.status === "aktif" && <button className="button secondary" disabled={!allowed || submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("dilepas"); }}><Icon icon={PackageCheck} size={16} />Lepas hold</button>}
-        {editable && (open.status === "diajukan" || open.status === "aktif") && <RoleNote permission="hold.review" />}
+        {allowed && editable && open.status === "diajukan" && <div className="page-actions"><button className="button secondary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("ditolak"); }}><Icon icon={X} size={16} />Tolak</button><button className="button primary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("aktif"); }}><Icon icon={Check} size={16} />Setujui hold</button></div>}
+        {allowed && editable && open.status === "aktif" && <button className="button secondary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("dilepas"); }}><Icon icon={PackageCheck} size={16} />Lepas hold</button>}
         {!editable && <p className="small muted">Ini riwayat dari sebelum demo dan hanya bisa dibaca.</p>}
       </>}</aside>
     </div>

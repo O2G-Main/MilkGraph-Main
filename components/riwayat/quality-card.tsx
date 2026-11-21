@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight, CircleCheck, CircleDashed, TriangleAlert, type LucideIcon } from "lucide-react";
-import { Badge, Card, Icon, SectionTitle, SourceButton } from "@/components/ui";
+import { Badge, Card, Icon, PageLink, SectionTitle, SourceButton } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 import type { Output } from "@/mock/outputs";
 
@@ -12,13 +11,13 @@ export function QualityCard({ output, onSource }: { output: Output; onSource: (i
   const state: { icon: LucideIcon; tone: Tone; label: string; text: string; action: React.ReactNode } =
     qc?.status === "out-of-spec" ? {
       icon: TriangleAlert, tone: "crit", label: "QC out-of-spec", text: qc.note,
-      action: <Link className="button primary" href="/trace">Telusuri dan ajukan hold<Icon icon={ArrowRight} size={16} /></Link>,
+      action: <PageLink className="button primary" href="/trace">Telusuri dan ajukan hold<Icon icon={ArrowRight} size={16} /></PageLink>,
     } : qc ? {
       icon: CircleCheck, tone: "ok", label: "QC lulus", text: qc.note,
-      action: <Link className="button secondary" href={`/qc-produk?lot=${output.id}`}>Lihat QC Barang Jadi<Icon icon={ArrowRight} size={16} /></Link>,
+      action: <PageLink className="button secondary" href={`/qc-produk?lot=${output.id}`}>Lihat QC Barang Jadi<Icon icon={ArrowRight} size={16} /></PageLink>,
     } : {
       icon: CircleDashed, tone: "neutral", label: "Belum diuji", text: `Belum ada hasil QC barang jadi untuk ${output.id}. Lot lain dari batch yang sama: ${output.chain.at(-1)?.batch}.`,
-      action: <Link className="button secondary" href="/qc-produk">Lihat QC Barang Jadi<Icon icon={ArrowRight} size={16} /></Link>,
+      action: <PageLink className="button secondary" href="/qc-produk">Lihat QC Barang Jadi<Icon icon={ArrowRight} size={16} /></PageLink>,
     };
 
   return <Card className="rp-quality">

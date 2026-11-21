@@ -7,7 +7,7 @@ import { removeScheduleItem, saveScheduleItem, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { SHIFT, checkSchedule, clockOf, toMinutes, type ScheduleItem } from "@/lib/production";
 import { demandPlan, fillers } from "@/mock/ops";
-import { Badge, Card, Icon, Modal, PageHeading, RoleNote, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -32,7 +32,6 @@ export function Penjadwalan() {
       <PageHeading title="Penjadwalan" subtitle={`Target dan jadwal produksi per lini filling untuk Shift Siang, ${clockOf(SHIFT.start)} - ${clockOf(SHIFT.end)}. Jeda antar-order dicek dengan standar di Aturan Produksi.`}>
         {allowed && <button className="button primary" onClick={() => setEditing({ ...EMPTY })}><Icon icon={CalendarPlus} size={16} />Tambah jadwal</button>}
       </PageHeading>
-      <RoleNote permission="schedule.edit" />
       <div className="schedule-stats">
         <Card><span className="small muted">Order di shift ini</span><strong>{items.length}</strong><span className="small muted">{new Set(items.map(i => i.line)).size} lini filling</span></Card>
         <Card><span className="small muted">Total target</span><strong>{number(total)} <small>pak</small></strong><span className="small muted">Kapasitas jam terjadwal {number(capacity)} pak</span></Card>

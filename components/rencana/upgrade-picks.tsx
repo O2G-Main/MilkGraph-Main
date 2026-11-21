@@ -12,7 +12,7 @@ import type { Plan } from "@/mock/types";
 import type { Adjustments } from "./adjust";
 import { rankUpgrades } from "./recommend";
 import { useRencana } from "./rencana-state";
-import { can, whoCan } from "@/lib/roles";
+import { can } from "@/lib/roles";
 import { withAdjust } from "./with-adjust";
 
 const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -63,7 +63,7 @@ export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: n
             <span>{fmt(p.from)} ke {fmt(p.from + p.gain)} L/jam (naik {p.pct}%)</span>
             <span>sekitar +{fmt(p.gain * 8)} L per shift 8 jam</span>
           </div>
-          <button type="button" className="button secondary" disabled={!allowed} title={allowed ? undefined : whoCan("plan.simulate")} onClick={() => onTry(p.id, p.pct, p.from + p.gain)}><Icon icon={Plus} size={16} />Terapkan ke rencana</button>
+          {allowed && <button type="button" className="button secondary" onClick={() => onTry(p.id, p.pct, p.from + p.gain)}><Icon icon={Plus} size={16} />Terapkan ke rencana</button>}
         </li>;
       })}
     </ol> : <p className="card upgrade-empty">Tidak ada upgrade lain yang menambah produksi dengan pengaturan sekarang.</p>

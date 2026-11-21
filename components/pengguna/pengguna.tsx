@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Check, Minus, ShieldCheck, UserPlus } from "lucide-react";
 import { addUser, togglePermission, updateUser, useDemo } from "@/lib/demo";
 import { LOCKED, PERMISSIONS, ROLE_IDS, ROLES, SUPERADMIN, can, rolesFor, type Permission, type Role, type RoleId } from "@/lib/roles";
-import { Badge, Card, Icon, PageHeading, RoleNote, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -138,7 +138,6 @@ function UserList({ manage }: { manage: boolean }) {
   return (
     <Card className="user-list">
       <SectionTitle title="Daftar pengguna" subtitle={`${users.filter(u => u.active).length} aktif dari ${users.length} akun`} />
-      <RoleNote permission="users.manage" />
       <div className="table-wrap">
         <table className="user-table">
           <thead>

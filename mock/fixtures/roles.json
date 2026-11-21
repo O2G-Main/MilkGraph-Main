@@ -53,6 +53,27 @@
         "planner"
       ]
     },
+    "arrival.edit": {
+      "label": "Menambah dan mengubah jadwal kedatangan RT, estimasi tiba, dan status perjalanan",
+      "roles": [
+        "superadmin",
+        "receiving"
+      ]
+    },
+    "queue.record": {
+      "label": "Mencatat kedatangan aktual, waktu awal umur susu, dan proses bongkar",
+      "roles": [
+        "superadmin",
+        "receiving"
+      ]
+    },
+    "transfer.record": {
+      "label": "Mencatat transfer susu dari RT ke tangki penerimaan",
+      "roles": [
+        "superadmin",
+        "receiving"
+      ]
+    },
     "demand.send": {
       "label": "Mengirim kebutuhan susu ke farm",
       "roles": [
