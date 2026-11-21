@@ -60,18 +60,18 @@ export const DEFAULT_RULES: ProductionRules = {
 /** Penerimaan [simulasi]: 4 RT dalam perjalanan (tiba 15.05 - 16.20) dan 3 RT masih loading, sama dengan alur penerimaan. */
 const RECEIVING: ReceivingState = {
   arrivals: [
-    { id: "RT-31", farm: "KUD Ngantang", volume: 10_800, depart: "13:25", eta: "15:05", milkStart: "07:40", status: "perjalanan", note: "" },
-    { id: "RT-32", farm: "Farm Sumberejo", volume: 9_700, depart: "13:50", eta: "15:30", milkStart: "08:30", status: "perjalanan", note: "" },
-    { id: "RT-33", farm: "Farm Tutur", volume: 9_400, depart: "14:15", eta: "15:55", milkStart: "09:20", status: "perjalanan", note: "" },
-    { id: "RT-34", farm: "Farm Pujon Kidul", volume: 10_200, depart: "14:30", eta: "16:20", milkStart: "07:50", status: "perjalanan", note: "Alcohol test positif 9 Okt, sampling diperketat" },
-    { id: "RT-35", farm: "Farm Ngadirejo", volume: 8_900, depart: "15:40", eta: "17:10", milkStart: "10:30", status: "loading", note: "" },
-    { id: "RT-36", farm: "KUD Ngantang", volume: 11_000, depart: "16:05", eta: "17:45", milkStart: "11:15", status: "loading", note: "" },
-    { id: "RT-37", farm: "Farm Sumberejo", volume: 9_800, depart: "16:40", eta: "18:20", milkStart: "12:00", status: "loading", note: "" },
+    { id: "RT-31", farm: "KUD Ngantang", volume: 10_800, depart: "13:25", target: "15:00", eta: "15:05", milkStart: "07:40", status: "perjalanan", note: "" },
+    { id: "RT-32", farm: "Farm Sumberejo", volume: 9_700, depart: "13:50", target: "15:30", eta: "15:30", milkStart: "08:30", status: "perjalanan", note: "" },
+    { id: "RT-33", farm: "Farm Tutur", volume: 9_400, depart: "14:15", target: "15:45", eta: "15:55", milkStart: "09:20", status: "perjalanan", note: "" },
+    { id: "RT-34", farm: "Farm Pujon Kidul", volume: 10_200, depart: "14:30", target: "16:00", eta: "16:20", milkStart: "07:50", status: "perjalanan", note: "Alcohol test positif 9 Okt, sampling diperketat" },
+    { id: "RT-35", farm: "Farm Ngadirejo", volume: 8_900, depart: "15:40", target: "17:10", eta: "17:10", milkStart: "10:30", status: "loading", note: "" },
+    { id: "RT-36", farm: "KUD Ngantang", volume: 11_000, depart: "16:05", target: "17:45", eta: "17:45", milkStart: "11:15", status: "loading", note: "" },
+    { id: "RT-37", farm: "Farm Sumberejo", volume: 9_800, depart: "16:40", target: "18:20", eta: "18:20", milkStart: "12:00", status: "loading", note: "" },
   ],
   records: {},
   transfers: [
-    { id: "TRF-01", rt: "RT-21", tank: "RMT-2", volume: 10_400, start: "13:20", end: "13:50", counted: true },
-    { id: "TRF-02", rt: "RT-22", tank: "RMT-1", volume: 9_800, start: "13:55", end: "14:25", counted: true },
+    { id: "TRF-01", rt: "RT-21", tank: "RMT-2", volume: 10_400, out: 10_450, start: "13:20", end: "13:50", measuredAt: "13:50", counted: true, by: "Dimas Prasetyo" },
+    { id: "TRF-02", rt: "RT-22", tank: "RMT-1", volume: 9_800, out: 9_800, start: "13:55", end: "14:25", measuredAt: "14:25", counted: true, by: "Dimas Prasetyo" },
   ],
 };
 /** Lantai produksi [simulasi]: F1, F2, F4, F7 sudah jalan sejak 14.00; F10 breakdown dan F8 ganti format tercatat sebagai downtime. */
@@ -83,8 +83,8 @@ const OPERATION: OperationState = {
     { id: "DT-02", asset: "F8", cause: "Ganti format", start: "14:20", note: "Ganti format 1 L ke 250 ml" },
   ],
   transfers: [
-    { id: "PRS-01", from: "UHT-2", to: "AT-2", volume: 6_990, start: "13:00", end: "14:00", by: "Hendra Kusuma" },
-    { id: "PRS-02", from: "AT-1", to: "F1", volume: 6_550, start: "13:30", end: "14:30", by: "Hendra Kusuma" },
+    { id: "PRS-01", from: "UHT-2", to: "AT-2", volume: 6_990, received: 6_950, start: "13:00", end: "14:00", measuredAt: "14:00", batch: "MXB-1014-02", by: "Hendra Kusuma" },
+    { id: "PRS-02", from: "AT-1", to: "F1", volume: 6_550, received: 6_550, start: "13:30", end: "14:30", measuredAt: "14:30", by: "Hendra Kusuma" },
   ],
 };
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
@@ -118,6 +118,9 @@ function load() {
   } catch { state = initial(Date.now()); }
   // Peran baru (mis. QA/QC) mendapat pengguna demo bila belum ada di data lama.
   state = { ...state, users: [...state.users, ...USERS.filter(u => !state.users.some(x => x.id === u.id))] };
+  // Jadwal lama belum punya target tiba: ambil dari seed, atau samakan dengan estimasi.
+  const seedTarget = (id: string) => RECEIVING.arrivals.find(a => a.id === id)?.target;
+  state = { ...state, receiving: { ...state.receiving, arrivals: state.receiving.arrivals.map(a => (a.target ? a : { ...a, target: seedTarget(a.id) ?? a.eta })) } };
   state = { ...state, account: readAccount() };
   setRoles(state.roles);
   setMenus(state.menus);
@@ -488,5 +491,19 @@ export const setRoleMenu = (role: RoleId, href: string, visible: boolean, curren
   act(
     s => ({ menus: { ...s.menus, [role]: hidden } }),
     { kind: "akses", title: visible ? "Menu ditampilkan" : "Menu disembunyikan", detail: `${roleLabel(role)}: ${href}`, note: "", tone: "neutral" },
+  );
+};
+
+/**
+ * Satu pencatatan transfer untuk dua alat (Traceability > Transfer & Volume): volume keluar dari alat asal dan diterima alat tujuan.
+ * Dari road tanker disimpan sebagai transfer penerimaan, selain itu sebagai transfer proses.
+ */
+export const recordTransfer = (t: { from: string; to: string; out: number; in: number; start: string; end: string; measuredAt: string; batch?: string; note?: string }) => {
+  const diff = t.out - t.in;
+  act(
+    s => t.from.startsWith("RT-")
+      ? recv(s, { transfers: [...s.receiving.transfers, { id: `TRF-${String(s.receiving.transfers.length + 1).padStart(2, "0")}`, rt: t.from, tank: t.to, volume: t.in, out: t.out, start: t.start, end: t.end, measuredAt: t.measuredAt, note: t.note, by: who(s), counted: t.measuredAt <= "14:42" }] })
+      : op(s, { transfers: [...s.operation.transfers, { id: `PRS-${String(s.operation.transfers.length + 1).padStart(2, "0")}`, from: t.from, to: t.to, volume: t.out, received: t.in, start: t.start, end: t.end, measuredAt: t.measuredAt, batch: t.batch, note: t.note, by: who(s) }] }),
+    { kind: t.from.startsWith("RT-") ? "penerimaan" : "produksi", title: "Transfer dicatat", detail: `${t.from} ke ${t.to}: keluar ${num(t.out)} L, diterima ${num(t.in)} L, selisih ${num(diff)} L`, note: t.note ?? "", tone: Math.abs(diff) / (t.out || 1) > 0.005 ? "warn" : "ok" },
   );
 };

@@ -10,6 +10,8 @@ import { ASSETS, LINKS } from "@/lib/assets";
 import { scenario } from "@/lib/data";
 import { useDemo } from "@/lib/demo";
 import { ROLES } from "@/lib/roles";
+import { API_MODE, apiSend } from "@/lib/api/client";
+import { chatNotice, sourceText, type ChatReply } from "@/lib/api/contract";
 import { asepticTanks, fillers } from "@/mock/ops";
 import type { Plan } from "@/mock/types";
 import { badgeOf } from "@/components/rencana/adjust";
@@ -37,7 +39,7 @@ const noSubscribe = () => () => {};
 /** Jarak geser ke kanan (px) yang menyembunyikan tombol. */
 const HIDE_DISTANCE = 40;
 
-type Msg = { id: number; role: "user" | "bot"; text: string; links?: AnswerLink[]; steps?: string[]; working?: boolean };
+type Msg = { id: number; role: "user" | "bot"; text: string; links?: AnswerLink[]; steps?: string[]; working?: boolean; source?: string; notice?: string };
 /** Jeda antar-langkah animasi berpikir (ms). */
 const STEP_MS = 480;
 
@@ -66,7 +68,8 @@ function Typed({ text, onDone }: { text: string; onDone: () => void }) {
 }
 
 /**
- * Tanya MilkGraph: chatbot melayang di kanan bawah (masukan dosen). Tanpa LLM; jawaban dirakit dari data dan kondisi aplikasi saat ditanya.
+ * Tanya MilkGraph: chatbot melayang di kanan bawah (masukan dosen). Mode API memakai POST /assistant/chat;
+ * bila layanan AI belum aktif (503) atau tak terjangkau (502), jawaban dirakit dari data aplikasi dengan keterangan singkat.
  * Pola panel mengikuti Ask Bar 21st.dev yang ditulis ulang ke CSS proyek; Orb dan ThoughtLine dari React Bits.
  */
 export function AssistantChat() {
@@ -189,16 +192,27 @@ export function AssistantChat() {
     const id = nextId.current++, all = thinkingSteps(q);
     const patch = (change: Partial<Msg>) => setMsgs(m => m.map(x => x.id === id ? { ...x, ...change } : x));
     setMsgs(m => [...m, { id, role: "bot", text: "", steps: reducedMotion() ? all : all.slice(0, 1), working: true }]);
+    // Permintaan ke server berjalan bersamaan dengan animasi langkah berpikir.
+    const remote: Promise<ChatReply | { failed: number | undefined }> | null = API_MODE
+      ? apiSend<ChatReply>("POST", "/assistant/chat", { question: q.slice(0, 1000) }, demo.role).catch((err: { status?: number }) => ({ failed: err?.status }))
+      : null;
+    const finish = (change: Partial<Msg>) => {
+      patch({ ...change, working: false });
+      setThinking(false);
+      setTyping(id);
+      setLive(change.text ?? "");
+    };
     // Langkah muncul satu per satu, lalu jawaban dihitung dari kondisi saat itu.
     const advance = (n: number) => {
       timer.current = setTimeout(() => {
         if (n < all.length) { patch({ steps: all.slice(0, n + 1) }); advance(n + 1); return; }
-        const r = answer(q);
-        if (r.lastAsset) last.current = r.lastAsset;
-        patch({ text: r.text, links: r.links, working: false });
-        setThinking(false);
-        setTyping(id);
-        setLive(r.text);
+        const local = () => { const r = answer(q); if (r.lastAsset) last.current = r.lastAsset; return r; };
+        if (!remote) { const r = local(); finish({ text: r.text, links: r.links }); return; }
+        void remote.then(res => {
+          if ("jawaban" in res && res.jawaban) return finish({ text: res.jawaban, source: sourceText(res.sumber) || undefined });
+          const r = local();
+          finish({ text: r.text, links: r.links, notice: chatNotice("failed" in res ? res.failed : undefined) });
+        });
       }, reducedMotion() ? 0 : STEP_MS);
     };
     advance(1);
@@ -249,6 +263,8 @@ export function AssistantChat() {
           <div className="ai-body">
             <ThoughtLine working={!!m.working} steps={m.steps} label="Menganalisis data pabrik…" doneLabel="Dianalisis dalam" glyph="none" fontSize={13} color="var(--color-on-surface-muted)" />
             {!m.working && (typing === m.id ? <Typed text={m.text} onDone={() => setTyping(null)} /> : <p>{m.text}</p>)}
+            {!m.working && typing !== m.id && m.source && <p className="ai-meta">Sumber: {m.source}</p>}
+            {!m.working && typing !== m.id && m.notice && <p className="ai-meta" role="status">{m.notice}</p>}
             {!m.working && typing !== m.id && !!m.links?.length && <div className="ai-links">{m.links.map(l => <Link key={l.href} href={l.href}>{l.label}<ArrowUpRight size={13} aria-hidden="true" /></Link>)}</div>}
           </div>
         </div>)}

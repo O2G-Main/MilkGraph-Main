@@ -45,9 +45,8 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 | Grup | Halaman | Route | Status mockup | Kontrak BE |
 |---|---|---|---|---|
 | Operasional | Receiving Flow | `/` | Dibangun | `04` §3 |
-| Penerimaan | Jadwal Kedatangan RT | `/kedatangan` | Dibangun (lokal, belum ada endpoint) | - |
+| Penerimaan | Jadwal Kedatangan RT | `/kedatangan` | Dibangun; target, estimasi, tiba aktual, keterlambatan dari server | `04` §14b |
 | | Antrean Truk (catat tiba, umur susu, bongkar) | `/receiving` | Dibangun; catatan lapangan lokal | `04` §3 |
-| | Transfer & Volume | `/transfer` | Dibangun (lokal, belum ada endpoint) | - |
 | | Simulasi 3D | `/simulasi` | Dibangun | `04` §15 |
 | | Bay & Tangki | `/tangki` | Dibangun | `04` §4 |
 | | Lini Filling | `/filling` | Dibangun | `04` §4 |
@@ -60,6 +59,7 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 | Traceability | Traceability | `/trace` | Dibangun | `04` §8 |
 | | Hasil Lab | `/lab` | Dibangun | `04` §9 |
 | | Daftar Hold | `/hold` | Dibangun | `04` §10 |
+| | Transfer & Volume (pindah dari Penerimaan) | `/transfer` | Dibangun; mode API lewat `/api/v1/trace/transfers` (selisih dari server) | `04` §15a |
 | Data | Context Graph | `/graph` | Dibangun | `04` §12 |
 | | Sumber Data | `/sumber-data` | Dibangun | `04` §13 |
 | Pengaturan | Pengguna | `/pengguna` | Dibangun | `04` §14 |
@@ -113,6 +113,8 @@ Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC
 Lab: Tes Lab memuat sampel RT dan batch tangki proses (ST-6, MX-1). Lab membuat sampel untuk RT yang baru tiba dan memasukkan nilai serta hasil tiap parameter (dalam batas, di luar batas, masih berjalan), bisa menandai uji ulang. Status sampel dihitung dari parameternya: ada yang di luar batas → out-of-spec; ditandai uji ulang → uji ulang; masih ada yang berjalan → dalam uji; semua dalam batas → menunggu keputusan QA. Hasil tercatat di Riwayat Persetujuan dengan jenis Uji lab.
 
 Penerimaan: RT yang dicatat tiba pindah dari jadwal ke antrean di tahap Sampling. Bongkar hanya bisa dimulai setelah RT dirilis lab, di bay yang tidak sedang CIP atau dipakai RT lain. Umur susu berhenti dihitung saat bongkar selesai. Transfer ditolak bila melebihi sisa ruang tangki dan diberi peringatan bila selisih dengan volume timbang lebih dari 0,5%.
+
+**Transfer & Volume (Traceability, revisi Nov 2026).** Submenu Transfer & Volume pindah ke Traceability untuk mencatat perpindahan susu antar tangki/alat. Satu catatan (manual untuk sementara) langsung terhubung ke alat asal dan tujuan: volume keluar, volume diterima, jam mulai-selesai, waktu pengukuran, batch, dan catatan. Selisih keluar - diterima tampil sebagai mass balance (mis. keluar 10.000 L dari UHT-2, diterima 9.900 L di AT-2, selisih 100 L), dengan toleransi 0,5% [asumsi]. Volume terkini tangki dihitung dari level snapshot ditambah yang diterima dan dikurangi yang keluar; transfer yang diukur sampai 14.42 dianggap sudah termasuk di snapshot. Riwayat bisa difilter per alat (`/transfer?alat=AT-2`) dan per sumber (Manual/IoT). Detail tangki (Raw Milk Buffer dan tangki tengah di Bay & Tangki, tangki aseptik di Lini Filling) menampilkan volume terkini dan tombol "Lihat Riwayat Transfer". Riwayat Produksi menampilkan transfer dan selisih yang menyentuh alat atau batch di jalur output, plus catatan selisih per tahap. Data IoT Greenfields masuk lewat `POST /api/v1/transfers` (lihat `04` §15a) dan tampil dengan sumber IoT, perangkat, dan waktu pengukuran.
 
 Aturan Produksi ikut dipakai di cek kelayakan Rencana: durasi changeover menimpa SOP, dan CIP bay yang lebih pendek dari standar diperpanjang sampai standar.
 
@@ -217,7 +219,7 @@ Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Di
 **Tanya MilkGraph (asisten melayang di kanan bawah, semua halaman; masukan dosen 9 Nov 2026)**
 - Suara ke teks: tombol mikrofon (VoicePill dari React Bits) memakai pengenal suara browser berbahasa Indonesia; kode alat yang diucapkan dinormalkan ("uht dua" jadi UHT-2) dan teks bisa dikoreksi sebelum dikirim. Hanya di browser yang mendukung (Chrome, Edge, Safari) dan situs HTTPS; di Chrome suara diproses server Google.
 - Ikon robot di tombol bulat. Tombol disembunyikan dengan menggesernya ke kanan (atau panah kanan di keyboard); saat tersembunyi tersisa tab kecil di tepi kanan layar untuk memunculkannya lagi.
-- Chatbot berbahasa natural untuk jalur dan kendala alur susu, asal lot, sebaran RT, antrean truk, upgrade, dan rencana. Tanpa LLM: maksud dikenali dengan TF-IDF dan cosine similarity (`components/assistant/intent.ts`), lalu jawaban dirakit dari data dan kondisi aplikasi saat ditanya (`answer.ts`): persetujuan, hold, keputusan lab, upgrade yang diterapkan, halaman yang dibuka, peran aktif, dan alat yang terakhir dibahas. Tiap jawaban membawa tautan ke halaman buktinya. Kalimat di luar topik tidak ditebak. `reply()` bisa diganti LLM nanti. Di mode API jawabannya tetap dari data simulasi bawaan. Orb dan ThoughtLine (animasi berpikir dengan langkah sesuai maksud pertanyaan, ikon diganti Lucide) dari React Bits (`components/assistant/bits`); pola panel mengikuti Ask Bar 21st.dev, ditulis ulang karena kodenya butuh login.
+- Chatbot berbahasa natural untuk jalur dan kendala alur susu, asal lot, sebaran RT, antrean truk, upgrade, dan rencana. Tanpa LLM: maksud dikenali dengan TF-IDF dan cosine similarity (`components/assistant/intent.ts`), lalu jawaban dirakit dari data dan kondisi aplikasi saat ditanya (`answer.ts`): persetujuan, hold, keputusan lab, upgrade yang diterapkan, halaman yang dibuka, peran aktif, dan alat yang terakhir dibahas. Tiap jawaban membawa tautan ke halaman buktinya. Kalimat di luar topik tidak ditebak. Di mode API pertanyaan dikirim ke `POST /api/v1/assistant/chat` dan jawabannya tampil bersama sumbernya; bila layanan AI belum aktif (503) atau tidak terjangkau (502), chatbot memberi keterangan singkat lalu menjawab dari data aplikasi. Orb dan ThoughtLine (animasi berpikir dengan langkah sesuai maksud pertanyaan, ikon diganti Lucide) dari React Bits (`components/assistant/bits`); pola panel mengikuti Ask Bar 21st.dev, ditulis ulang karena kodenya butuh login.
 
 **Sumber Data (`/sumber-data`)**
 - Enam konektor read-only (Historian SCADA, LIMS, weighbridge, kontroler CIP, MES filling, ERP gudang) dengan uji koneksi, sinkron, dan pemetaan ke node graph.

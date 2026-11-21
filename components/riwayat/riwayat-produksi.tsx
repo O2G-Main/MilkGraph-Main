@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { Card, Icon, PageHeading, SourceModal } from "@/components/ui";
+import { Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal } from "@/components/ui";
+import { useDemo } from "@/lib/demo";
+import { useFlows } from "@/lib/flows";
+import { assetsOfStep, flowsFor } from "@/lib/volume";
+import { FlowLine } from "@/components/transfer/transfer";
 import { Equipment } from "@/components/trace/equipment";
 import { number } from "@/lib/format";
 import { OUTPUTS } from "@/mock/outputs";
@@ -22,6 +26,8 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
   const [picked, setPicked] = useState(lot && OUTPUTS.some(o => o.id === lot) ? lot : "FG-1013-07");
   const [active, setActive] = useState<number | null>(null);
   const [source, setSource] = useState<string | null>(null);
+  const demo = useDemo();
+  const allFlows = useFlows(demo).flows;
 
   const list = matchOutputs(OUTPUTS, filters);
   const output = list.find(o => o.id === picked) ?? list[0];
@@ -29,6 +35,10 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
   const update = (f: Filters) => { setFilters(f); setActive(null); };
   const steps = output ? buildSteps(output.chain) : [];
   const step = steps[active ?? steps.length - 1];
+  // Transfer dan selisih yang menyentuh alat atau batch di jalur output ini.
+  const chainAssets = output ? [...new Set(output.chain.flatMap(h => [...assetsOfStep(h.from), ...assetsOfStep(h.to)]))] : [];
+  const chainFlows = output ? flowsFor(allFlows, chainAssets, output.chain.map(h => h.batch)) : [];
+  const stepFlows = step ? flowsFor(allFlows, [...assetsOfStep(step.from), ...assetsOfStep(step.to)], [step.batch]) : [];
 
   return <div className="page-enter">
     <PageHeading title="Riwayat Produksi" subtitle="Pilih hasil produksi, lalu ikuti jalurnya dari asal susu sampai produk selesai.">
@@ -62,6 +72,7 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
             <div><dt>Volume / jumlah</dt><dd>{step.volume}</dd></div>
             <div><dt>Dasar pencatatan</dt><dd>{step.record}</dd></div>
           </dl>
+          {stepFlows.length > 0 && <p className="small">{stepFlows.length} transfer tercatat di alat tahap ini, selisih {number(stepFlows.reduce((s, f) => s + f.diff, 0))} L. <PageLink inline className="inline-link" href={`/transfer?alat=${assetsOfStep(step.to)[0] ?? ""}`}>Lihat riwayat transfer</PageLink></p>}
           {step.gap && <p className="small rp-note">Serah-terima di tahap ini tidak tercatat langsung; disambungkan dari irisan waktu dan level tangki.</p>}
           {step.source ? <button type="button" className="button secondary wide" onClick={() => setSource(step.source)}>Lihat bukti proses<Icon icon={ArrowUpRight} size={16} /></button>
             : <p className="small muted">Bukti proses belum tersedia.</p>}
@@ -69,6 +80,14 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
       </div>
 
       <QualityCard output={output} onSource={setSource} />
+      <Card className="rules-card">
+        <SectionTitle title="Transfer & selisih di jalur batch" subtitle={`Transfer yang menyentuh ${chainAssets.join(", ")} atau batch di jalur ini, dari Traceability > Transfer & Volume.`} action={<PageLink className="text-link" href="/transfer">Buka Transfer & Volume<Icon icon={ArrowRight} size={14} /></PageLink>} />
+        <div className="table-wrap"><table className="schedule-table flow-table">
+          <thead><tr><th>Transfer</th><th>Dari ke</th><th className="numeric">Keluar</th><th className="numeric">Diterima</th><th className="numeric">Selisih</th><th>Waktu</th><th>Sumber</th></tr></thead>
+          <tbody>{chainFlows.map(f => <FlowLine key={f.id} f={f} />)}
+            {!chainFlows.length && <tr><td colSpan={7} className="muted">Belum ada transfer tercatat di alat jalur ini.</td></tr>}</tbody>
+        </table></div>
+      </Card>
     </>}
     <SourceModal id={source} onClose={() => setSource(null)} />
   </div>;

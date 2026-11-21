@@ -12,6 +12,8 @@ import type { Block, Tone } from "@/mock/types";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal, Timeline } from "@/components/ui";
+import { useFlows } from "@/lib/flows";
+import { levelAfter } from "@/lib/volume";
 
 const MID_STATE: Record<string, { label: string; tone: Tone }> = {
   terisi: { label: "Terisi", tone: "ok" },
@@ -182,6 +184,8 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
 
 export function Tangki() {
   const demo = useDemo();
+  // Volume tangki ikut transfer yang dicatat di Traceability > Transfer & Volume (manual dan IoT).
+  const flows = useFlows(demo).flows;
   const [source, setSource] = useState<string | null>(null);
 
   const assetsRes = useResource<Asset[]>(API_MODE ? "/assets" : null);
@@ -299,7 +303,8 @@ export function Tangki() {
           <SectionTitle title="Raw Milk Buffer" subtitle={`Level dan suhu tangki susu mentah. Kapasitasnya ${number(bufferCap)} L per tangki.`} />
           <div className="tanks-grid single">
             {buffers.map(tank => {
-              const pct = Math.round((tank.fill / tank.capacity) * 100);
+              const fill = levelAfter(tank.id, tank.fill, flows);
+              const pct = Math.round((fill / tank.capacity) * 100);
               const cip = cipLogList.find(c => c.asset === tank.id) ?? { last: "-", hoursSince: 0, next: "-", status: "-", tone: "neutral" as Tone };
               return (
                 <div className="tank-card" key={tank.id}>
@@ -307,15 +312,16 @@ export function Tangki() {
                     <span className="tank-id"><Icon icon={Container} size={18} /><span className="mono">{tank.id}</span></span>
                     <Badge tone={tank.tone}>{tank.status}</Badge>
                   </div>
-                  <p className="tank-volume">{number(tank.fill)}<span> / {number(tank.capacity)} L · {pct}%</span></p>
-                  <div className={`capacity-bar ${tank.tone}`} role="meter" aria-label={`${tank.id} terisi ${pct}%`} aria-valuenow={tank.fill} aria-valuemin={0} aria-valuemax={tank.capacity}>
+                  <p className="tank-volume">{number(fill)}<span> / {number(tank.capacity)} L · {pct}%</span></p>
+                  <div className={`capacity-bar ${tank.tone}`} role="meter" aria-label={`${tank.id} terisi ${pct}%`} aria-valuenow={fill} aria-valuemin={0} aria-valuemax={tank.capacity}>
                     <span style={{ width: `${pct}%` }} />
                   </div>
                   <div className="tank-footer">
                     <span>
                       <Thermometer size={13} strokeWidth={1.75} aria-hidden />
-                      {tank.info} · sisa {number(tank.capacity - tank.fill)} L · CIP {cip.hoursSince} jam lalu
+                      {tank.info} · sisa {number(tank.capacity - fill)} L · CIP {cip.hoursSince} jam lalu
                     </span>
+                    <PageLink className="text-link" href={`/transfer?alat=${tank.id}`}>Lihat Riwayat Transfer<Icon icon={ArrowRight} size={13} /></PageLink>
                     <button aria-label={`Lihat sumber ${tank.id}`} onClick={() => setSource(tank.source)}>
                       Sumber<Icon icon={ArrowUpRight} size={13} />
                     </button>
@@ -364,7 +370,8 @@ export function Tangki() {
         />
         <div className="mid-grid">
           {midTanksList.map(t => {
-            const pct = Math.round((t.level / t.capacity) * 100);
+            const level = levelAfter(t.id, t.level, flows);
+            const pct = Math.round((level / t.capacity) * 100);
             const stateConfig = MID_STATE[t.state] ?? { label: t.state, tone: "neutral" as Tone };
             return (
               <div key={t.id} className="tank-card">
@@ -373,10 +380,11 @@ export function Tangki() {
                   <Badge tone={stateConfig.tone}>{stateConfig.label}</Badge>
                 </div>
                 <p className="small"><strong>{t.content}</strong>{t.batch !== "-" && <span className="mono muted"> · {t.batch}</span>}</p>
-                <div className={`capacity-bar ${stateConfig.tone}`} role="meter" aria-label={`${t.id} terisi ${pct}%`} aria-valuenow={t.level} aria-valuemin={0} aria-valuemax={t.capacity}>
+                <div className={`capacity-bar ${stateConfig.tone}`} role="meter" aria-label={`${t.id} terisi ${pct}%`} aria-valuenow={level} aria-valuemin={0} aria-valuemax={t.capacity}>
                   <span style={{ width: `${pct}%` }} />
                 </div>
-                <p className="small muted">{number(t.level)} / {number(t.capacity)} L · {t.note}</p>
+                <p className="small muted">{number(level)} / {number(t.capacity)} L · {t.note}</p>
+                <PageLink className="text-link small" href={`/transfer?alat=${t.id}`}>Lihat Riwayat Transfer<Icon icon={ArrowRight} size={13} /></PageLink>
               </div>
             );
           })}

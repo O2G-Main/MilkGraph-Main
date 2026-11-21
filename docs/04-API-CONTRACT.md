@@ -234,6 +234,7 @@ Sumber: `lib/rules.ts`, test: `tests/rules.test.mjs`, golden: `mock/fixtures/gol
 | GET | `/quality/active-event` | | `QcEvent` (`{ lot, product, test, result, time, source }`) |
 | GET | `/assistant/templates` | | `{ id: string; question: string }[]` (pertanyaan contoh di kartu "Tanya graph") |
 | POST | `/assistant/ask` | `{ question: string }` | `Answer` atau `{ id: "unknown", question }` |
+| POST | `/assistant/chat` | `{ question: string }` (1-1000 karakter) | `{ jawaban, sumber, label_data }`. Dipakai chatbot Tanya MilkGraph di mode API. `503` bila layanan AI belum dikonfigurasi, `502` bila tak terjangkau: FE menampilkan keterangan singkat lalu menjawab dari data aplikasi, bukan error mentah. `label_data` tidak ditampilkan. |
 | GET | `/trace/backward` | `?lotId=FG-1013-07` | `Answer` (id `backward`) |
 | GET | `/trace/forward` | `?rtId=RT-04&date=2026-10-13` | `Answer` (id `forward`) |
 | GET | `/trace/explain` | `?resource=Bay 2&time=14.50` | `Answer` (id `bay2`) |
@@ -354,6 +355,36 @@ Memakai `/roles`, `/session`, `/session/role` (§2). Peran: `planner`, `receivin
 - `SiteStatus` = `SITE_STATUS[view]` + field baru `viewLabel` (`"Rencana awal · 14.42"` / `"Rekomendasi · proyeksi 15.30"`). Diturunkan backend dari snapshot dan plan view: `bays` dari blok bongkar yang aktif pada `NOW` (atau proyeksi 15.30 untuk `after`), `yard` = RT di tahap Sampling/Lab test/Released diurutkan prioritas (holding tersisa terkecil dulu), `lab` (tone `crit` bila rata-rata tunggu > 45 menit, `warn` > 25 `[asumsi]`), `at2Starved` + `starvationAt` dari blok starvation F2/F4, `silos` = level/kapasitas RMT-1..3, `onTheWay` = jumlah RT tahap On the way.
 - `Bottleneck[]` maksimal 4, urutan: lab, RT kritis, bay, filling; `focus` ∈ `overview|lab|yard|bay1|bay2|silos|f2`.
 - `view` = `before` (rencana awal) atau `after` (rekomendasi). Setelah planner menyetujui, FE tetap bisa membandingkan keduanya.
+
+## 14b. Jadwal Kedatangan RT (`/kedatangan`), Kontrak BE Tahap 3
+
+| Method | Path | Body | Respons |
+|---|---|---|---|
+| GET | `/supply/rt-arrivals` | | `RtArrival[]` urut `target_arrival` |
+| POST | `/supply/rt-arrivals` | field record tanpa `id`/`late_minutes`; `status` default `Dijadwalkan` | `{ result, log }` |
+| PUT | `/supply/rt-arrivals/{id}` | parsial `{ estimated_arrival?, status?, actual_arrival? }`; `actual_arrival: ""` mengosongkan jadi null | `{ result, log }`, `404` bila id tidak ada |
+
+`RtArrival`: `{ id, farm_id, farm_name, rt_id, volume_l, depart_at, target_arrival, estimated_arrival, actual_arrival | null, status: "Dijadwalkan"|"Dalam Perjalanan"|"Sudah Tiba"|"Dibatalkan", late_minutes }`. `late_minutes` dihitung server dan FE hanya menampilkannya (Terlambat / Lebih awal / Tepat waktu). Pemetaan status ke FE ada di `lib/api/contract.ts`. Di mode API, ubah jadwal hanya mengirim estimasi tiba, status, dan tiba aktual; kolom umur susu saat tiba disembunyikan karena awal umur susu tidak ada di record. Semua permintaan membawa `X-Demo-Role`.
+
+## 15a. Transfer & Volume (`/transfer`) dan ingest IoT Greenfields
+
+Satu transfer menghubungkan dua alat: volume keluar dari alat asal (`out`) dan volume diterima alat tujuan (`in`). Selisih = `out - in` adalah mass balance; toleransi 0,5% [asumsi], di atas 2% perlu diselidiki. Volume terkini tangki = level snapshot + `in` yang masuk - `out` yang keluar dari transfer setelah snapshot. Sumber `manual` dicatat pengguna; `iot` dikirim flowmeter atau sensor level.
+
+Sudah tersedia di frontend sebagai route sementara (penyimpanan di memori server, maks. 500 data) sampai backend mengambil alih path yang sama:
+
+| Method | Path | Isi |
+|---|---|---|
+| GET | `/api/v1/transfers` | `{ items: IotTransfer[], count }`, terbaru dulu. Query opsional `alat=AT-2` (asal atau tujuan). |
+| POST | `/api/v1/transfers` | Satu objek atau array (1-100) `{ from, to, out, in, start, end, measuredAt, device, batch? }`. Balas `201 { items }` dengan `id` (`IOT-0002`) dan `receivedAt`. |
+
+- `from`, `to`: kode alat (`UHT-2`, `AT-2`, `RT-31`), harus berbeda. `out`, `in`: liter, angka tidak negatif. `start`, `end`, `measuredAt`: jam `"HH:MM"`. `device`: id perangkat, mis. `FM-AT2-02`. `batch` opsional, dipakai untuk menelusuri batch.
+- Auth: header `Authorization: Bearer <IOT_INGEST_KEY>`. Bila `IOT_INGEST_KEY` tidak diatur, POST hanya diterima di development dan ditolak `503 NOT_CONFIGURED` di production.
+- Error: `400 BAD_JSON`, `400 BAD_BATCH`, `401 UNAUTHORIZED`, `422 INVALID` dengan `field` (format sama dengan §2). Satu data tidak valid di array menolak seluruh kiriman.
+- Validasi sama dengan `validateIngest` di `lib/volume.ts` (dites `tests/volume.test.mjs`).
+
+**Kontrak BE Tahap 3 (sudah dipakai FE di mode API).** `GET /api/v1/trace/transfers?batch_id=` (array, terbaru dulu) dan `POST /api/v1/trace/transfers` dengan `{ batch_id, from_ref, to_ref, volume_out_l, volume_in_l, source: "Manual"|"IoT", recorded_at? }`, balasan `{ result, log }` dengan `id` (`TRF-001`) dan `selisih_l`. Selisih selalu dari server (`lib/api/contract.ts` `flowFromApi`); FE hanya menampilkan perkiraan selisih di formulir. Di mode API, catatan manual wajib membawa batch dan `recorded_at` dikirim sebagai `2026-10-14THH:MM:00+07:00` dari waktu pengukuran. IoT Greenfields mengirim ke path yang sama dengan `source: "IoT"`, menggantikan route sementara `/api/v1/transfers` di atas (route itu hanya dipakai di mode lokal).
+
+Masih perlu dari backend: hitung volume terkini per alat (`GET /api/v1/assets/{id}/volume`) supaya Kondisi Alat, Bay & Tangki, dan Lini Filling tidak menghitung sendiri. Catatan lama untuk mode lokal: simpan transfer manual (`POST /api/v1/transfers/manual` dengan `source: "manual"` dan pencatat dari sesi), gabungkan manual + IoT di GET, dan hitung volume terkini per alat (`GET /api/v1/assets/{id}/volume`) supaya Kondisi Alat, Bay & Tangki, dan Lini Filling tidak menghitung sendiri.
 
 ## 16. Ringkasan cakupan
 

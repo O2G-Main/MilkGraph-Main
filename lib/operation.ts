@@ -30,8 +30,8 @@ export interface Downtime { id: string; asset: string; cause: (typeof DOWNTIME_C
 /** Lama downtime; yang masih terbuka dihitung sampai `now`. */
 export const downtimeMinutes = (d: Downtime, now = NOW) => Math.max(0, toMin(d.end ?? now) - toMin(d.start));
 
-/** Perpindahan bahan antar-alat proses (mis. UHT-2 ke AT-2, AT-2 ke F2). */
-export interface ProcessTransfer { id: string; from: string; to: string; volume: number; start: string; end: string; by: string }
+/** Perpindahan bahan antar-alat proses (mis. UHT-2 ke AT-2). `volume`: keluar dari alat asal; `received`: diterima alat tujuan (sama dengan volume bila belum diukur). */
+export interface ProcessTransfer { id: string; from: string; to: string; volume: number; start: string; end: string; by: string; received?: number; measuredAt?: string; batch?: string; note?: string }
 export function checkProcessTransfer(t: Pick<ProcessTransfer, "from" | "to" | "volume" | "start" | "end">) {
   if (t.from === t.to) return "Alat asal dan tujuan harus berbeda.";
   if (!(t.volume > 0)) return "Isi volume lebih dari 0 L.";

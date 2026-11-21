@@ -5,16 +5,18 @@ export const SNAPSHOT = "14:42";
 
 export type ArrivalStatus = "loading" | "perjalanan" | "tiba" | "batal";
 export const ARRIVAL_STATUS: Record<ArrivalStatus, { label: string; tone: Tone }> = {
-  loading: { label: "Loading di farm", tone: "neutral" },
-  perjalanan: { label: "Dalam perjalanan", tone: "ok" },
-  tiba: { label: "Tiba", tone: "ok" },
-  batal: { label: "Batal", tone: "crit" },
+  loading: { label: "Dijadwalkan", tone: "neutral" },
+  perjalanan: { label: "Dalam Perjalanan", tone: "ok" },
+  tiba: { label: "Sudah Tiba", tone: "ok" },
+  batal: { label: "Dibatalkan", tone: "crit" },
 };
 /** milkStart: waktu awal umur susu (pemerahan pertama yang masuk RT). */
-export interface Arrival { id: string; farm: string; volume: number; depart: string; eta: string; milkStart: string; status: ArrivalStatus; note: string }
+/** `target`: jam tiba yang dijadwalkan; `eta`: estimasi tiba terbaru; keterlambatan = eta - target. */
+export interface Arrival { id: string; farm: string; volume: number; depart: string; eta: string; milkStart: string; status: ArrivalStatus; note: string; target?: string; actual?: string }
 /** Catatan lapangan per RT: kedatangan aktual, awal umur susu, dan proses bongkar. */
 export interface RtRecord { arrivedAt?: string; milkStart?: string; bay?: string; unloadStart?: string; unloadEnd?: string; volume?: number; temperature?: number }
-export interface Transfer { id: string; rt: string; tank: string; volume: number; start: string; end: string; counted: boolean }
+/** `volume`: diterima tangki; `out`: keluar dari RT (timbangan). */
+export interface Transfer { id: string; rt: string; tank: string; volume: number; start: string; end: string; counted: boolean; out?: number; measuredAt?: string; note?: string; by?: string }
 export interface ReceivingState { arrivals: Arrival[]; records: Record<string, RtRecord>; transfers: Transfer[] }
 
 export const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
