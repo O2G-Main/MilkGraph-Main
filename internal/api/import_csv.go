@@ -22,6 +22,12 @@ import (
 //
 // Laporan selalu berbentuk sama supaya FE bisa menampilkan pratinjau dan
 // hasil commit dengan tabel yang sama.
+//
+// Label data dipilih pemanggil lewat query parameter label_data, saluran
+// yang sama dengan parameter commit: nilai sah "simulasi" dan "historis".
+// Tanpa parameter, label lama "simulasi" dipertahankan persis. Nilai di
+// luar daftar ditolak 422 sebelum file dibaca, jadi pratinjau pun tidak
+// pernah menghasilkan label yang salah tulis.
 
 const (
 	batasImportBytes = 1 << 20 // 1 MB
@@ -35,6 +41,7 @@ type kesalahanBaris struct {
 
 type laporanImport struct {
 	Commit     bool             `json:"commit"`
+	LabelData  string           `json:"label_data"`
 	TotalBaris int              `json:"total_baris"`
 	Valid      int              `json:"valid"`
 	Gagal      int              `json:"gagal"`
@@ -51,6 +58,21 @@ type ringkasanImportPO struct {
 	JumlahBaris int     `json:"jumlah_baris"`
 	TotalLiter  float64 `json:"total_liter"`
 	LabelData   string  `json:"label_data"`
+}
+
+// labelImportData membaca query parameter label_data. Kosong berarti
+// bawaan lama "simulasi"; nilai lain di luar daftar sah ditolak dengan
+// error validasi yang menyebut nilai sahnya.
+func labelImportData(r *http.Request) (string, error) {
+	label := r.URL.Query().Get("label_data")
+	switch label {
+	case "":
+		return "simulasi", nil
+	case "simulasi", "historis":
+		return label, nil
+	default:
+		return "", invalid("label_data tidak dikenal: "+label+". Nilai sah: simulasi, historis.", "label_data")
+	}
 }
 
 // bacaCSVImport membaca file multipart field "file", memeriksa header, dan
@@ -139,7 +161,7 @@ var headerImportPO = []string{"po_id", "priority", "due_datetime", "sku_id", "qt
 // satu line; po_id sama digabung) dan memvalidasi tiap baris. Baris yang
 // gagal dicatat satu kesalahan per baris (masalah pertama yang ditemukan)
 // dan tidak ikut membentuk PO.
-func validasiImportPO(baris [][]string, kolom map[string]int, info map[string]InfoSKU, existing []ProductionOrder) (laporanImport, []ProductionOrder) {
+func validasiImportPO(baris [][]string, kolom map[string]int, info map[string]InfoSKU, existing []ProductionOrder, label string) (laporanImport, []ProductionOrder) {
 	laporan := laporanImport{TotalBaris: len(baris), Errors: []kesalahanBaris{}}
 	adaDiSistem := map[string]bool{}
 	for _, po := range existing {
@@ -193,7 +215,7 @@ func validasiImportPO(baris [][]string, kolom map[string]int, info map[string]In
 		}
 		g, ok := grup[poID]
 		if !ok {
-			g = &grupPO{po: ProductionOrder{POID: poID, LabelData: "simulasi"}}
+			g = &grupPO{po: ProductionOrder{POID: poID, LabelData: label}}
 			grup[poID] = g
 			urutan = append(urutan, poID)
 		}
@@ -252,7 +274,7 @@ var headerImportRT = []string{"rt_id", "farm_name", "volume_l", "depart_at", "ta
 // jalur form: rt_id tidak boleh menimpa data lama, waktu lewat
 // parseWaktuKedatangan (jam "HH:MM" sah dan dinormalisasi), status enum,
 // late_minutes dihitung server.
-func validasiImportRT(baris [][]string, kolom map[string]int, existing []RTArrival) (laporanImport, []RTArrival) {
+func validasiImportRT(baris [][]string, kolom map[string]int, existing []RTArrival, label string) (laporanImport, []RTArrival) {
 	laporan := laporanImport{TotalBaris: len(baris), Errors: []kesalahanBaris{}}
 	rtDiSistem := map[string]bool{}
 	idDiSistem := map[string]bool{}
@@ -336,6 +358,7 @@ func validasiImportRT(baris [][]string, kolom map[string]int, existing []RTArriv
 			TargetArrival:    normalisasiWaktuKedatangan(target),
 			EstimatedArrival: normalisasiWaktuKedatangan(estimasi),
 			Status:           status,
+			LabelData:        label,
 		}
 		if aktual != "" {
 			v := normalisasiWaktuKedatangan(aktual)
@@ -362,6 +385,10 @@ func (s *Server) registerImportCSV(register func(string, string, endpoint)) {
 			return nil, err
 		}
 		commit := r.URL.Query().Get("commit") == "true"
+		label, e := labelImportData(r)
+		if e != nil {
+			return nil, e
+		}
 		if commit {
 			if err := s.dbRequired(); err != nil {
 				return nil, err
@@ -379,8 +406,9 @@ func (s *Server) registerImportCSV(register func(string, string, endpoint)) {
 		if e != nil {
 			return nil, e
 		}
-		laporan, baru := validasiImportPO(baris, kolom, infoSKU(katalog), existing)
+		laporan, baru := validasiImportPO(baris, kolom, infoSKU(katalog), existing, label)
 		laporan.Commit = commit
+		laporan.LabelData = label
 		if !commit || len(baru) == 0 {
 			return laporan, nil
 		}
@@ -415,6 +443,10 @@ func (s *Server) registerImportCSV(register func(string, string, endpoint)) {
 			return nil, err
 		}
 		commit := r.URL.Query().Get("commit") == "true"
+		label, e := labelImportData(r)
+		if e != nil {
+			return nil, e
+		}
 		if commit {
 			if err := s.dbRequired(); err != nil {
 				return nil, err
@@ -428,8 +460,9 @@ func (s *Server) registerImportCSV(register func(string, string, endpoint)) {
 		if e != nil {
 			return nil, e
 		}
-		laporan, baru := validasiImportRT(baris, kolom, existing)
+		laporan, baru := validasiImportRT(baris, kolom, existing, label)
 		laporan.Commit = commit
+		laporan.LabelData = label
 		if !commit || len(baru) == 0 {
 			return laporan, nil
 		}

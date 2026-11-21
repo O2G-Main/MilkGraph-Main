@@ -245,6 +245,117 @@ func TestImportRTDenganDB(t *testing.T) {
 	}
 }
 
+// TestImportLabelData membuktikan mekanisme label_data pada kedua
+// endpoint import: tanpa parameter label lama "simulasi" dipertahankan,
+// label_data=historis melekat pada laporan dan setiap record, dan nilai
+// di luar daftar sah ditolak 422 sejak tahap pratinjau.
+func TestImportLabelData(t *testing.T) {
+	h := (&Server{Mode: "demo"}).Handler()
+
+	// PO tanpa parameter: simulasi, perilaku lama persis.
+	w := importRequest(h, "/pos/import?commit=false", "planner", csvPOValid)
+	if w.Code != 200 {
+		t.Fatalf("preview PO bawaan = %d: %s", w.Code, w.Body.String())
+	}
+	rep := decodeMap(t, w)
+	if rep["label_data"] != "simulasi" || obj(arr(rep["rows"])[0])["label_data"] != "simulasi" {
+		t.Errorf("tanpa parameter, PO harus berlabel simulasi: %v", rep)
+	}
+
+	// PO dengan label_data=historis.
+	w = importRequest(h, "/pos/import?commit=false&label_data=historis", "planner", csvPOValid)
+	if w.Code != 200 {
+		t.Fatalf("preview PO historis = %d: %s", w.Code, w.Body.String())
+	}
+	rep = decodeMap(t, w)
+	if rep["label_data"] != "historis" {
+		t.Errorf("laporan PO harus berlabel historis: %v", rep)
+	}
+	for _, ringkasan := range arr(rep["rows"]) {
+		if obj(ringkasan)["label_data"] != "historis" {
+			t.Errorf("ringkasan PO harus berlabel historis: %v", ringkasan)
+		}
+	}
+
+	// PO dengan label tidak sah ditolak 422 pada pratinjau.
+	w = importRequest(h, "/pos/import?commit=false&label_data=asing", "planner", csvPOValid)
+	if w.Code != 422 || !strings.Contains(w.Body.String(), "label_data") {
+		t.Errorf("label PO tidak sah harus 422 dan menyebut label_data, dapat %d: %s", w.Code, w.Body.String())
+	}
+
+	// RT tanpa parameter: simulasi.
+	w = importRequest(h, "/supply/rt-arrivals/import?commit=false", "receiving", csvRTValid)
+	if w.Code != 200 {
+		t.Fatalf("preview RT bawaan = %d: %s", w.Code, w.Body.String())
+	}
+	rep = decodeMap(t, w)
+	if rep["label_data"] != "simulasi" || obj(arr(rep["rows"])[0])["label_data"] != "simulasi" {
+		t.Errorf("tanpa parameter, kedatangan harus berlabel simulasi: %v", rep)
+	}
+
+	// RT dengan label_data=historis: melekat pada record hasil import.
+	w = importRequest(h, "/supply/rt-arrivals/import?commit=false&label_data=historis", "receiving", csvRTValid)
+	if w.Code != 200 {
+		t.Fatalf("preview RT historis = %d: %s", w.Code, w.Body.String())
+	}
+	rep = decodeMap(t, w)
+	if rep["label_data"] != "historis" {
+		t.Errorf("laporan RT harus berlabel historis: %v", rep)
+	}
+	for _, record := range arr(rep["rows"]) {
+		if obj(record)["label_data"] != "historis" {
+			t.Errorf("record kedatangan harus berlabel historis: %v", record)
+		}
+	}
+
+	// RT dengan label tidak sah ditolak 422 pada pratinjau.
+	w = importRequest(h, "/supply/rt-arrivals/import?commit=false&label_data=asing", "receiving", csvRTValid)
+	if w.Code != 422 || !strings.Contains(w.Body.String(), "label_data") {
+		t.Errorf("label RT tidak sah harus 422 dan menyebut label_data, dapat %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestImportLabelDataDenganDB membuktikan label historis ikut tersimpan
+// saat commit, bukan hanya tampil di pratinjau: record yang dibaca ulang
+// dari sistem membawa labelnya.
+func TestImportLabelDataDenganDB(t *testing.T) {
+	db := testDB(t)
+	if err := db.Reset(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	h := (&Server{Mode: "demo", DB: db}).Handler()
+
+	w := importRequest(h, "/pos/import?commit=true&label_data=historis", "planner", csvPOValid)
+	if w.Code != 200 {
+		t.Fatalf("commit import PO historis = %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "GET", "/pos", "planner", "")
+	var pos []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil {
+		t.Fatalf("GET /pos: %v", err)
+	}
+	for _, po := range pos {
+		if strings.HasPrefix(str(po["po_id"]), "PO-IMP-") && po["label_data"] != "historis" {
+			t.Errorf("PO impor tersimpan harus berlabel historis: %v", po)
+		}
+	}
+
+	w = importRequest(h, "/supply/rt-arrivals/import?commit=true&label_data=historis", "receiving", csvRTValid)
+	if w.Code != 200 {
+		t.Fatalf("commit import RT historis = %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "GET", "/supply/rt-arrivals", "planner", "")
+	var arrivals []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil {
+		t.Fatalf("GET kedatangan: %v", err)
+	}
+	for _, a := range arrivals {
+		if (a["rt_id"] == "RT-41" || a["rt_id"] == "RT-42") && a["label_data"] != "historis" {
+			t.Errorf("kedatangan impor tersimpan harus berlabel historis: %v", a)
+		}
+	}
+}
+
 func TestImportGerbangPermissionKhusus(t *testing.T) {
 	h := (&Server{Mode: "demo"}).Handler()
 	// Pratinjau (commit=false) cukup untuk membuktikan gerbang: lolos

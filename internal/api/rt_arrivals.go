@@ -43,6 +43,7 @@ type RTArrival struct {
 	ActualArrival    *string `json:"actual_arrival"`
 	Status           string  `json:"status"`
 	LateMinutes      int     `json:"late_minutes"`
+	LabelData        string  `json:"label_data"`
 }
 
 func parseWaktu(s string) (time.Time, error) {
