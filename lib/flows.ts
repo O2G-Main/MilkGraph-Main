@@ -66,5 +66,7 @@ export function useFlows(s: Pick<DemoState, "receiving" | "operation">) {
 export async function saveTransfer(t: { from: string; to: string; out: number; in: number; start: string; end: string; measuredAt: string; batch?: string; note?: string }, role: string) {
   if (!API_MODE) return recordTransfer(t);
   await apiSend("POST", TRACE, transferBody({ ...t, batch: t.batch ?? "" }, SCENARIO_DATE), role);
-  invalidateResources([TRACE, "/audit"]);
+  // Saldo per aset di server berubah setelah transfer tercatat; muat ulang dari
+  // endpoint saldonya, jangan menambah atau mengurangi angka di FE.
+  invalidateResources([TRACE, "/trace/assets", "/audit"]);
 }

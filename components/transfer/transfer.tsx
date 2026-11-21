@@ -11,6 +11,7 @@ import { applyQueue, clock, toMin } from "@/lib/receiving";
 import { mayHandle } from "@/lib/operation";
 import { saveTransfer, useFlows } from "@/lib/flows";
 import { API_MODE } from "@/lib/api/client";
+import { TankVolumeApiCard } from "./tank-volume-api";
 import { diffTone, levelAfter, type FlowRow } from "@/lib/volume";
 import { asepticTanks, midTanks } from "@/mock/ops";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle, Toggle } from "@/components/ui";
@@ -60,6 +61,7 @@ export function Transfer({ alat }: { alat?: string }) {
         <Card><span className="small muted">Selisih total</span><strong className={`${diffTone(out ? (out - inn) / out * 100 : 0)}-text`}>{number(out - inn)} <small>L</small></strong><span className="small muted">{out ? `${pct((out - inn) / out * 100)}% dari volume keluar` : "Belum ada transfer"}</span></Card>
         <Card><span className="small muted">Di luar toleransi</span><strong className={flagged.length ? "warn-text" : "ok-text"}>{flagged.length}</strong><span className="small muted">Selisih di atas 0,5% [asumsi]</span></Card>
       </div>
+      {API_MODE ? <TankVolumeApiCard tanks={tanks} alat={alat} /> : <>
       <Card className="rules-card">
         <SectionTitle title="Volume tangki terkini" subtitle="Level snapshot 14.42 ditambah yang diterima dan dikurangi yang keluar dari transfer setelahnya." />
         <div className="table-wrap"><table className="schedule-table">
@@ -80,6 +82,7 @@ export function Transfer({ alat }: { alat?: string }) {
           })}</tbody>
         </table></div>
       </Card>
+      </>}
       <Card>
         <SectionTitle title={alat ? `Riwayat transfer ${alat}` : "Riwayat transfer"} subtitle="Selisih = volume keluar dari alat asal dikurangi volume diterima alat tujuan." />
         <div className="table-wrap"><table className="schedule-table flow-table">

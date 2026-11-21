@@ -13,7 +13,8 @@ import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceButton, SourceModal, Timeline } from "@/components/ui";
 import { useFlows } from "@/lib/flows";
-import { levelAfter } from "@/lib/volume";
+import { levelAfter, type FlowRow } from "@/lib/volume";
+import { useAssetVolume } from "@/lib/api/asset-volume";
 
 type AsepticTank = {
   id: string;
@@ -193,7 +194,7 @@ export function Filling() {
               <div className="tank-card">
                 <div className="tank-top">
                   <span className="tank-id"><Icon icon={Factory} size={18} /><span className="mono">{tank.id}</span></span>
-                  <span className="small muted">{number(levelAfter(tank.id, tank.level, flows))} / {number(tank.capacity)} L · {Math.round(levelAfter(tank.id, tank.level, flows) / tank.capacity * 100)}%</span>
+                  <AsepticLevelText tank={tank} flows={flows} />
                 </div>
                 <div className={`capacity-bar ${short ? "crit" : pct < 25 ? "warn" : "ok"}`} role="meter" aria-label={`${tank.id} terisi ${pct}%`} aria-valuenow={tank.level} aria-valuemin={0} aria-valuemax={tank.capacity}>
                   <span style={{ width: `${Math.max(pct, 2)}%` }} />
@@ -317,5 +318,16 @@ export function Filling() {
       <SourceModal id={source} onClose={() => setSource(null)} />
     </div>
   );
+}
+
+/**
+ * Teks level aseptic tank. Mode API: level skenario ditambah saldo transfer
+ * dari server (GET /trace/assets/{ref}/volume), bukan hitungan alur lokal.
+ * Mode lokal tetap memakai levelAfter seperti sebelumnya.
+ */
+function AsepticLevelText({ tank, flows }: { tank: AsepticTank; flows: FlowRow[] }) {
+  const { volume } = useAssetVolume(tank.id);
+  const level = API_MODE ? tank.level + (volume?.balance_l ?? 0) : levelAfter(tank.id, tank.level, flows);
+  return <span className="small muted">{number(level)} / {number(tank.capacity)} L · {Math.round(level / tank.capacity * 100)}%</span>;
 }
 

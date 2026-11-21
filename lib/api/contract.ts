@@ -145,6 +145,46 @@ export const RT_IMPORT_TEMPLATE =
   "RT-41,Farm Tutur,9000,05:30,07:00,07:10,,Dalam Perjalanan\n" +
   "RT-42,KUD Ngantang,11000,06:00,08:00,07:50,07:50,Sudah Tiba\n";
 
+/* ---------- Downtime, Prediksi, Rekomendasi: /api/v1/downtime-events dan /api/v1/maintenance/recommendation ---------- */
+export type BeDowntimeType = "planned_maintenance" | "breakdown" | "cleaning";
+export type BeDowntimeSource = "user_input" | "iot" | "predicted";
+export interface BeDowntimeEvent {
+  event_id: string; resource_id: string; start: string; end: string;
+  type: BeDowntimeType; source: BeDowntimeSource;
+}
+export const DOWNTIME_TYPE_LABEL: Record<string, string> = {
+  planned_maintenance: "Maintenance terencana", breakdown: "Breakdown", cleaning: "Pembersihan (CIP)",
+};
+export const DOWNTIME_SOURCE_LABEL: Record<string, string> = {
+  user_input: "Catatan pengguna", iot: "IoT", predicted: "Prediksi",
+};
+/** Prediksi downtime dari server. Field null berarti belum bisa dihitung, bukan nol. */
+export interface BeDowntimePrediction {
+  resource_id: string; events_count: number; intervals_days: number[];
+  avg_interval_days: number | null; last_event_at: string | null; predicted_next: string | null;
+  days_remaining: number | null; alert: string; basis: string;
+}
+export const PREDICTION_BASIS_LABEL: Record<string, string> = {
+  history: "Rata-rata interval riwayat kejadian",
+  configured: "Parameter interval yang diisi pemanggil",
+  insufficient_data: "Data belum cukup untuk menghitung prediksi",
+};
+export const PREDICTION_ALERT_LABEL: Record<string, string> = {
+  AMAN: "Aman", MENDEKATI: "Mendekati", LEWAT: "Lewat", INSUFFICIENT_DATA: "Data belum cukup",
+};
+export const PREDICTION_ALERT_TONE: Record<string, "ok" | "warn" | "crit" | "neutral"> = {
+  AMAN: "ok", MENDEKATI: "warn", LEWAT: "crit", INSUFFICIENT_DATA: "neutral",
+};
+/** Rekomendasi jendela maintenance dari server; 404 berarti belum ada rekomendasi. */
+export interface BeMaintenanceRecommendation {
+  resource_id: string; recommended_start: string; recommended_end: string;
+  duration_hours: number; reason: string;
+}
+
+/* ---------- Saldo Volume Aset: /api/v1/trace/assets/{ref}/volume ---------- */
+/** Saldo satu titik rantai, diturunkan server dari seluruh catatan transfer. Ref tidak dikenal dibalas 404. */
+export interface BeAssetVolume { ref: string; total_in_l: number; total_out_l: number; balance_l: number; jumlah_transfer: number }
+
 /* ---------- Role & Hak Akses: /api/v1/roles dan /api/v1/permissions ---------- */
 /** Satu role dari registri BE. Persona (user, initials, focus) ikut dari server, bukan dari registri lokal. */
 export interface BeRole { label: string; user: string; initials: string; focus: string; builtin: boolean; permissions: string[] }

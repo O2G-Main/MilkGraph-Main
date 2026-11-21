@@ -13,7 +13,8 @@ import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal, Timeline } from "@/components/ui";
 import { useFlows } from "@/lib/flows";
-import { levelAfter } from "@/lib/volume";
+import { levelAfter, type FlowRow } from "@/lib/volume";
+import { balanceNote, useAssetVolume } from "@/lib/api/asset-volume";
 
 const MID_STATE: Record<string, { label: string; tone: Tone }> = {
   terisi: { label: "Terisi", tone: "ok" },
@@ -302,33 +303,10 @@ export function Tangki() {
         <section className="panel">
           <SectionTitle title="Raw Milk Buffer" subtitle={`Level dan suhu tangki susu mentah. Kapasitasnya ${number(bufferCap)} L per tangki.`} />
           <div className="tanks-grid single">
-            {buffers.map(tank => {
-              const fill = levelAfter(tank.id, tank.fill, flows);
-              const pct = Math.round((fill / tank.capacity) * 100);
-              const cip = cipLogList.find(c => c.asset === tank.id) ?? { last: "-", hoursSince: 0, next: "-", status: "-", tone: "neutral" as Tone };
-              return (
-                <div className="tank-card" key={tank.id}>
-                  <div className="tank-top">
-                    <span className="tank-id"><Icon icon={Container} size={18} /><span className="mono">{tank.id}</span></span>
-                    <Badge tone={tank.tone}>{tank.status}</Badge>
-                  </div>
-                  <p className="tank-volume">{number(fill)}<span> / {number(tank.capacity)} L · {pct}%</span></p>
-                  <div className={`capacity-bar ${tank.tone}`} role="meter" aria-label={`${tank.id} terisi ${pct}%`} aria-valuenow={fill} aria-valuemin={0} aria-valuemax={tank.capacity}>
-                    <span style={{ width: `${pct}%` }} />
-                  </div>
-                  <div className="tank-footer">
-                    <span>
-                      <Thermometer size={13} strokeWidth={1.75} aria-hidden />
-                      {tank.info} · sisa {number(tank.capacity - fill)} L · CIP {cip.hoursSince} jam lalu
-                    </span>
-                    <PageLink className="text-link" href={`/transfer?alat=${tank.id}`}>Lihat Riwayat Transfer<Icon icon={ArrowRight} size={13} /></PageLink>
-                    <button aria-label={`Lihat sumber ${tank.id}`} onClick={() => setSource(tank.source)}>
-                      Sumber<Icon icon={ArrowUpRight} size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {buffers.map(tank => (
+              <BufferTankCard key={tank.id} tank={tank} flows={flows} onSource={setSource}
+                cip={cipLogList.find(c => c.asset === tank.id) ?? { asset: tank.id, last: "-", hoursSince: 0, next: "-", status: "-", tone: "neutral" as Tone }} />
+            ))}
           </div>
         </section>
         <Card>
@@ -369,31 +347,71 @@ export function Tangki() {
           action={<Badge tone={notReady ? "warn" : "ok"}>{notReady} tidak siap menerima</Badge>}
         />
         <div className="mid-grid">
-          {midTanksList.map(t => {
-            const level = levelAfter(t.id, t.level, flows);
-            const pct = Math.round((level / t.capacity) * 100);
-            const stateConfig = MID_STATE[t.state] ?? { label: t.state, tone: "neutral" as Tone };
-            return (
-              <div key={t.id} className="tank-card">
-                <div className="tank-top">
-                  <span className="tank-id"><span className="mono">{t.id}</span><small className="muted">{t.group}</small></span>
-                  <Badge tone={stateConfig.tone}>{stateConfig.label}</Badge>
-                </div>
-                <p className="small"><strong>{t.content}</strong>{t.batch !== "-" && <span className="mono muted"> · {t.batch}</span>}</p>
-                <div className={`capacity-bar ${stateConfig.tone}`} role="meter" aria-label={`${t.id} terisi ${pct}%`} aria-valuenow={level} aria-valuemin={0} aria-valuemax={t.capacity}>
-                  <span style={{ width: `${pct}%` }} />
-                </div>
-                <p className="small muted">{number(level)} / {number(t.capacity)} L · {t.note}</p>
-                <PageLink className="text-link small" href={`/transfer?alat=${t.id}`}>Lihat Riwayat Transfer<Icon icon={ArrowRight} size={13} /></PageLink>
-              </div>
-            );
-          })}
+          {midTanksList.map(t => <MidTankCard key={t.id} t={t} flows={flows} />)}
         </div>
         <button className="text-link" onClick={() => setSource("TR-ST4")}>
           Contoh serah-terima SP-1 ke ST-4<Icon icon={ArrowUpRight} size={14} />
         </button>
       </Card>
       <SourceModal id={source} onClose={() => setSource(null)} />
+    </div>
+  );
+}
+
+/**
+ * Kartu tangki Raw Milk Buffer. Mode API: level yang tampil adalah level
+ * skenario ditambah saldo transfer dari server (GET /trace/assets/{ref}/volume),
+ * bukan hasil menambah atau mengurangi catatan transfer di FE. Mode lokal
+ * tetap memakai hitungan alur demo seperti sebelumnya.
+ */
+function BufferTankCard({ tank, cip, flows, onSource }: { tank: Asset; cip: CIPLog; flows: FlowRow[]; onSource: (id: string) => void }) {
+  const { volume, notFound, loading } = useAssetVolume(tank.id);
+  const fill = API_MODE ? tank.fill + (volume?.balance_l ?? 0) : levelAfter(tank.id, tank.fill, flows);
+  const pct = Math.round((fill / tank.capacity) * 100);
+  return (
+    <div className="tank-card">
+      <div className="tank-top">
+        <span className="tank-id"><Icon icon={Container} size={18} /><span className="mono">{tank.id}</span></span>
+        <Badge tone={tank.tone}>{tank.status}</Badge>
+      </div>
+      <p className="tank-volume">{number(fill)}<span> / {number(tank.capacity)} L · {pct}%</span></p>
+      {API_MODE && <p className="small muted">{balanceNote(volume, notFound, loading)}</p>}
+      <div className={`capacity-bar ${tank.tone}`} role="meter" aria-label={`${tank.id} terisi ${pct}%`} aria-valuenow={fill} aria-valuemin={0} aria-valuemax={tank.capacity}>
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      <div className="tank-footer">
+        <span>
+          <Thermometer size={13} strokeWidth={1.75} aria-hidden />
+          {tank.info} · sisa {number(tank.capacity - fill)} L · CIP {cip.hoursSince} jam lalu
+        </span>
+        <PageLink className="text-link" href={`/transfer?alat=${tank.id}`}>Lihat Riwayat Transfer<Icon icon={ArrowRight} size={13} /></PageLink>
+        <button aria-label={`Lihat sumber ${tank.id}`} onClick={() => onSource(tank.source)}>
+          Sumber<Icon icon={ArrowUpRight} size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Kartu tangki storage, cream, premix, dan mixing. Sumber saldo sama dengan BufferTankCard. */
+function MidTankCard({ t, flows }: { t: MidTank; flows: FlowRow[] }) {
+  const { volume, notFound, loading } = useAssetVolume(t.id);
+  const level = API_MODE ? t.level + (volume?.balance_l ?? 0) : levelAfter(t.id, t.level, flows);
+  const pct = Math.round((level / t.capacity) * 100);
+  const stateConfig = MID_STATE[t.state] ?? { label: t.state, tone: "neutral" as Tone };
+  return (
+    <div className="tank-card">
+      <div className="tank-top">
+        <span className="tank-id"><span className="mono">{t.id}</span><small className="muted">{t.group}</small></span>
+        <Badge tone={stateConfig.tone}>{stateConfig.label}</Badge>
+      </div>
+      <p className="small"><strong>{t.content}</strong>{t.batch !== "-" && <span className="mono muted"> · {t.batch}</span>}</p>
+      <div className={`capacity-bar ${stateConfig.tone}`} role="meter" aria-label={`${t.id} terisi ${pct}%`} aria-valuenow={level} aria-valuemin={0} aria-valuemax={t.capacity}>
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      <p className="small muted">{number(level)} / {number(t.capacity)} L · {t.note}</p>
+      {API_MODE && <p className="small muted">{balanceNote(volume, notFound, loading)}</p>}
+      <PageLink className="text-link small" href={`/transfer?alat=${t.id}`}>Lihat Riwayat Transfer<Icon icon={ArrowRight} size={13} /></PageLink>
     </div>
   );
 }
