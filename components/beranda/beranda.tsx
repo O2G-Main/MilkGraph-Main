@@ -21,6 +21,7 @@ import { MetricGrid } from "@/components/receiving/metric-grid";
 import { ASSETS } from "@/lib/assets";
 import { API_MODE } from "@/lib/api/client";
 import { ExecutiveDetails, ExecutiveKpis } from "./executive-api";
+import { BerandaApiAttention, BerandaApiHero, BerandaApiMenus } from "./beranda-api";
 
 type Item = { icon: LucideIcon; title: string; meta: string; tone: Tone; href: string };
 const plan = scenario.plans[0];
@@ -245,6 +246,9 @@ export function Beranda() {
   ];
   // Hanya hal yang halamannya terbuka untuk peran ini (penting untuk role buatan Superadmin).
   const shown = (isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : isOperator ? operatorAttention : isQa ? qaAttention : isManager ? managerAttention : attention).filter(a => canOpen(demo.role, a.href.split("?")[0], findNav(a.href.split("?")[0]).tab.href));
+  const attentionTitle = isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : isOperator ? "Perlu ditangani di lini" : isQa ? "Perlu keputusan QA" : isManager ? "Perlu perhatian manajemen" : "Perlu perhatian";
+  const attentionSubtitle = isPlanner || isReceiving || isLab || isOperator || isQa || isManager ? "Diurutkan dari yang paling mendesak." : undefined;
+  const activity = (API_MODE ? demo.log : [...demo.log, ...pastLog]).slice(0, 3);
   const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : isOperator ? operatorKpis : isQa ? qaKpis : isManager ? managerKpis : null;
   const seePlan = canSee(demo.role, "/rencana");
   const heroHref = seePlan ? "/rencana" : isLab || isQa ? "/lab" : isOperator ? "/penjadwalan" : "/receiving";
@@ -259,22 +263,24 @@ export function Beranda() {
       : isQa ? `Halo, ${me.user.split(" ")[0]}. Keputusan rilis susu, mutu barang jadi, hold, dan selisih bahan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isOperator ? `Halo, ${me.user.split(" ")[0]}. Order, mesin, dan downtime di lini ${(assigned ?? []).filter(a => a.startsWith("F")).join(", ")} Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
-    {isManager && API_MODE
+    {API_MODE
       ? <ExecutiveKpis />
       : kpis
       ? <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
       : <MetricGrid onSource={setSource} />}
 
     <div className="home-top">
-      <section className="incident-card home-plan"><div className="incident-top"><span className="incident-status"><Icon icon={TriangleAlert} size={17} />Rencana shift</span><span className="mono">PLAN-FIFO</span></div>
+      {API_MODE
+      ? <><BerandaApiHero role={demo.role} /><BerandaApiAttention role={demo.role} title={attentionTitle} subtitle={attentionSubtitle} /></>
+      : <><section className="incident-card home-plan"><div className="incident-top"><span className="incident-status"><Icon icon={TriangleAlert} size={17} />Rencana shift</span><span className="mono">PLAN-FIFO</span></div>
         <h2>{approved ? <>Rekomendasi disetujui,<br />RT-26 pindah ke Bay 1.</> : <>Rencana tidak layak,<br />{broken} constraint dilanggar.</>}</h2>
         <div className="incident-time"><span><Icon icon={Hourglass} size={15} />Sisa holding time RT-26</span><strong>{duration(left)}</strong></div>
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
         {canSee(demo.role, findNav(heroHref).tab.href) && <Link href={heroHref} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : isQa ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>}
       </section>
-      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : isOperator ? "Perlu ditangani di lini" : isQa ? "Perlu keputusan QA" : isManager ? "Perlu perhatian manajemen" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab || isOperator || isQa || isManager ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+      <Card className="home-attention"><SectionTitle title={attentionTitle} subtitle={attentionSubtitle} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
-      </Card>
+      </Card></>}
     </div>
 
     {isManager && API_MODE && <ExecutiveDetails />}
@@ -294,12 +300,16 @@ export function Beranda() {
     </Card>}
 
     {/* Isi tiap menu diringkas jadi satu baris (poin 7): detailnya ada di halaman menu masing-masing. */}
-    <Card className="home-menus"><SectionTitle title="Semua menu" subtitle="Satu baris per menu. Klik untuk membuka halamannya." />
+    {API_MODE
+    ? <BerandaApiMenus role={demo.role} />
+    : <Card className="home-menus"><SectionTitle title="Semua menu" subtitle="Satu baris per menu. Klik untuk membuka halamannya." />
       <ul className="attention-list menu-list">{visibleNav(demo.role).filter(n => summary[n.label]).map(n => { const m = summary[n.label]; return <li key={n.label}><Link href={n.tabs[0].href} className={`attention-item ${m.tone}`}><span className="attention-icon"><Icon icon={n.icon} size={18} /></span><span className="attention-copy"><strong>{n.label}</strong><span>{m.text}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>; })}</ul>
-    </Card>
+    </Card>}
 
     <Card className="home-activity"><SectionTitle title="Aktivitas terbaru" action={<Link className="text-link" href="/persetujuan">Semua riwayat<Icon icon={ChevronRight} size={14} /></Link>} />
-      <ul className="activity-list">{[...demo.log, ...pastLog].slice(0, 3).map(e => <li key={e.id}><span className={`status-dot tone-${e.tone}`} aria-hidden="true" /><span><strong>{e.title}</strong><span>{e.detail}</span><span>{e.by} · {e.at}</span></span></li>)}</ul>
+      {activity.length
+      ? <ul className="activity-list">{activity.map(e => <li key={e.id}><span className={`status-dot tone-${e.tone}`} aria-hidden="true" /><span><strong>{e.title}</strong><span>{e.detail}</span><span>{e.by} · {e.at}</span></span></li>)}</ul>
+      : <p className="small muted">Belum ada aktivitas tercatat.</p>}
     </Card>
     <SourceModal id={source} onClose={() => setSource(null)} />
   </div>;
