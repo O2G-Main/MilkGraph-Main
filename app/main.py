@@ -4,7 +4,7 @@ import secrets
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 
-from . import jev, layanan
+from . import jev, layanan, llm
 from .schemas import (
     ChatRequest,
     ChatResponse,
@@ -26,6 +26,8 @@ def _cek_env() -> None:
         log.warning("SERVICE_TOKEN kosong: pengecekan X-Service-Token dimatikan (hanya untuk tes lokal)")
     if not jev.tersedia():
         log.warning("JEV_API_KEY kosong: service berjalan mode template")
+    if not llm.tersedia():
+        log.warning("LLM_API_KEY kosong: lapisan narasi LLM nonaktif, narasi dari template")
 
 
 def wajib_token(x_service_token: str | None = Header(default=None)) -> None:
@@ -38,7 +40,15 @@ def wajib_token(x_service_token: str | None = Header(default=None)) -> None:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", llm="jev" if jev.tersedia() else "template")
+    if jev.tersedia() and llm.tersedia():
+        mode = "jev+llm"
+    elif jev.tersedia():
+        mode = "jev"
+    elif llm.tersedia():
+        mode = "llm"
+    else:
+        mode = "template"
+    return HealthResponse(status="ok", llm=mode)
 
 
 @app.post(

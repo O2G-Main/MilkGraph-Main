@@ -46,6 +46,12 @@ class JevPenilaianAkarMasalah(BaseModel):
     model: str | None = None
 
 
+class LLMUsage(BaseModel):
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    reasoning_tokens: int | None = None
+
+
 class RootCauseResponse(BaseModel):
     batch_id: str
     penyebab_utama: str
@@ -55,6 +61,7 @@ class RootCauseResponse(BaseModel):
     label_data: str
     jev: JevPenilaianAkarMasalah | None = None
     selisih_dengan_be: bool = False
+    llm_usage: LLMUsage | None = None
 
 
 class TindakanPrioritas(BaseModel):
@@ -84,6 +91,7 @@ class RepairPriorityResponse(BaseModel):
     sumber: str
     label_data: str
     jev: JevPenilaianPrioritas | None = None
+    llm_usage: LLMUsage | None = None
 
 
 class ChatRequest(BaseModel):
@@ -96,6 +104,7 @@ class ChatResponse(BaseModel):
     jawaban: str
     sumber: str
     label_data: str
+    llm_usage: LLMUsage | None = None
 
 
 class HealthResponse(BaseModel):
