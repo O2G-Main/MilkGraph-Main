@@ -35,7 +35,7 @@ func (s *Server) lampirkanNarasiAI(ctx context.Context, answer map[string]any) {
 		slog.Warn("narasi AI tidak tersedia, jawaban lokal dipakai", "error", err)
 		return
 	}
-	s.catatPemakaianAI(ctx, "narrate", payload, resp)
+	s.catatPemakaianAI(ctx, "narrate", payload, resp, resp.LLMUsage)
 	answer["aiNarasi"] = keMap(resp)
 }
 
@@ -60,7 +60,7 @@ func (s *Server) narasiAI(ctx context.Context, batchID string) (any, error) {
 		slog.Warn("panggilan layanan AI gagal", "error", err)
 		return nil, &apiError{502, "AI_UNAVAILABLE", "Layanan AI tidak dapat dihubungi.", ""}
 	}
-	s.catatPemakaianAI(ctx, "narrate", payload, resp)
+	s.catatPemakaianAI(ctx, "narrate", payload, resp, resp.LLMUsage)
 	return keMap(resp), nil
 }
 
@@ -103,7 +103,7 @@ func (s *Server) chatAI(ctx context.Context, pertanyaan string) (any, error) {
 		slog.Warn("panggilan chat AI gagal", "error", err)
 		return nil, &apiError{502, "AI_UNAVAILABLE", "Layanan AI tidak dapat dihubungi.", ""}
 	}
-	s.catatPemakaianAI(ctx, "chat", req, resp)
+	s.catatPemakaianAI(ctx, "chat", req, resp, resp.LLMUsage)
 	return keMap(resp), nil
 }
 

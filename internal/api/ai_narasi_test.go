@@ -49,7 +49,7 @@ func stubAI(t *testing.T) *httptest.Server {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"batch_id":"FG-1013-07","penyebab_utama":"SUMBER_RT04","narasi":"Narasi stub.","rekomendasi":["Periksa RT-04"],"sumber":"jev","label_data":"simulasi","jev":{"pilihan":"SUMBER_RT04"},"selisih_dengan_be":false}`))
+		_, _ = w.Write([]byte(`{"batch_id":"FG-1013-07","penyebab_utama":"SUMBER_RT04","narasi":"Narasi stub.","rekomendasi":["Periksa RT-04"],"sumber":"jev","label_data":"simulasi","jev":{"pilihan":"SUMBER_RT04"},"selisih_dengan_be":false,"llm_usage":{"prompt_tokens":245,"completion_tokens":1133,"reasoning_tokens":1036}}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
@@ -67,6 +67,10 @@ func TestLampirkanNarasiAI(t *testing.T) {
 	}
 	if narasi["sumber"] != "jev" || narasi["penyebab_utama"] != "SUMBER_RT04" {
 		t.Errorf("isi aiNarasi tidak sesuai: %v", narasi)
+	}
+	usage, ok := narasi["llm_usage"].(map[string]any)
+	if !ok || usage["prompt_tokens"] != 245.0 || usage["completion_tokens"] != 1133.0 || usage["reasoning_tokens"] != 1036.0 {
+		t.Errorf("llm_usage harus diteruskan ke respons FE: %v", narasi["llm_usage"])
 	}
 
 	lain := map[string]any{"id": "unknown"}

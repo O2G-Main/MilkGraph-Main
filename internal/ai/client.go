@@ -88,6 +88,15 @@ type NarrateRequest struct {
 	LabelData string      `json:"label_data"`
 }
 
+// LLMUsage adalah pemakaian token aktual yang dilaporkan provider LLM oleh
+// layanan AI. Setiap angka memakai pointer karena provider dapat tidak
+// melaporkan salah satu jenis token; nil berarti tidak dilaporkan, bukan nol.
+type LLMUsage struct {
+	PromptTokens     *int `json:"prompt_tokens,omitempty"`
+	CompletionTokens *int `json:"completion_tokens,omitempty"`
+	ReasoningTokens  *int `json:"reasoning_tokens,omitempty"`
+}
+
 // NarrateResponse mirrors the AI service response. The Jev assessment stays
 // raw JSON so new Jev fields never break the Backend.
 type NarrateResponse struct {
@@ -99,6 +108,7 @@ type NarrateResponse struct {
 	LabelData       string          `json:"label_data"`
 	Jev             json.RawMessage `json:"jev"`
 	SelisihDenganBE bool            `json:"selisih_dengan_be"`
+	LLMUsage        *LLMUsage       `json:"llm_usage"`
 }
 
 // NarrateRootCause sends batch facts to the AI service and returns its
@@ -122,9 +132,10 @@ type ChatRequest struct {
 
 // ChatResponse mirrors the AI service chat response.
 type ChatResponse struct {
-	Jawaban   string `json:"jawaban"`
-	Sumber    string `json:"sumber"`
-	LabelData string `json:"label_data"`
+	Jawaban   string    `json:"jawaban"`
+	Sumber    string    `json:"sumber"`
+	LabelData string    `json:"label_data"`
+	LLMUsage  *LLMUsage `json:"llm_usage"`
 }
 
 // Chat sends a question plus Backend-selected facts to the AI service and
@@ -164,6 +175,7 @@ type ExplainResponse struct {
 	Sumber     string          `json:"sumber"`
 	LabelData  string          `json:"label_data"`
 	Jev        json.RawMessage `json:"jev"`
+	LLMUsage   *LLMUsage       `json:"llm_usage"`
 }
 
 // Explain sends a Backend-computed priority ranking to the AI service and

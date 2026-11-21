@@ -8,6 +8,8 @@ import (
 	"milkgraph/internal/ai"
 )
 
+func ptrIntUji(v int) *int { return &v }
+
 func TestEstimasiToken(t *testing.T) {
 	kasus := []struct{ n, mau int }{
 		{0, 0}, {1, 1}, {4, 1}, {5, 2}, {100, 25}, {101, 26},
@@ -40,6 +42,45 @@ func TestHitungBiayaLLM(t *testing.T) {
 	kosong := hitungBiayaLLM(nil)
 	if kosong.Calls != 0 || kosong.EstCostUSD != 0 {
 		t.Errorf("log kosong harus nol: %+v", kosong)
+	}
+}
+
+func TestHitungLLMAktualCampuranEntriLamaDanBaru(t *testing.T) {
+	entries := []AIUsageEntry{
+		{Endpoint: "narrate", EstInputTokens: 100, EstOutputTokens: 50},
+		{Endpoint: "chat", EstInputTokens: 200, EstOutputTokens: 60,
+			LLMPromptTokens: ptrIntUji(245), LLMCompletionTokens: ptrIntUji(1133), LLMReasoningTokens: ptrIntUji(1036)},
+		{Endpoint: "explain", EstInputTokens: 300, EstOutputTokens: 70,
+			LLMPromptTokens: ptrIntUji(100), LLMCompletionTokens: ptrIntUji(200)},
+		{Endpoint: "narrate", EstInputTokens: 400, EstOutputTokens: 80},
+	}
+
+	aktual := hitungLLMAktual(entries)
+	if aktual.Calls != 2 || aktual.PromptTokens != 345 || aktual.CompletionTokens != 1333 || aktual.ReasoningTokens != 1036 {
+		t.Fatalf("agregat token aktual salah: %+v", aktual)
+	}
+	if aktual.Label != "aktual" {
+		t.Errorf("label agregat aktual = %q, mau aktual", aktual.Label)
+	}
+
+	estimasi := hitungBiayaLLM(entries)
+	if estimasi.Calls != 4 || estimasi.EstInputTokens != 1000 || estimasi.EstOutputTokens != 260 {
+		t.Errorf("estimasi entri lama dan baru harus tetap teragregasi semua: %+v", estimasi)
+	}
+
+	mentah, err := json.Marshal(entries[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(mentah), "llm_") {
+		t.Errorf("entri lama tanpa usage tidak boleh memunculkan field LLM: %s", mentah)
+	}
+	var lama AIUsageEntry
+	if err := json.Unmarshal([]byte(`{"at":"demo","endpoint":"chat","est_input_tokens":10,"est_output_tokens":5}`), &lama); err != nil {
+		t.Fatal(err)
+	}
+	if lama.LLMPromptTokens != nil || lama.LLMCompletionTokens != nil || lama.LLMReasoningTokens != nil {
+		t.Errorf("entri lama harus terbaca dengan token aktual nil: %+v", lama)
 	}
 }
 
@@ -81,6 +122,11 @@ func TestBiayaButuhDB(t *testing.T) {
 	llm := obj(r["llm"])
 	if llm["calls"] != 0.0 || llm["est_cost_usd"] != 0.0 || llm["label"] != "estimasi" {
 		t.Errorf("ringkasan LLM kosong tidak sesuai: %v", llm)
+	}
+	aktual := obj(r["llm_aktual"])
+	if aktual["calls"] != 0.0 || aktual["prompt_tokens"] != 0.0 || aktual["completion_tokens"] != 0.0 ||
+		aktual["reasoning_tokens"] != 0.0 || aktual["label"] != "aktual" {
+		t.Errorf("ringkasan LLM aktual kosong tidak sesuai: %v", aktual)
 	}
 	total := obj(r["items_total_by_currency"])
 	if total["IDR"] != 0.0 || total["USD"] != 0.0 {
@@ -149,6 +195,11 @@ func TestBiayaDenganDB(t *testing.T) {
 	if llm["est_input_tokens"].(float64) <= 0 || llm["est_output_tokens"].(float64) <= 0 {
 		t.Errorf("estimasi token harus positif: %v", llm)
 	}
+	aktual := obj(r["llm_aktual"])
+	if aktual["calls"] != 3.0 || aktual["prompt_tokens"] != 735.0 || aktual["completion_tokens"] != 3399.0 ||
+		aktual["reasoning_tokens"] != 3108.0 || aktual["label"] != "aktual" {
+		t.Errorf("ringkasan token LLM aktual tidak sesuai: %v", aktual)
+	}
 	total := obj(r["items_total_by_currency"])
 	if total["IDR"] != 1500000.0 || total["USD"] != 5.0 {
 		t.Errorf("total item tidak sesuai: %v", total)
@@ -167,6 +218,11 @@ func TestBiayaDenganDB(t *testing.T) {
 		perEndpoint[en.Endpoint]++
 		if en.At != formatWaktu(waktuDemo) {
 			t.Errorf("stempel log harus jam demo: %v", en)
+		}
+		if en.LLMPromptTokens == nil || *en.LLMPromptTokens != 245 ||
+			en.LLMCompletionTokens == nil || *en.LLMCompletionTokens != 1133 ||
+			en.LLMReasoningTokens == nil || *en.LLMReasoningTokens != 1036 {
+			t.Errorf("token aktual pada log pemakaian tidak sesuai: %+v", en)
 		}
 	}
 	if perEndpoint["narrate"] != 1 || perEndpoint["chat"] != 1 || perEndpoint["explain"] != 1 {

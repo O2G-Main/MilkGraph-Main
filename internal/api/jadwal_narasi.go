@@ -233,7 +233,7 @@ func (s *Server) narasiJadwal(ctx context.Context, versi *int) (any, error) {
 		slog.Warn("panggilan layanan AI gagal", "error", err)
 		return nil, &apiError{502, "AI_UNAVAILABLE", "Layanan AI tidak dapat dihubungi.", ""}
 	}
-	s.catatPemakaianAI(ctx, "explain", req, resp)
+	s.catatPemakaianAI(ctx, "explain", req, resp, resp.LLMUsage)
 	return keMap(resp), nil
 }
 

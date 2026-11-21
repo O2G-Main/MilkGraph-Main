@@ -8,6 +8,14 @@ import (
 	"testing"
 )
 
+func nilaiTokenUji(t *testing.T, v *int) int {
+	t.Helper()
+	if v == nil {
+		t.Fatal("token aktual tidak boleh nil")
+	}
+	return *v
+}
+
 func TestNarrateRootCauseMengirimTokenDanMemparsingRespons(t *testing.T) {
 	var gotToken, gotPath string
 	var gotBody NarrateRequest
@@ -24,7 +32,8 @@ func TestNarrateRootCauseMengirimTokenDanMemparsingRespons(t *testing.T) {
 			"sumber": "jev",
 			"label_data": "simulasi",
 			"jev": {"pilihan": "SUMBER_RT04", "confidence": 0.9},
-			"selisih_dengan_be": false
+			"selisih_dengan_be": false,
+			"llm_usage": {"prompt_tokens": 245, "completion_tokens": 1133, "reasoning_tokens": 1036}
 		}`))
 	}))
 	defer srv.Close()
@@ -54,6 +63,11 @@ func TestNarrateRootCauseMengirimTokenDanMemparsingRespons(t *testing.T) {
 	}
 	if resp.PenyebabUtama != "SUMBER_RT04" || resp.Sumber != "jev" || resp.SelisihDenganBE {
 		t.Errorf("respons terparsing tidak sesuai: %+v", resp)
+	}
+	if resp.LLMUsage == nil || nilaiTokenUji(t, resp.LLMUsage.PromptTokens) != 245 ||
+		nilaiTokenUji(t, resp.LLMUsage.CompletionTokens) != 1133 ||
+		nilaiTokenUji(t, resp.LLMUsage.ReasoningTokens) != 1036 {
+		t.Errorf("llm_usage tidak terparsing dengan benar: %+v", resp.LLMUsage)
 	}
 	var jev struct {
 		Pilihan string `json:"pilihan"`

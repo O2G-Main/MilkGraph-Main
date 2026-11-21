@@ -17,7 +17,7 @@ func TestExplainMengirimTokenDanMemparsingRespons(t *testing.T) {
 		gotPath = r.URL.Path
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"batch_id":"SCH-20261014-v2","penjelasan":"Penjelasan uji.","sumber":"jev","label_data":"simulasi","jev":{"keyakinan_skor":75,"risiko_jika_ditunda":0.83,"model":"jev-1.14.0"}}`))
+		_, _ = w.Write([]byte(`{"batch_id":"SCH-20261014-v2","penjelasan":"Penjelasan uji.","sumber":"jev","label_data":"simulasi","jev":{"keyakinan_skor":75,"risiko_jika_ditunda":0.83,"model":"jev-1.14.0"},"llm_usage":{"prompt_tokens":300,"completion_tokens":450,"reasoning_tokens":200}}`))
 	}))
 	defer srv.Close()
 
@@ -50,6 +50,11 @@ func TestExplainMengirimTokenDanMemparsingRespons(t *testing.T) {
 	}
 	if resp.Penjelasan != "Penjelasan uji." || resp.Sumber != "jev" || resp.LabelData != "simulasi" {
 		t.Errorf("respons terparsing tidak sesuai: %+v", resp)
+	}
+	if resp.LLMUsage == nil || nilaiTokenUji(t, resp.LLMUsage.PromptTokens) != 300 ||
+		nilaiTokenUji(t, resp.LLMUsage.CompletionTokens) != 450 ||
+		nilaiTokenUji(t, resp.LLMUsage.ReasoningTokens) != 200 {
+		t.Errorf("llm_usage explain tidak terparsing dengan benar: %+v", resp.LLMUsage)
 	}
 	if !strings.Contains(string(resp.Jev), `"keyakinan_skor":75`) {
 		t.Errorf("jev mentah harus diteruskan apa adanya: %s", resp.Jev)

@@ -16,7 +16,7 @@ func TestChatMengirimTokenDanMemparsingRespons(t *testing.T) {
 		gotPath = r.URL.Path
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"jawaban":"Jawaban uji.","sumber":"jev","label_data":"simulasi"}`))
+		_, _ = w.Write([]byte(`{"jawaban":"Jawaban uji.","sumber":"jev","label_data":"simulasi","llm_usage":{"prompt_tokens":120,"completion_tokens":80,"reasoning_tokens":null}}`))
 	}))
 	defer srv.Close()
 
@@ -40,6 +40,10 @@ func TestChatMengirimTokenDanMemparsingRespons(t *testing.T) {
 	}
 	if resp.Jawaban != "Jawaban uji." || resp.Sumber != "jev" || resp.LabelData != "simulasi" {
 		t.Errorf("respons terparsing tidak sesuai: %+v", resp)
+	}
+	if resp.LLMUsage == nil || nilaiTokenUji(t, resp.LLMUsage.PromptTokens) != 120 ||
+		nilaiTokenUji(t, resp.LLMUsage.CompletionTokens) != 80 || resp.LLMUsage.ReasoningTokens != nil {
+		t.Errorf("llm_usage chat tidak terparsing dengan benar: %+v", resp.LLMUsage)
 	}
 }
 

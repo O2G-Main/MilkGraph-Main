@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"milkgraph/internal/ai"
 	"milkgraph/internal/store"
 )
 
@@ -17,9 +18,11 @@ import (
 // Backend ke service AI yang berhasil dicatat dengan ESTIMASI token dari
 // ukuran payload JSON (panjang byte / 4, dibulatkan ke atas). Ini estimasi
 // kasar untuk rincian biaya proposal, bukan angka tagihan TypeSafe; label
-// "estimasi" selalu menyertai ringkasannya. Kedua, item biaya manual
-// (entity "cost-item"): charging post, deployment, LLM, dan lainnya yang
-// diisi tim lewat API.
+// "estimasi" selalu menyertai ringkasannya. Bila layanan AI mengembalikan
+// llm_usage, token LLM aktual dari provider juga disimpan di entri yang sama
+// dan diringkas terpisah dengan label "aktual", tanpa konversi mata uang.
+// Kedua, item biaya manual (entity "cost-item"): charging post, deployment,
+// LLM, dan lainnya yang diisi tim lewat API.
 //
 // Tarif LLM yang dipakai: USD 42 per 1 miliar token input, output gratis
 // (harga TypeSafe terverifikasi 2026-11-18).
@@ -38,6 +41,12 @@ type AIUsageEntry struct {
 	Endpoint        string `json:"endpoint"` // narrate | chat | explain
 	EstInputTokens  int    `json:"est_input_tokens"`
 	EstOutputTokens int    `json:"est_output_tokens"`
+	// Token berikut berasal dari llm_usage provider dan hanya terisi bila
+	// layanan AI melaporkannya. Pointer membedakan "tidak dilaporkan" pada
+	// entri lama atau panggilan tanpa LLM dari nilai aktual nol.
+	LLMPromptTokens     *int `json:"llm_prompt_tokens,omitempty"`
+	LLMCompletionTokens *int `json:"llm_completion_tokens,omitempty"`
+	LLMReasoningTokens  *int `json:"llm_reasoning_tokens,omitempty"`
 }
 
 type CostItem struct {
@@ -56,9 +65,12 @@ func estimasiToken(nBytes int) int {
 }
 
 // catatPemakaianAI mencatat satu panggilan service AI yang berhasil ke log
-// pemakaian. Best-effort: tanpa DB tidak dicatat, dan kegagalan pencatatan
-// hanya ditulis ke log server, tidak pernah menggagalkan respons pengguna.
-func (s *Server) catatPemakaianAI(ctx context.Context, endpoint string, reqPayload, respPayload any) {
+// pemakaian. Estimasi token selalu dihitung dari ukuran payload seperti
+// sebelumnya. Usage LLM boleh nil; bila tersedia, angka aktualnya disalin
+// apa adanya ke entri. Best-effort: tanpa DB tidak dicatat, dan kegagalan
+// pencatatan hanya ditulis ke log server, tidak pernah menggagalkan respons
+// pengguna.
+func (s *Server) catatPemakaianAI(ctx context.Context, endpoint string, reqPayload, respPayload any, usage *ai.LLMUsage) {
 	if s.DB == nil {
 		return
 	}
@@ -72,6 +84,11 @@ func (s *Server) catatPemakaianAI(ctx context.Context, endpoint string, reqPaylo
 		Endpoint:        endpoint,
 		EstInputTokens:  estimasiToken(len(reqJSON)),
 		EstOutputTokens: estimasiToken(len(respJSON)),
+	}
+	if usage != nil {
+		entry.LLMPromptTokens = usage.PromptTokens
+		entry.LLMCompletionTokens = usage.CompletionTokens
+		entry.LLMReasoningTokens = usage.ReasoningTokens
 	}
 	_, err := s.change(context.WithoutCancel(ctx), "ai-usage", "current", func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {
 		list := []AIUsageEntry{}
@@ -127,6 +144,41 @@ func hitungBiayaLLM(entries []AIUsageEntry) RingkasanLLM {
 	return out
 }
 
+// RingkasanLLMAktual adalah agregat token LLM yang benar-benar dilaporkan
+// provider. Bagian ini sengaja tidak membawa angka uang karena tarif resmi
+// provider LLM belum tersedia sebagai rate card yang dapat dirujuk kode.
+type RingkasanLLMAktual struct {
+	Calls            int    `json:"calls"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	ReasoningTokens  int    `json:"reasoning_tokens"`
+	Label            string `json:"label"`
+}
+
+func nilaiTokenAktual(v *int) int {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+// hitungLLMAktual hanya menghitung entri yang memiliki setidaknya satu
+// token aktual. Entri lama tanpa field LLM tetap aman dan tidak dianggap
+// sebagai panggilan LLM aktual.
+func hitungLLMAktual(entries []AIUsageEntry) RingkasanLLMAktual {
+	out := RingkasanLLMAktual{Label: "aktual"}
+	for _, e := range entries {
+		if e.LLMPromptTokens == nil && e.LLMCompletionTokens == nil && e.LLMReasoningTokens == nil {
+			continue
+		}
+		out.Calls++
+		out.PromptTokens += nilaiTokenAktual(e.LLMPromptTokens)
+		out.CompletionTokens += nilaiTokenAktual(e.LLMCompletionTokens)
+		out.ReasoningTokens += nilaiTokenAktual(e.LLMReasoningTokens)
+	}
+	return out
+}
+
 // totalItemPerMataUang menjumlahkan item biaya per mata uang; IDR dan USD
 // selalu hadir sebagai kunci walau totalnya nol.
 func totalItemPerMataUang(items []CostItem) map[string]float64 {
@@ -143,6 +195,7 @@ func totalItemPerMataUang(items []CostItem) map[string]float64 {
 // RingkasanBiaya adalah bentuk respons GET /api/v1/costs.
 type RingkasanBiaya struct {
 	LLM                  RingkasanLLM       `json:"llm"`
+	LLMAktual            RingkasanLLMAktual `json:"llm_aktual"`
 	ItemsTotalByCurrency map[string]float64 `json:"items_total_by_currency"`
 	Items                []CostItem         `json:"items"`
 }
@@ -215,6 +268,7 @@ func (s *Server) registerBiaya(register func(string, string, endpoint)) {
 		}
 		return RingkasanBiaya{
 			LLM:                  hitungBiayaLLM(entries),
+			LLMAktual:            hitungLLMAktual(entries),
 			ItemsTotalByCurrency: totalItemPerMataUang(items),
 			Items:                items,
 		}, nil
