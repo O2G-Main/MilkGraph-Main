@@ -18,17 +18,44 @@ import (
 // disimpan di state store (entity "transfer", id "current", satu dokumen
 // berisi daftar terbaru di depan, pola yang sama dengan holds). Selisih
 // selalu dihitung server, tidak dipercaya dari klien.
+//
+// Rantai Volume per Batch: setiap transfer kini membawa "step" (tahap
+// rantai: penerimaan, transfer, pemrosesan, filling, pengemasan) dan
+// from_ref/to_ref divalidasi ke ref yang dikenal Backend (katalog master,
+// id seed demo, atau RT pada jadwal kedatangan). Agregasi saldo per alat,
+// catatan output produksi, dan rantai volume per batch ada di
+// rantai_volume.go; catatan transfer tetap satu-satunya sumber kebenaran
+// volume, tidak ada saldo yang disimpan terpisah.
 
 type TransferRecord struct {
 	ID         string  `json:"id"`
 	BatchID    string  `json:"batch_id"`
 	FromRef    string  `json:"from_ref"`
 	ToRef      string  `json:"to_ref"`
+	Step       string  `json:"step"`
 	VolumeOutL float64 `json:"volume_out_l"`
 	VolumeInL  float64 `json:"volume_in_l"`
 	SelisihL   float64 `json:"selisih_l"`
 	Source     string  `json:"source"`
 	RecordedAt string  `json:"recorded_at"`
+}
+
+// langkahTransferValid adalah kosakata tahap rantai volume.
+var langkahTransferValid = map[string]bool{
+	"penerimaan": true,
+	"transfer":   true,
+	"pemrosesan": true,
+	"filling":    true,
+	"pengemasan": true,
+}
+
+// stepTransfer menormalisasi tahap transfer: nilai kosong (termasuk
+// catatan lama yang tersimpan sebelum field ini ada) berarti "transfer".
+func stepTransfer(s string) string {
+	if s == "" {
+		return "transfer"
+	}
+	return s
 }
 
 // selisihTransfer menghitung kehilangan volume pada satu transfer:
@@ -46,6 +73,7 @@ func (s *Server) transfers(ctx context.Context, batchID string) ([]TransferRecor
 	out := []TransferRecord{}
 	for _, tr := range list {
 		if batchID == "" || tr.BatchID == batchID {
+			tr.Step = stepTransfer(tr.Step)
 			out = append(out, tr)
 		}
 	}
@@ -64,6 +92,7 @@ func (s *Server) registerTransfers(register func(string, string, endpoint)) {
 			BatchID    string   `json:"batch_id"`
 			FromRef    string   `json:"from_ref"`
 			ToRef      string   `json:"to_ref"`
+			Step       string   `json:"step"`
 			VolumeOutL *float64 `json:"volume_out_l"`
 			VolumeInL  *float64 `json:"volume_in_l"`
 			Source     string   `json:"source"`
@@ -80,6 +109,20 @@ func (s *Server) registerTransfers(register func(string, string, endpoint)) {
 		}
 		if strings.TrimSpace(b.ToRef) == "" {
 			return nil, invalid("Alat tujuan wajib diisi.", "to_ref")
+		}
+		step := stepTransfer(b.Step)
+		if !langkahTransferValid[step] {
+			return nil, invalid("Step transfer tidak dikenal: "+b.Step, "step")
+		}
+		arrivals, e := s.rtArrivals(r.Context())
+		if e != nil {
+			return nil, e
+		}
+		if e := s.validasiRef(r.Context(), b.FromRef, "from_ref", arrivals); e != nil {
+			return nil, e
+		}
+		if e := s.validasiRef(r.Context(), b.ToRef, "to_ref", arrivals); e != nil {
+			return nil, e
 		}
 		if b.VolumeOutL == nil || *b.VolumeOutL < 0 {
 			return nil, invalid("Volume keluar tidak boleh negatif.", "volume_out_l")
@@ -113,6 +156,7 @@ func (s *Server) registerTransfers(register func(string, string, endpoint)) {
 				BatchID:    b.BatchID,
 				FromRef:    b.FromRef,
 				ToRef:      b.ToRef,
+				Step:       step,
 				VolumeOutL: *b.VolumeOutL,
 				VolumeInL:  *b.VolumeInL,
 				SelisihL:   selisihTransfer(*b.VolumeOutL, *b.VolumeInL),

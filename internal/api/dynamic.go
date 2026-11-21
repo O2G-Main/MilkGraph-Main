@@ -123,8 +123,9 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		if e := decode(r, &b); e != nil {
 			return nil, e
 		}
-		// Pilihan role demo membaca registri Tahap 3: tujuh role bawaan
-		// matriks dan role kustom Superadmin semuanya dapat dipilih.
+		// Pilihan role demo membaca registri Tahap 3: role bawaan
+		// matriks (termasuk manager) dan role kustom Superadmin
+		// semuanya dapat dipilih.
 		reg, e := s.roleRegistry(r.Context())
 		if e != nil {
 			return nil, e
@@ -459,6 +460,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	s.registerHolds(register)
 	s.registerRTArrivals(register)
 	s.registerTransfers(register)
+	s.registerRantaiVolume(register)
 	s.registerPOs(register)
 	s.registerSchedules(register)
 	s.registerDashboard(register)
