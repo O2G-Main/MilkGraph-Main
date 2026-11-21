@@ -15,7 +15,12 @@ type SeedData struct {
 	Roles    map[string]any
 	Limits   map[string]any
 	Golden   map[string]any
-	mu       sync.RWMutex
+	// SkenarioNov adalah skenario demo 1 Nov 2026 dari data historis
+	// Greenfields (snapshot stok tangki Opening Inventory). Ia berdiri di
+	// samping Scenario lama (14 Okt 2026), tidak menggantikannya. Bentuk
+	// bertipe dan aksesnya ada di scenario_nov.go.
+	SkenarioNov map[string]any
+	mu          sync.RWMutex
 }
 
 func loadJSON(filename string) (map[string]any, error) {
@@ -55,13 +60,18 @@ func LoadAllSeeds() (*SeedData, error) {
 	if err != nil {
 		return nil, err
 	}
+	skenarioNov, err := loadJSON("scenario-2026-11-01.json")
+	if err != nil {
+		return nil, err
+	}
 
 	return &SeedData{
-		Scenario: scenario,
-		Ops:      ops,
-		Site:     site,
-		Roles:    roles,
-		Limits:   limits,
-		Golden:   golden,
+		Scenario:    scenario,
+		Ops:         ops,
+		Site:        site,
+		Roles:       roles,
+		Limits:      limits,
+		Golden:      golden,
+		SkenarioNov: skenarioNov,
 	}, nil
 }
