@@ -69,10 +69,11 @@ Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backe
 
 ### 5.2 Peran dan hak akses (`lib/roles.ts`)
 
-Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC, dan Koordinator receiving. Supervisor produksi dan QA/Lab masih memakai hak akses lama sampai didefinisikan.
+Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC, Koordinator receiving, dan Lab (dulu QA/Lab, id `lab`). Peran QA (id `qa`) menyusul dan akan memegang rilis/tolak RT serta keputusan hold; sampai itu hanya Superadmin yang bisa. Supervisor produksi masih memakai hak akses lama.
 
-| Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Supervisor produksi | QA/Lab |
+| Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Supervisor produksi | Lab |
 |---|---|---|---|---|---|
+| Masukkan dan perbarui hasil pemeriksaan lab (RT dan batch tangki) | ya | | | | ya |
 | Tambah/ubah jadwal kedatangan RT, estimasi tiba, status perjalanan | ya | | ya | | |
 | Catat kedatangan aktual, awal umur susu, dan proses bongkar | ya | | ya | | |
 | Catat transfer susu dari RT ke tangki penerimaan | ya | | ya | | |
@@ -83,9 +84,9 @@ Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC
 | Setujui/tolak rekomendasi rencana | ya | ya | | | |
 | Ubah batas constraint | ya | ya | | | |
 | Konfirmasi instruksi dari rencana disetujui | ya | | ya (instruksi bay) | ya (instruksi filling) | |
-| Ajukan daftar hold | ya | | | ya | ya |
-| Setujui/tolak/lepas hold | ya | | | | ya |
-| Rilis/tolak hasil lab RT | ya | | | | ya |
+| Ajukan daftar hold | ya | | | ya | |
+| Setujui/tolak/lepas hold (QA menyusul) | ya | | | | |
+| Rilis/tolak hasil lab RT (QA menyusul) | ya | | | | |
 | Kelola pengguna dan hak akses peran | ya | | | | |
 | Kelola master data, konfigurasi integrasi | ya | | | | |
 | Lihat riwayat seluruh perubahan dan persetujuan | ya | ya | ya | ya | ya |
@@ -94,12 +95,15 @@ Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC
 - Superadmin: semua menu.
 - Planner PPIC: tanpa QC Barang Jadi, Master Alat, Sumber Data, dan Pengguna & Peran. Penerimaan, Kondisi Alat, dan Traceability hanya untuk dilihat. Beranda Planner menampilkan KPI kelayakan rencana, jadwal, kecukupan susu, dan lini filling jalan, lalu daftar keputusan diurutkan dari yang paling mendesak.
 - Koordinator receiving: hanya Beranda, Penerimaan (Jadwal Kedatangan RT, Antrean Truk, Transfer & Volume, Tes Lab untuk dilihat), dan Kondisi Alat (termasuk Bay & Tangki untuk melihat kesiapan bay dan tangki serta mengonfirmasi instruksi bay). Riwayat Persetujuan tetap bisa dibuka lewat Beranda. Beranda receiving menampilkan KPI RT di plant, holding paling mendesak, bay siap, dan ruang tangki penerimaan, lalu daftar urut urgensi: RT dekat batas holding, instruksi bay, bay CIP, tangki hampir penuh, transfer yang belum dicatat, tunggu lab, dan RT berikutnya.
+- Lab: hanya Beranda, Antrean Truk (dengan kartu "Perlu diperiksa lab" di atas), dan Tes Lab. Beranda Lab menampilkan KPI sampel yang perlu diperiksa, RT tertua di lab, out-of-spec, dan yang menunggu keputusan QA, lalu daftar urut urgensi: hasil out-of-spec, RT dari umur susu tertua, RT yang belum disampel, batch tangki yang menunggu uji, dan hasil lengkap yang menunggu QA.
+
+Lab: Tes Lab memuat sampel RT dan batch tangki proses (ST-6, MX-1). Lab membuat sampel untuk RT yang baru tiba dan memasukkan nilai serta hasil tiap parameter (dalam batas, di luar batas, masih berjalan), bisa menandai uji ulang. Status sampel dihitung dari parameternya: ada yang di luar batas → out-of-spec; ditandai uji ulang → uji ulang; masih ada yang berjalan → dalam uji; semua dalam batas → menunggu keputusan QA. Hasil tercatat di Riwayat Persetujuan dengan jenis Uji lab.
 
 Penerimaan: RT yang dicatat tiba pindah dari jadwal ke antrean di tahap Sampling. Bongkar hanya bisa dimulai setelah RT dirilis lab, di bay yang tidak sedang CIP atau dipakai RT lain. Umur susu berhenti dihitung saat bongkar selesai. Transfer ditolak bila melebihi sisa ruang tangki dan diberi peringatan bila selisih dengan volume timbang lebih dari 0,5%.
 
 Aturan Produksi ikut dipakai di cek kelayakan Rencana: durasi changeover menimpa SOP, dan CIP bay yang lebih pendek dari standar diperpanjang sampai standar.
 
-Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Supervisor produksi), Sri Lestari (QA/Lab). Superadmin bisa menambah pengguna dan mengubah matriks hak akses di Pengguna & Peran.
+Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Supervisor produksi), Sri Lestari (Lab). Superadmin bisa menambah pengguna dan mengubah matriks hak akses di Pengguna & Peran.
 
 ### 5.3 Isi per halaman
 

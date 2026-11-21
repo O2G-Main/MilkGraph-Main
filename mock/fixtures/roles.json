@@ -24,11 +24,11 @@
       "initials": "HK",
       "focus": "Lokasi bottleneck dan dampaknya ke lini filling."
     },
-    "qa": {
-      "label": "QA/Lab",
+    "lab": {
+      "label": "Lab",
       "user": "Sri Lestari",
       "initials": "SL",
-      "focus": "Hasil lab, lot terdampak beserta proporsi volume, dan daftar hold."
+      "focus": "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab."
     }
   },
   "permissions": {
@@ -74,6 +74,13 @@
         "receiving"
       ]
     },
+    "lab.record": {
+      "label": "Memasukkan dan memperbarui hasil pemeriksaan lab",
+      "roles": [
+        "superadmin",
+        "lab"
+      ]
+    },
     "demand.send": {
       "label": "Mengirim kebutuhan susu ke farm",
       "roles": [
@@ -107,22 +114,19 @@
       "label": "Mengajukan daftar hold dari hasil trace",
       "roles": [
         "superadmin",
-        "supervisor",
-        "qa"
+        "supervisor"
       ]
     },
     "hold.review": {
       "label": "Menyetujui, menolak, atau melepas hold",
       "roles": [
-        "superadmin",
-        "qa"
+        "superadmin"
       ]
     },
     "lab.decide": {
       "label": "Merilis atau menolak hasil lab penerimaan RT",
       "roles": [
-        "superadmin",
-        "qa"
+        "superadmin"
       ]
     },
     "users.manage": {
@@ -150,7 +154,7 @@
         "planner",
         "receiving",
         "supervisor",
-        "qa"
+        "lab"
       ]
     }
   }

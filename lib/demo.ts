@@ -4,6 +4,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { DEFAULT_LIMITS, SOP_CHANGEOVER, setProductionRules, type Limits } from "@/lib/rules";
 import { CIP_STANDARD, PAPER_STANDARD, type CipGroup, type ProductionRules, type ScheduleItem } from "@/lib/production";
 import { ARRIVAL_STATUS, clock, type Arrival, type ReceivingState, type RtRecord, type Transfer } from "@/lib/receiving";
+import { BATCH_SAMPLES, type LabState } from "@/lib/lab";
+import type { LabParam, LabResult } from "@/mock/ops";
 import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
 import type { Lot } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
@@ -12,7 +14,7 @@ import { createActions } from "@/lib/api/actions";
 import { mapApiState } from "@/lib/api/demo-state";
 import { invalidateResources, onApiEvent, setActiveRole, startEventStream } from "@/lib/api/resource";
 
-export type LogKind = "rencana" | "jadwal" | "aturan" | "penerimaan" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
+export type LogKind = "rencana" | "jadwal" | "aturan" | "penerimaan" | "uji" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
 export interface LogEntry { id: number; kind: LogKind; title: string; detail: string; note: string; by: string; role: string; at: string; tone: "ok" | "warn" | "crit" | "neutral" }
 /** adjust: pengaturan alat (mis. upgrade UHT-2) yang ikut dihitung saat keputusan diambil. */
 export interface PlanDecision { plan: string; status: "approved" | "rejected"; note: string; by: string; at: string; adjust?: string }
@@ -20,12 +22,12 @@ export type HoldStatus = "diajukan" | "aktif" | "ditolak" | "dilepas";
 export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; note: string; status: HoldStatus; by: string; at: string; review?: { note: string; by: string; at: string } }
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
 export interface DemoUser { id: string; name: string; role: RoleId; active: boolean }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
 const ACCOUNT_KEY = "milkgraph-account";
-const readAccount = () => { try { return localStorage.getItem(ACCOUNT_KEY); } catch { return null; } };
+const readAccount = () => { try { const a = localStorage.getItem(ACCOUNT_KEY); return a === "USR-qa" ? "USR-lab" : a; } catch { return null; } };
 const USERS: DemoUser[] = ROLE_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true }));
 /** Jadwal shift awal [simulasi]: F5 sengaja melebihi kapasitas karena baru jalan setelah UHT-3 CIP. */
 const SCHEDULE: ScheduleItem[] = [
@@ -59,7 +61,7 @@ const RECEIVING: ReceivingState = {
   ],
 };
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES } });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -80,7 +82,10 @@ function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as DemoState | null;
     state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits } } : initial(Date.now());
-    if (!(state.role in ROLES)) state = { ...state, role: "planner" };
+    // Peran "qa" lama (QA/Lab) sekarang bernama "lab"; peran lain yang tidak dikenal jatuh ke Planner.
+    const fix = (r: string) => (r in ROLES ? r : r === "qa" ? "lab" : "planner") as RoleId;
+    state = { ...state, role: fix(state.role), users: state.users.map(u => ({ ...u, role: fix(u.role), ...(u.id === "USR-qa" ? { id: "USR-lab" } : {}) })),
+      access: Object.fromEntries(Object.entries(state.access).map(([k, v]) => [k, (v ?? []).map(fix)])) };
   } catch { state = initial(Date.now()); }
   state = { ...state, account: readAccount() };
   setAccess(state.access);
@@ -119,7 +124,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving });
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -354,4 +359,18 @@ export const updateRtRecord = (id: string, patch: RtRecord, title: string, detai
 export const addTransfer = (t: Omit<Transfer, "id" | "counted">) => act(
   s => recv(s, { transfers: [...s.receiving.transfers, { ...t, id: `TRF-${String(s.receiving.transfers.length + 1).padStart(2, "0")}`, counted: false }] }),
   { kind: "penerimaan", title: "Transfer susu dicatat", detail: `${t.rt} ke ${t.tank}, ${num(t.volume)} L, ${clock(t.start)}-${clock(t.end)}`, note: "", tone: "ok" },
+);
+
+/** Lab: memasukkan hasil uji per sampel. Tersimpan di browser; mode API belum punya endpoint-nya. */
+export const saveLabEntry = (sample: Pick<LabResult, "id" | "subject">, params: LabParam[], retest: boolean) => act(
+  (s, at) => ({ lab: { ...s.lab, entries: { ...s.lab.entries, [sample.id]: { params, retest, by: ROLES[s.role].user, at } } } }),
+  {
+    kind: "uji", title: params.some(p => p.ok === false) ? "Hasil uji out-of-spec" : retest ? "Uji ulang ditandai" : params.some(p => p.ok === null) ? "Hasil uji diperbarui" : "Hasil uji lengkap",
+    detail: `${sample.subject} (${sample.id}): ${params.filter(p => p.ok !== null).length} dari ${params.length} parameter selesai${params.some(p => p.ok === false) ? `, gagal: ${params.filter(p => p.ok === false).map(p => p.name).join(", ")}` : ""}`,
+    note: "", tone: params.some(p => p.ok === false) ? "crit" : retest ? "warn" : "neutral",
+  },
+);
+export const addLabSample = (sample: LabResult) => act(
+  s => ({ lab: { ...s.lab, samples: [...s.lab.samples, sample] } }),
+  { kind: "uji", title: "Sampel baru dibuat", detail: `${sample.subject} (${sample.id}), diambil ${sample.sampled}`, note: "", tone: "neutral" },
 );

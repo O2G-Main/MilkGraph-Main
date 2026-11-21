@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, CalendarRange, ChevronRight, Container, Droplets, Factory, FlaskConical, Hourglass, PackageX, Send, ShieldAlert, TriangleAlert, Truck, Wrench, type LucideIcon } from "lucide-react";
 import { applyQueue, clock, tankRoom } from "@/lib/receiving";
+import { mergeLab } from "@/lib/lab";
 import { scenario } from "@/lib/data";
 import { duration } from "@/lib/format";
 import { useDemo } from "@/lib/demo";
@@ -125,14 +126,40 @@ export function Beranda() {
     ...inPlant.filter(r => r.stage === "Lab test" && r.wait >= 60).map(r => ({ icon: FlaskConical, title: `${r.id} menunggu lab ${r.wait} menit`, meta: "Belum bisa dibongkar sebelum dirilis QA", tone: "neutral" as Tone, href: "/lab" })),
     ...coming.slice(0, 2).map(a => ({ icon: Truck, title: `${a.id} tiba pukul ${clock(a.eta)}`, meta: `${a.farm}, ${fmt(a.volume)} L. Siapkan sampling`, tone: "neutral" as Tone, href: "/kedatangan" })),
   ];
-  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : attention;
-  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : null;
+  // Lab: urutan urgensi = hasil out-of-spec yang harus diteruskan ke QA, RT yang umur susunya paling tua, RT yang belum disampel, lalu batch proses yang tertahan.
+  const isLab = demo.role === "lab";
+  const samples = mergeLab(labResults, demo.lab).filter(s => s.kind !== "qc-fg" && !demo.labs[s.id]);
+  const rtLab = queue.filter(r => r.stage === "Sampling" || r.stage === "Lab test").sort((a, b) => b.ageMin - a.ageMin);
+  const sampleOf = (rt: string) => samples.find(s => s.subject === rt);
+  const rtPending = rtLab.filter(r => { const s = sampleOf(r.id); return !s || s.status === "dalam-uji" || s.status === "uji-ulang"; });
+  const batchPending = samples.filter(s => s.kind === "batch" && (s.status === "dalam-uji" || s.status === "uji-ulang"));
+  const outOfSpec = samples.filter(s => s.status === "positif" && s.kind !== "qc-fg");
+  const readyForQa = samples.filter(s => s.status === "hasil-siap");
+  const oldest = rtLab[0];
+  const labKpis: typeof plannerKpis = [
+    { icon: FlaskConical, label: "Perlu diperiksa", value: String(rtPending.length + batchPending.length), unit: "sampel", note: `${rtPending.length} RT, ${batchPending.length} batch tangki`, tone: rtPending.length + batchPending.length ? "warn" : "ok", href: "/lab" },
+    { icon: Hourglass, label: "RT tertua di lab", value: oldest ? duration(Math.max(0, demo.limits.holdingMin - oldest.ageMin)) : "-", unit: oldest ? "sisa holding" : "", note: oldest ? `${oldest.id}, umur susu ${oldest.age}` : "Tidak ada RT di lab", tone: oldest?.tone ?? "ok", href: "/receiving" },
+    { icon: ShieldAlert, label: "Out-of-spec", value: String(outOfSpec.length), unit: "sampel", note: outOfSpec.length ? "Teruskan ke QA untuk diputuskan" : "Belum ada hasil di luar batas", tone: outOfSpec.length ? "crit" : "ok", href: "/lab" },
+    { icon: Container, label: "Menunggu keputusan QA", value: String(readyForQa.length), unit: "sampel", note: `Rata-rata tunggu lab ${lab.value} ${lab.unit}`, tone: "neutral", href: "/lab" },
+  ];
+  const labAttention: Item[] = [
+    ...outOfSpec.map(s => ({ icon: ShieldAlert, title: `${s.subject} out-of-spec`, meta: `${s.params.filter(p => p.ok === false).map(p => `${p.name} ${p.value}`).join(", ")}. Teruskan ke QA`, tone: "crit" as Tone, href: `/lab?sampel=${s.id}` })),
+    ...rtPending.map(r => {
+      const s = sampleOf(r.id);
+      return { icon: Truck, title: s ? `${r.id} ${s.status === "uji-ulang" ? "perlu uji ulang" : "dalam uji"}` : `${r.id} belum disampel`, meta: `Sisa holding ${duration(Math.max(0, demo.limits.holdingMin - r.ageMin))}${s ? `, ${s.params.filter(p => p.ok !== null).length} dari ${s.params.length} parameter selesai` : ". Buat sampel di Tes Lab"}`, tone: r.tone as Tone, href: s ? `/lab?sampel=${s.id}` : "/lab" };
+    }),
+    ...batchPending.map(s => ({ icon: FlaskConical, title: `Batch ${s.subject} menunggu uji`, meta: `${s.detail}. ${s.params.filter(p => p.ok === null).map(p => p.name).join(", ")} belum selesai`, tone: "warn" as Tone, href: `/lab?sampel=${s.id}` })),
+    ...readyForQa.slice(0, 2).map(s => ({ icon: Container, title: `${s.subject} hasil lengkap`, meta: "Semua parameter dalam batas, menunggu keputusan QA", tone: "neutral" as Tone, href: `/lab?sampel=${s.id}` })),
+  ];
+  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : attention;
+  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : null;
   const seePlan = canSee(demo.role, "/rencana");
 
   return <div className="page-enter">
     <PageHeading title="Beranda" subtitle={isPlanner
       ? `Halo, ${me.user.split(" ")[0]}. Kelayakan rencana, jadwal, dan pasokan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isReceiving ? `Halo, ${me.user.split(" ")[0]}. RT di plant, bay, tangki, dan kedatangan berikutnya Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
+      : isLab ? `Halo, ${me.user.split(" ")[0]}. Sampel RT dan batch yang perlu diperiksa Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
     {kpis
       ? <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
@@ -143,9 +170,9 @@ export function Beranda() {
         <h2>{approved ? <>Rekomendasi disetujui,<br />RT-26 pindah ke Bay 1.</> : <>Rencana tidak layak,<br />{broken} constraint dilanggar.</>}</h2>
         <div className="incident-time"><span><Icon icon={Hourglass} size={15} />Sisa holding time RT-26</span><strong>{duration(left)}</strong></div>
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
-        <Link href={seePlan ? "/rencana" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
+        <Link href={seePlan ? "/rencana" : isLab ? "/lab" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
       </section>
-      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : "Perlu perhatian"} subtitle={isPlanner || isReceiving ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
       </Card>
     </div>

@@ -1592,9 +1592,9 @@ html:has(.login-page) { background: var(--color-canvas); }
 .schedule-table .table-sub { display: block; margin-top: 6px; max-width: 360px; white-space: normal; }
 .schedule-table .table-action { white-space: nowrap; text-align: right; }
 .schedule-form { display: grid; gap: 14px; }
-.schedule-form label { display: block; }
+.schedule-form label:not(.check-row) { display: block; }
 .schedule-form .field-label { margin-bottom: 6px; }
-.schedule-form input, .rule-input input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, var(--color-on-surface-muted) 45%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 14px; color: var(--color-on-surface); font-variant-numeric: tabular-nums; }
+.schedule-form input:not([type=checkbox]), .rule-input input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, var(--color-on-surface-muted) 45%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 14px; color: var(--color-on-surface); font-variant-numeric: tabular-nums; }
 .schedule-form input:focus-visible, .rule-input input:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 .schedule-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .rules-card { margin-bottom: 16px; }
@@ -1630,3 +1630,16 @@ html:has(.login-page) { background: var(--color-canvas); }
 .tank-room .tank-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-status-ok); }
 .tank-room .tank-bar > span.warn { background: var(--color-status-warn); }
 .tank-room .tank-bar > span.crit { background: var(--color-status-crit); }
+
+/* Input hasil lab */
+.lab-entry-modal { width: min(620px, calc(100vw - 32px)); }
+.lab-entry-list { display: grid; gap: 10px; max-height: min(52dvh, 460px); overflow-y: auto; padding-right: 4px; }
+.lab-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 8px; margin: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.lab-entry-row legend { float: left; grid-column: 1 / -1; width: 100%; padding: 0; margin-bottom: 2px; font-size: 13px; font-weight: 600; }
+.lab-entry-row legend small { margin-left: 6px; font-weight: 400; font-size: 11px; color: var(--color-on-surface-muted); }
+.lab-entry-row .field-control { min-height: 44px; }
+@media (max-width: 520px) { .lab-entry-row { grid-template-columns: minmax(0, 1fr); } }
+/* Antrean Truk: sampel yang perlu diperiksa lab */
+.lab-queue { margin-bottom: 16px; }
+.lab-queue .attention-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
+@media (max-width: 900px) { .lab-queue .attention-list { grid-template-columns: minmax(0, 1fr); } }

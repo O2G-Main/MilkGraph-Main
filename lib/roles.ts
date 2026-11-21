@@ -1,7 +1,7 @@
-export type RoleId = "superadmin" | "planner" | "receiving" | "supervisor" | "qa";
+export type RoleId = "superadmin" | "planner" | "receiving" | "supervisor" | "lab";
 export type Permission =
   | "schedule.edit" | "rules.edit" | "plan.simulate"
-  | "arrival.edit" | "queue.record" | "transfer.record"
+  | "arrival.edit" | "queue.record" | "transfer.record" | "lab.record"
   | "demand.send" | "plan.decide" | "constraint.edit" | "hold.submit" | "hold.review" | "lab.decide" | "instruction.ack"
   | "users.manage" | "master.manage" | "integration.manage" | "audit.view";
 
@@ -10,7 +10,7 @@ export const ROLES: Record<RoleId, { label: string; user: string; initials: stri
   planner: { label: "Planner PPIC", user: "Rino Akbar Hanif", initials: "RA", focus: "Rencana shift yang layak dan keputusan saat gangguan." },
   receiving: { label: "Koordinator receiving", user: "Dimas Prasetyo", initials: "DP", focus: "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time." },
   supervisor: { label: "Supervisor produksi", user: "Hendra Kusuma", initials: "HK", focus: "Lokasi bottleneck dan dampaknya ke lini filling." },
-  qa: { label: "QA/Lab", user: "Sri Lestari", initials: "SL", focus: "Hasil lab, lot terdampak beserta proporsi volume, dan daftar hold." },
+  lab: { label: "Lab", user: "Sri Lestari", initials: "SL", focus: "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab." },
 };
 export const ROLE_IDS = Object.keys(ROLES) as RoleId[];
 export type Role = (typeof ROLES)[RoleId];
@@ -24,17 +24,18 @@ export const PERMISSIONS: Record<Permission, { label: string; roles: RoleId[] }>
   "arrival.edit": { label: "Menambah dan mengubah jadwal kedatangan RT, estimasi tiba, dan status perjalanan", roles: ["superadmin", "receiving"] },
   "queue.record": { label: "Mencatat kedatangan aktual, waktu awal umur susu, dan proses bongkar", roles: ["superadmin", "receiving"] },
   "transfer.record": { label: "Mencatat transfer susu dari RT ke tangki penerimaan", roles: ["superadmin", "receiving"] },
+  "lab.record": { label: "Memasukkan dan memperbarui hasil pemeriksaan lab", roles: ["superadmin", "lab"] },
   "demand.send": { label: "Mengirim kebutuhan susu ke farm", roles: ["superadmin", "planner"] },
   "plan.decide": { label: "Menyetujui atau menolak rekomendasi rencana", roles: ["superadmin", "planner"] },
   "constraint.edit": { label: "Mengubah batas constraint", roles: ["superadmin", "planner"] },
   "instruction.ack": { label: "Mengonfirmasi instruksi dari rencana yang disetujui", roles: ["superadmin", "receiving", "supervisor"] },
-  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin", "supervisor", "qa"] },
-  "hold.review": { label: "Menyetujui, menolak, atau melepas hold", roles: ["superadmin", "qa"] },
-  "lab.decide": { label: "Merilis atau menolak hasil lab penerimaan RT", roles: ["superadmin", "qa"] },
+  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin", "supervisor"] },
+  "hold.review": { label: "Menyetujui, menolak, atau melepas hold", roles: ["superadmin"] },
+  "lab.decide": { label: "Merilis atau menolak hasil lab penerimaan RT", roles: ["superadmin"] },
   "users.manage": { label: "Mengelola pengguna dan hak akses peran", roles: ["superadmin"] },
   "master.manage": { label: "Mengelola master data", roles: ["superadmin"] },
   "integration.manage": { label: "Mengelola konfigurasi integrasi sumber data", roles: ["superadmin"] },
-  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "supervisor", "qa"] },
+  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "supervisor", "lab"] },
 };
 /** Izin yang hanya boleh dipegang Superadmin, supaya tidak ada yang mengunci dirinya keluar dari pengelolaan akses. */
 export const LOCKED: Permission[] = ["users.manage"];
@@ -56,6 +57,11 @@ export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
   planner: ["/qc-produk", "/master-data", "/sumber-data", "/pengguna"],
   receiving: [
     "/simulasi", "/alur", "/qc-produk", "/master-data",
+    "/penjadwalan", "/aturan-produksi", "/rencana/alur", "/rencana/upgrade", "/rencana",
+    "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna",
+  ],
+  lab: [
+    "/simulasi", "/kedatangan", "/transfer", "/alur", "/kondisi-alat", "/qc-produk", "/master-data",
     "/penjadwalan", "/aturan-produksi", "/rencana/alur", "/rencana/upgrade", "/rencana",
     "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna",
   ],

@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowUpRight, CalendarClock, Droplets, FlaskConical, Hourglass, MapPin, PackageCheck, PackageOpen, Pencil, ShieldCheck, TriangleAlert, Truck } from "lucide-react";
 import { can, canSee } from "@/lib/roles";
 import { applyQueue, clock, type QueueRow } from "@/lib/receiving";
+import { mergeLab } from "@/lib/lab";
+import { findNav } from "@/lib/nav";
+import { labResults } from "@/mock/ops";
 import { ArriveDialog, RtDialog, type RtAction } from "./queue-actions";
 import { scenario } from "@/lib/data";
 import { API_MODE } from "@/lib/api/client";
@@ -15,7 +18,7 @@ import type { Scenario } from "@/mock/types";
 import { duration, number } from "@/lib/format";
 import { useDemo } from "@/lib/demo";
 import { holdingLeft, violations } from "@/lib/rules";
-import { Badge, Card, Icon, SectionTitle, SourceModal, Toggle } from "@/components/ui";
+import { Badge, Card, Icon, PageLink, SectionTitle, SourceModal, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { MetricGrid } from "./metric-grid";
 import { Queue3D } from "./queue-3d";
@@ -106,9 +109,25 @@ function ReceivingContent({
   const tankers = rows.filter(t => filter === stages[0] || t.stage === filter);
   const mayRecord = can(demo.role, "queue.record");
   const seePlan = canSee(demo.role, "/rencana");
+  const seeBay = canSee(demo.role, findNav("/tangki").tab.href);
   const [dialog, setDialog] = useState<{ row: QueueRow; action: RtAction } | "tiba" | null>(null);
   const scenarioBay = useMemo(() => Object.fromEntries(scenarioData.assets.flatMap(a => { const rt = a.kind === "Bay" ? a.status.match(/RT-\d+/)?.[0] : undefined; return rt ? [[rt, a.id]] : []; })), [scenarioData]);
   const bayOf = (r: QueueRow) => r.bay ?? (r.stage === "Unloading" ? scenarioBay[r.id] : undefined);
+  // Untuk Lab: RT dan batch yang hasil ujinya belum lengkap, RT dengan umur susu tertua di atas.
+  const mayTest = can(demo.role, "lab.record");
+  const samples = mergeLab(labResults, demo.lab).filter(s => s.kind !== "qc-fg");
+  const LABEL: Record<string, string> = { "dalam-uji": "dalam uji", "uji-ulang": "perlu uji ulang", positif: "out-of-spec, tunggu QA" };
+  const toTest = [
+    ...rows.filter(r => r.stage === "Sampling" || r.stage === "Lab test").sort((a, b) => b.ageMin - a.ageMin).flatMap(r => {
+      const s = samples.find(x => x.subject === r.id);
+      if (s && (s.status === "hasil-siap" || s.status === "lulus" || demo.labs[s.id])) return [];
+      const done = s ? s.params.filter(p => p.ok !== null).length : 0;
+      return [{ key: r.id, batch: false, href: s ? `/lab?sampel=${s.id}` : "/lab", tone: s?.status === "positif" ? "crit" as const : r.tone, title: `${r.id} ${s ? LABEL[s.status] : "belum disampel"}`, meta: `${r.farm}, umur susu ${r.age}${s ? `. ${done} dari ${s.params.length} parameter selesai` : ""}` }];
+    }),
+    ...samples.filter(s => s.kind === "batch" && (s.status === "dalam-uji" || s.status === "uji-ulang")).map(s => ({
+      key: s.id, batch: true, href: `/lab?sampel=${s.id}`, tone: "warn" as const, title: `Batch ${s.subject} ${LABEL[s.status]}`, meta: `${s.detail}. ${s.params.filter(p => p.ok !== null).length} dari ${s.params.length} parameter selesai`,
+    })),
+  ];
   // Next phase PDF: antrean juga bisa dilihat dalam 3D, dari data yang sama dengan tabel.
   const [mode, setMode] = useState<"tabel" | "3d">("tabel");
   const [picked, setPicked] = useState<string | null>(null);
@@ -133,13 +152,18 @@ function ReceivingContent({
           </Link>}
         </div>
       </div>
+      {mayTest && <Card className="lab-queue">
+        <SectionTitle title="Perlu diperiksa lab" subtitle="RT di sampling dan lab test serta batch tangki proses yang hasil ujinya belum lengkap. RT diurutkan dari umur susu tertua." action={<Link className="text-link" href="/lab">Buka Tes Lab<Icon icon={ArrowRight} size={14} /></Link>} />
+        {toTest.length ? <ul className="attention-list">{toTest.map(t => <li key={t.key}><Link href={t.href} className={`attention-item ${t.tone}`}><span className="attention-icon"><Icon icon={t.batch ? FlaskConical : Truck} size={18} /></span><span className="attention-copy"><strong>{t.title}</strong><span>{t.meta}</span></span><Icon icon={ArrowRight} size={16} /></Link></li>)}</ul>
+          : <p className="small muted">Tidak ada RT atau batch yang menunggu pemeriksaan.</p>}
+      </Card>}
       <MetricGrid metrics={scenarioData.metrics} onSource={setSource} />
       <Card className="flow-card">
         <SectionTitle title="Alur penerimaan RT" action={<span className="small muted flow-hint"><span className="status-dot" />Snapshot {now}</span>} />
         <ol className="stage-flow">
           {scenarioData.stages.map((stage, i) => (
             <li key={stage.id}>
-              <a href={stage.id === "stored" ? "/tangki" : "#antrean-rt"} className={`flow-step ${stage.tone}`}>
+              <a href={stage.id === "stored" && seeBay ? "/tangki" : "#antrean-rt"} className={`flow-step ${stage.tone}`}>
                 <span className="flow-icon"><Icon icon={stageIcons[i]} size={20} /></span>
                 <span>
                   <strong>{stage.label} <span className="stage-count">{stage.count}</span></strong>
@@ -232,9 +256,9 @@ function ReceivingContent({
               </button>
             ))}
           </div>
-          <p className="incident-links">Rincian tunggu lab ada di <Link href="/lab">Tes Lab</Link>, dan kondisi bay di <Link href="/tangki">Bay &amp; Tangki</Link>.</p>
-          <Link href={seePlan ? "/rencana" : "/tangki"} className="button inverse">
-            {seePlan ? "Periksa kelayakan rencana" : "Lihat kesiapan bay"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span>
+          <p className="incident-links">Rincian tunggu lab ada di <PageLink href="/lab">Tes Lab</PageLink>{seeBay && <>, dan kondisi bay di <Link href="/tangki">Bay &amp; Tangki</Link></>}.</p>
+          <Link href={seePlan ? "/rencana" : seeBay ? "/tangki" : "/lab"} className="button inverse">
+            {seePlan ? "Periksa kelayakan rencana" : seeBay ? "Lihat kesiapan bay" : "Buka Tes Lab"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span>
           </Link>
         </section>
       </div>
