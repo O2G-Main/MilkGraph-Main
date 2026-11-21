@@ -1,15 +1,25 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode, type ComponentProps } from "react";
-import { ArrowUpRight, X, Database, Lock, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, X, Database, type LucideIcon } from "lucide-react";
 import { scenario } from "@/lib/data";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { Source } from "@/mock/types";
 import type { Block, Tone } from "@/mock/types";
 import { time } from "@/lib/format";
+import Link from "next/link";
 import { useDemo } from "@/lib/demo";
-import { can, whoCan, type Permission } from "@/lib/roles";
+import { findNav } from "@/lib/nav";
+import { canSee } from "@/lib/roles";
+
+/** Tautan ke halaman lain yang hanya muncul bila halaman itu terbuka untuk peran aktif. `inline`: tampilkan teksnya saja tanpa tautan. */
+export function PageLink({ inline, ...props }: ComponentProps<typeof Link> & { inline?: boolean }) {
+  const { role } = useDemo();
+  const path = String(props.href).split(/[?#]/)[0];
+  if (canSee(role, findNav(path).tab.href)) return <Link {...props} />;
+  return inline ? <>{props.children}</> : null;
+}
 
 export function Icon({ icon: Glyph, size = 18, ...props }: { icon: LucideIcon; size?: number } & ComponentProps<"svg">) {
   return <Glyph size={size} strokeWidth={1.75} aria-hidden="true" {...props} />;
@@ -55,19 +65,13 @@ export function SourceModal({ id, onClose }: { id: string | null; onClose: () =>
   if (!source) {
     return <Modal title="Bukti operasional" onClose={onClose}><p className="muted">Bukti {id} tidak ditemukan.</p><button className="button secondary wide" onClick={onClose}>Tutup</button></Modal>;
   }
-  return <Modal title="Bukti operasional" onClose={onClose}><Badge>Data simulasi</Badge><h3 className="source-title">{source.title}</h3><p className="mono muted">{source.id} · {source.time}</p><p className="source-detail">{source.detail}</p><p className="small muted">Sumbernya snapshot skenario pabrik tanggal 14 Oktober 2026. Catatan ini data demo.</p><button className="button secondary wide" onClick={onClose}>Selesai membaca</button></Modal>;
+  return <Modal title="Bukti operasional" onClose={onClose}><h3 className="source-title">{source.title}</h3><p className="mono muted">{source.id} · {source.time}</p><p className="source-detail">{source.detail}</p><button className="button secondary wide" onClick={onClose}>Selesai membaca</button></Modal>;
 }
 export function Toggle<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; label: string }) {
   return <div className="toggle" role="group" aria-label={label}>{options.map(option => <button key={option.value} aria-pressed={value === option.value} className={value === option.value ? "selected" : ""} onClick={() => onChange(option.value)}>{option.label}</button>)}</div>;
 }
 export function PageHeading({ title, subtitle, children }: { title: string; subtitle: string; children?: ReactNode }) {
   return <div className="page-heading"><div><h1>{title}</h1><p>{subtitle}</p></div>{children && <div className="page-actions">{children}</div>}</div>;
-}
-/** Keterangan saat peran aktif tidak boleh melakukan aksi di halaman ini. */
-export function RoleNote({ permission }: { permission: Permission }) {
-  const { role } = useDemo();
-  if (can(role, permission)) return null;
-  return <p className="role-note"><Icon icon={Lock} size={14} /><span>{whoCan(permission)} Ganti peran lewat kartu akun di sidebar.</span></p>;
 }
 /** Gantt 13.00 - 20.00 dengan garis "sekarang"; blok bisa diklik untuk membuka sumbernya. */
 export function Timeline({ blocks, resources, onSource }: { blocks: Block[]; resources: string[]; onSource: (id: string) => void }) {

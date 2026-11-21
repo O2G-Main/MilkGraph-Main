@@ -6,12 +6,12 @@ const read = path => readFileSync(new URL(`../components/${path}`, import.meta.u
 
 test('shell and user resolve backend-only resources in API mode', () => {
   const shell = read('shell/app-shell.tsx'), user = read('pengguna/pengguna.tsx');
-  for (const path of ['/meta', '/session', '/roles', '/shifts', '/notifications'])
+  for (const path of ['/meta', '/session', '/shifts', '/notifications'])
     assert.ok(shell.includes(`"${path}"`), `shell missing ${path}`);
-  assert.match(shell, /await setRole\(/);
+  assert.match(shell, /logout\(\)/);
   assert.match(shell, /await resetDemo\(/);
   assert.match(user, /useResource.*"\/roles"/);
-  assert.match(user, /await setRole\(/);
+  assert.doesNotMatch(user, /setRole\(/, "ganti akun lewat login, bukan dari halaman Pengguna");
 });
 
 test('3D loads layout, view status, bottlenecks and production without mock fallback', () => {

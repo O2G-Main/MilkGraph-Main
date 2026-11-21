@@ -9,7 +9,7 @@ import { demandPlan as mockDemandPlan, farms as mockFarms, fillers as mockFiller
 import type { Tone } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, RoleNote, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle } from "@/components/ui";
 import { LineChart } from "./line-chart";
 
 type DemandLine = {
@@ -125,11 +125,10 @@ export function Pasokan() {
   return (
     <div className="page-enter">
       <PageHeading title="Pasokan & Permintaan" subtitle="Rencana kirim farm, kebutuhan susu dari rencana produksi, dan kapasitas pabrik dalam satu tempat untuk PPIC.">
-        <button className="button primary" disabled={!allowed || !!sent || sending} onClick={handleSend}>
+        {allowed && <button className="button primary" disabled={!!sent || sending} onClick={handleSend}>
           <Icon icon={Send} size={16} />{sent ? `Terkirim ${sent.at}` : "Kirim kebutuhan ke farm"}
-        </button>
+        </button>}
       </PageHeading>
-      <RoleNote permission="demand.send" />
       {actionError && (
         <div className="decision-banner warn" role="alert">
           <Icon icon={X} />
@@ -144,8 +143,8 @@ export function Pasokan() {
         <div className="dept"><span className="dept-icon"><Icon icon={Factory} size={18} /></span><strong>Produksi</strong><small>Receiving dan proses, kendali eksekusi, output</small></div>
       </section>
       <div className="split-even">
-        <Card><SectionTitle title="Permintaan produksi" subtitle="Dalam juta pak per bulan [simulasi]." action={<Badge tone="warn"><Icon icon={TrendingUp} size={13} />+{Math.round(((trendData.demand.at(-1) ?? 1) / (trendData.demand[0] || 1) - 1) * 100)}%</Badge>} /><LineChart label="Permintaan produksi" values={trendData.demand} labels={trendData.months} unit="juta pak" decimals={1} /></Card>
-        <Card><SectionTitle title="Rencana susu segar masuk" subtitle="Dalam ton per hari [simulasi]. Kapasitas pabrik 320 t/hari." action={<Badge tone={(trendData.incoming.at(-1) ?? 0) > trendData.capacity ? "crit" : "warn"}>{trendData.incoming.at(-1) ?? 0} t/hari</Badge>} /><LineChart label="Rencana susu segar masuk" values={trendData.incoming} labels={trendData.months} unit="t/hari" reference={{ value: trendData.capacity, label: "Kapasitas 320 t/hari" }} /></Card>
+        <Card><SectionTitle title="Permintaan produksi" subtitle="Dalam juta pak per bulan." action={<Badge tone="warn"><Icon icon={TrendingUp} size={13} />+{Math.round(((trendData.demand.at(-1) ?? 1) / (trendData.demand[0] || 1) - 1) * 100)}%</Badge>} /><LineChart label="Permintaan produksi" values={trendData.demand} labels={trendData.months} unit="juta pak" decimals={1} /></Card>
+        <Card><SectionTitle title="Rencana susu segar masuk" subtitle="Dalam ton per hari. Kapasitas pabrik 320 t/hari." action={<Badge tone={(trendData.incoming.at(-1) ?? 0) > trendData.capacity ? "crit" : "warn"}>{trendData.incoming.at(-1) ?? 0} t/hari</Badge>} /><LineChart label="Rencana susu segar masuk" values={trendData.incoming} labels={trendData.months} unit="t/hari" reference={{ value: trendData.capacity, label: "Kapasitas 320 t/hari" }} /></Card>
       </div>
       <Card className="page-block"><SectionTitle title="Kebutuhan susu dari rencana produksi" subtitle={`Rencana produksi hari ini diterjemahkan ke susu segar, termasuk susut proses ${processLoss * 100}% [asumsi].`} action={<Badge tone={gap >= 0 ? "ok" : "crit"}>{gap >= 0 ? `Pasokannya cukup, masih sisa ${number(gap)} L` : `Kurang ${number(-gap)} L`}</Badge>} />
         <div className="table-wrap"><table><thead><tr><th>SKU</th><th>Kemasan</th><th className="numeric">Rencana</th><th className="numeric">Volume produk</th><th className="numeric">Susu segar</th></tr></thead><tbody>{demandPlanLines.map(d => <tr key={d.sku}><td><strong>{d.sku}</strong></td><td data-label="Kemasan">{d.pack}</td><td data-label="Rencana" className="numeric">{number(d.packs)} pak</td><td data-label="Volume produk" className="numeric">{number(product(d))} L</td><td data-label="Susu segar" className="numeric">{number(milkNeed(d))} L</td></tr>)}</tbody>

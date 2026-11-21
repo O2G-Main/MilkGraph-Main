@@ -108,7 +108,7 @@ export const cipLog: CipRecord[] = [
 ];
 
 export interface LabParam { name: string; value: string; limit: string; ok: boolean | null }
-export interface LabResult { id: string; kind: "penerimaan" | "qc-fg"; subject: string; detail: string; sampled: string; status: "lulus" | "hasil-siap" | "uji-ulang" | "dalam-uji" | "positif"; params: LabParam[]; source: string }
+export interface LabResult { id: string; kind: "penerimaan" | "qc-fg" | "batch"; subject: string; detail: string; sampled: string; status: "lulus" | "hasil-siap" | "uji-ulang" | "dalam-uji" | "positif"; params: LabParam[]; source: string }
 const intake = (temp: string, alcohol: string, antibiotic: string, tpc: string, fat: string, protein: string, ok: (boolean | null)[]): LabParam[] => [
   { name: "Suhu tiba", value: temp, limit: "≤ 4,5 °C", ok: ok[0] },
   { name: "Alcohol test 72%", value: alcohol, limit: "Negatif", ok: ok[1] },

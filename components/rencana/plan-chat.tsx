@@ -15,7 +15,8 @@ const DURATIONS = [15, 30, 45, 60, 90];
  * Panel "Tanya rencana" (poin 16-17, referensi layout PDF): planner bertanya lewat chat, jawaban dihitung dari jadwal
  * rencana (penjawab statis plan-answer.ts, tanpa LLM), dan usulannya bisa langsung diterapkan ke alur di sampingnya.
  */
-export function PlanChat({ onAsk, onApply }: {
+export function PlanChat({ onAsk, onApply, canApply = true }: {
+  canApply?: boolean;
   onAsk: (question: string, defaults: { alat: string; durasi: number }) => Reply;
   onApply: (id: string, adjust: Adjust) => void;
 }) {
@@ -65,9 +66,9 @@ export function PlanChat({ onAsk, onApply }: {
           const key = `${i}-${p.id}`, done = applied.has(key);
           return <div key={key} className="plan-proposal">
             <div><strong className="mono">{p.id}</strong> {badgeOf(p.adjust)}{p.reason && <small>{p.reason}</small>}</div>
-            <button type="button" className={`button ${done ? "secondary" : "primary"}`} disabled={done} onClick={() => { onApply(p.id, p.adjust); setApplied(s => new Set(s).add(key)); }}>
+            {canApply && <button type="button" className={`button ${done ? "secondary" : "primary"}`} disabled={done} onClick={() => { onApply(p.id, p.adjust); setApplied(s => new Set(s).add(key)); }}>
               {done ? <><Icon icon={Check} size={15} />Diterapkan</> : "Terapkan di alur"}
-            </button>
+            </button>}
           </div>;
         })}
       </li>)}
@@ -81,6 +82,6 @@ export function PlanChat({ onAsk, onApply }: {
         onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(draft); } }} />
       <button type="submit" className="plan-chat-send" disabled={!draft.trim()} aria-label="Kirim pertanyaan"><Icon icon={SendHorizontal} size={18} /></button>
     </form>
-    <p className="small muted">Analisis dari jadwal yang tersedia [simulasi]. Keputusan tetap di planner.</p>
+    <p className="small muted">Analisis dari jadwal yang tersedia. Keputusan tetap di planner.</p>
   </section>;
 }

@@ -65,7 +65,7 @@ export function GenealogyReport({ hold, onClose }: { hold: Hold; onClose: () => 
   ];
 
   return <Modal title={`Genealogi ${hold.id}`} onClose={onClose} className="report-modal">
-    <Badge>Data simulasi</Badge>
+    
     <p className="dialog-summary">Pemicu {hold.trigger}, sumber kandidat {hold.rt}. {lots.length} lot, {number(packs)} pak: {lots.length - recall.length} hold di gudang, {recall.length} recall dari distribusi.</p>
     {current ? <>
       <h3 className="report-title">Rantai batch</h3>
