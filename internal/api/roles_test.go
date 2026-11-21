@@ -58,7 +58,7 @@ func TestRolesShapeDanKatalog(t *testing.T) {
 		t.Fatalf("GET /roles harus memuat 8 role: %s", w.Body.String())
 	}
 	planner := obj(roles["planner"])
-	if planner["label"] != "Planner PPIC" || planner["user"] != "Rina Wulandari" || planner["initials"] != "RW" || planner["builtin"] != true {
+	if planner["label"] != "Planner PPIC" || planner["user"] != "Rino Akbar Hanif" || planner["initials"] != "RA" || planner["builtin"] != true {
 		t.Errorf("entri planner kehilangan field lama/baru: %v", planner)
 	}
 	if len(arr(planner["permissions"])) != 8 {
