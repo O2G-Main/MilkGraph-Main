@@ -8,12 +8,16 @@ import (
 )
 
 // Parameter uji scheduler: dua mesin sama-sama mampu menjalankan dua SKU
-// cokelat uji, rate mengikuti contoh coaching (250 ml 4000 L/jam, 1000 ml
-// 6000 L/jam), changeover 45 menit dua arah dari matriks uji.
+// cokelat uji. Mesin uji sengaja tanpa speed resmi (SpeedPackPerHour 0)
+// supaya rate yang bekerja adalah cadangan per ukuran (250 ml 4000 L/jam,
+// 1000 ml 6000 L/jam, nilai contoh coaching); jalur rate per lini resmi
+// dibuktikan tes khusus TestSchedulerRatePerLini. Transisi uji 45 menit
+// dua arah lewat tabel Transisi (mekanisme yang sama dengan produksi,
+// nilainya nilai uji).
 func paramsUjiJadwal() (ParamsJadwal, map[string]InfoSKU) {
 	info := map[string]InfoSKU{
-		"SKU-250":  {SizeML: 250, NamaTampil: "UHT Cokelat 250 ml"},
-		"SKU-1000": {SizeML: 1000, NamaTampil: "UHT Cokelat 1000 ml"},
+		"SKU-250":  {SizeML: 250},
+		"SKU-1000": {SizeML: 1000},
 	}
 	p := ParamsJadwal{
 		Machines: []MesinJadwal{
@@ -21,11 +25,12 @@ func paramsUjiJadwal() (ParamsJadwal, map[string]InfoSKU) {
 			{ID: "FM-B", SKUCapable: []string{"SKU-250", "SKU-1000"}, BackupID: "FM-A", TangkiSumber: "AT-02"},
 		},
 		RateLPerHour: map[int]float64{250: 4000, 1000: 6000},
-		Changeover: map[string]int{
-			"UHT Cokelat 250 ml>UHT Cokelat 1000 ml": 45,
-			"UHT Cokelat 1000 ml>UHT Cokelat 250 ml": 45,
+		Transisi: map[string]TransisiJadwal{
+			"SKU-250>SKU-1000": {DurasiMenit: 45, RuleID: "SIZE"},
+			"SKU-1000>SKU-250": {DurasiMenit: 45, RuleID: "SIZE"},
 		},
-		HoldingLimitH: 10.5,
+		ChangeoverCadanganMenit: 60,
+		HoldingLimitH:           10.5,
 	}
 	return p, info
 }
@@ -262,8 +267,36 @@ func TestParamsJadwalDariMasterNyata(t *testing.T) {
 	if info["UHT-CH-250-LOCAL"].SizeML != 250 || info["UHT-CH-1000-LOCAL"].SizeML != 1000 {
 		t.Errorf("info SKU salah: %v / %v", info["UHT-CH-250-LOCAL"], info["UHT-CH-1000-LOCAL"])
 	}
-	if params.Changeover["UHT Cokelat 200 ml>UHT Full Cream 1 L"] != 45 {
-		t.Errorf("matriks changeover SOP harus terbaca dari limits.json: %v", params.Changeover)
+	// Speed resmi per lini dari line_dedication (bukan lagi "X").
+	if mesin["FL-08"].SpeedPackPerHour != 30000 || mesin["FL-05"].SpeedPackPerHour != 14000 || mesin["FL-02"].SpeedPackPerHour != 10000 {
+		t.Errorf("speed per lini salah: FL-08=%d FL-05=%d FL-02=%d",
+			mesin["FL-08"].SpeedPackPerHour, mesin["FL-05"].SpeedPackPerHour, mesin["FL-02"].SpeedPackPerHour)
+	}
+	// Changeover kini dari aturan kelas resmi, bukan matriks nama-pasangan
+	// limits.json: Cokelat ke Stroberi adalah VARIANT 45 menit + wajib CIP
+	// (di matriks lama pasangan ini 25 menit).
+	tr := params.Transisi["UHT-CH-200-LOCAL>UHT-ST-200-LOCAL"]
+	if tr.DurasiMenit != 45 || tr.RuleID != "VARIANT" || !tr.PerluCIP || tr.CIPRuleID != "CIP_CH_ST" {
+		t.Errorf("transisi Cokelat ke Stroberi harus VARIANT 45 + CIP CIP_CH_ST: %+v", tr)
+	}
+	if tr = params.Transisi["UHT-CH-1000-LOCAL>UHT-CH-950-LOCAL"]; tr.DurasiMenit != 60 || tr.RuleID != "SIZE" || tr.PerluCIP {
+		t.Errorf("transisi beda ukuran harus SIZE 60 tanpa CIP: %+v", tr)
+	}
+	if params.ChangeoverCadanganMenit != 60 {
+		t.Errorf("durasi cadangan harus kelas terbesar resmi 60: %d", params.ChangeoverCadanganMenit)
+	}
+	// Batas holding: global tetap 10,5 jam (630 menit) sebagai bawaan,
+	// tangki aseptik tercakup data memakai batas asetnya (8 jam).
+	if params.HoldingLimitH != 10.5 {
+		t.Errorf("batas holding global harus tetap 10.5 jam: %v", params.HoldingLimitH)
+	}
+	if params.HoldingPerTangki["AT-03"] != 8 {
+		t.Errorf("batas holding AT-03 dari asset_configuration harus 8 jam: %v", params.HoldingPerTangki["AT-03"])
+	}
+	for _, tk := range params.Tanks {
+		if tk.MaxHoldingHours != 8 {
+			t.Errorf("tangki %s tercakup data harus memakai batas per tangki 8 jam, dapat %v", tk.ID, tk.MaxHoldingHours)
+		}
 	}
 	stok := 0.0
 	for _, tk := range params.Tanks {
@@ -289,6 +322,169 @@ func TestParamsJadwalDariMasterNyata(t *testing.T) {
 	}
 	if len(sch.Warnings) != 0 {
 		t.Errorf("jadwal seed tidak boleh memuat peringatan: %+v", sch.Warnings)
+	}
+}
+
+// Rate per lini: PO yang sama berjalan lebih cepat di lini yang speed
+// resminya lebih besar, dengan durasi persis rumus speed * ukuran / 1000.
+// Lini tanpa speed jatuh ke rate cadangan per ukuran.
+func TestSchedulerRatePerLini(t *testing.T) {
+	po := []ProductionOrder{{
+		POID: "PO-1", Priority: 1,
+		Lines:       []POLine{{SKU: "SKU-250", QtyLiter: 5000}},
+		DueDatetime: "2026-11-24T08:00:00+07:00",
+	}}
+	durasiRun := func(t *testing.T, in InputJadwal) (string, time.Duration) {
+		t.Helper()
+		sch := bangunJadwal(in)
+		if len(sch.Runs) != 1 {
+			t.Fatalf("jumlah run = %d, mau 1", len(sch.Runs))
+		}
+		mulai, _ := parseWaktu(sch.Runs[0].Start)
+		selesai, _ := parseWaktu(sch.Runs[0].End)
+		return sch.Runs[0].FMID, selesai.Sub(mulai)
+	}
+
+	// Dua lini beda speed sama-sama capable: yang tercepat menang.
+	// FM-LAMBAT 10000 pack/jam * 250 ml = 2500 L/jam (120 menit);
+	// FM-CEPAT 20000 pack/jam * 250 ml = 5000 L/jam (60 menit).
+	in := inputUjiJadwal(po)
+	in.Params.Machines = []MesinJadwal{
+		{ID: "FM-LAMBAT", SKUCapable: []string{"SKU-250"}, TangkiSumber: "AT-01", SpeedPackPerHour: 10000},
+		{ID: "FM-CEPAT", SKUCapable: []string{"SKU-250"}, TangkiSumber: "AT-02", SpeedPackPerHour: 20000},
+	}
+	if fm, dur := durasiRun(t, in); fm != "FM-CEPAT" || dur != 60*time.Minute {
+		t.Errorf("kedua lini: dapat %s %v, mau FM-CEPAT 1j0m0s", fm, dur)
+	}
+	// Hanya lini lambat: durasi mengikuti speed lini itu, bukan rate ukuran.
+	in.Params.Machines = in.Params.Machines[:1]
+	if fm, dur := durasiRun(t, in); fm != "FM-LAMBAT" || dur != 120*time.Minute {
+		t.Errorf("lini lambat saja: dapat %s %v, mau FM-LAMBAT 2j0m0s", fm, dur)
+	}
+	// Lini tanpa speed resmi: jatuh ke cadangan 4000 L/jam (75 menit).
+	in.Params.Machines[0].SpeedPackPerHour = 0
+	if _, dur := durasiRun(t, in); dur != 75*time.Minute {
+		t.Errorf("tanpa speed harus memakai rate cadangan: dapat %v, mau 1j15m0s", dur)
+	}
+}
+
+// Changeover kelas resmi dari parameter nyata: Cokelat ke Stroberi di satu
+// lini adalah VARIANT 45 menit dan wajib CIP (matriks nama-pasangan lama
+// memberi 25 menit untuk pasangan ini), dan konteksnya tercatat di run.
+func TestSchedulerChangeoverKelasResmi(t *testing.T) {
+	seeds, err := LoadAllSeeds()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &Server{seeds: seeds}
+	params, info, err := s.paramsJadwal(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Paksa satu lini small pack supaya kedua run berbagi lini yang sama.
+	satu := params
+	satu.Machines = nil
+	for _, m := range params.Machines {
+		if m.ID == "FL-08" {
+			satu.Machines = append(satu.Machines, m)
+		}
+	}
+	sch := bangunJadwal(InputJadwal{
+		POs: []ProductionOrder{{
+			POID: "PO-1", Priority: 1,
+			Lines: []POLine{
+				{SKU: "UHT-CH-200-LOCAL", QtyLiter: 6000},
+				{SKU: "UHT-ST-200-LOCAL", QtyLiter: 6000},
+			},
+			DueDatetime: "2026-11-24T08:00:00+07:00",
+		}},
+		Params: satu, SKUInfo: info,
+		WindowStart: waktuDemo, Version: 1, TriggeredBy: "manual", StokTersediaL: 1_000_000,
+	})
+	if len(sch.Runs) != 2 {
+		t.Fatalf("jumlah run = %d, mau 2: %+v", len(sch.Runs), sch.Runs)
+	}
+	r1, r2 := sch.Runs[0], sch.Runs[1]
+	if r1.FMID != "FL-08" || r2.FMID != "FL-08" {
+		t.Fatalf("kedua run harus di FL-08: %s, %s", r1.FMID, r2.FMID)
+	}
+	if r1.ChangeoverAfterMin != 45 || r1.ChangeoverRuleID != "VARIANT" {
+		t.Errorf("changeover Cokelat ke Stroberi = %d (%s), mau 45 VARIANT (matriks lama 25)", r1.ChangeoverAfterMin, r1.ChangeoverRuleID)
+	}
+	if !r1.CIPRequired || r1.CIPRuleID != "CIP_CH_ST" {
+		t.Errorf("konteks CIP run pertama salah: required=%v rule=%q, mau true CIP_CH_ST", r1.CIPRequired, r1.CIPRuleID)
+	}
+	end1, _ := parseWaktu(r1.End)
+	start2, _ := parseWaktu(r2.Start)
+	if selisih := start2.Sub(end1); selisih != 45*time.Minute {
+		t.Errorf("jeda antar run = %v, mau 45 menit (VARIANT)", selisih)
+	}
+
+	// Kelas SIZE: rasa sama beda ukuran di FL-05 = 60 menit, tanpa CIP.
+	satu.Machines = nil
+	for _, m := range params.Machines {
+		if m.ID == "FL-05" {
+			satu.Machines = append(satu.Machines, m)
+		}
+	}
+	sch = bangunJadwal(InputJadwal{
+		POs: []ProductionOrder{{
+			POID: "PO-2", Priority: 1,
+			Lines: []POLine{
+				{SKU: "UHT-CH-1000-LOCAL", QtyLiter: 14000},
+				{SKU: "UHT-CH-950-LOCAL", QtyLiter: 13300},
+			},
+			DueDatetime: "2026-11-24T08:00:00+07:00",
+		}},
+		Params: satu, SKUInfo: info,
+		WindowStart: waktuDemo, Version: 1, TriggeredBy: "manual", StokTersediaL: 1_000_000,
+	})
+	if len(sch.Runs) != 2 {
+		t.Fatalf("jumlah run SIZE = %d, mau 2: %+v", len(sch.Runs), sch.Runs)
+	}
+	r1 = sch.Runs[0]
+	if r1.ChangeoverAfterMin != 60 || r1.ChangeoverRuleID != "SIZE" || r1.CIPRequired {
+		t.Errorf("changeover beda ukuran = %d (%s) cip=%v, mau 60 SIZE tanpa CIP", r1.ChangeoverAfterMin, r1.ChangeoverRuleID, r1.CIPRequired)
+	}
+}
+
+// Batas holding per tangki menang atas bawaan global: proyeksi 9 jam
+// melewati batas tangki tercakup (8 jam) tetapi belum melewati global
+// (10,5 jam); tangki di luar cakupan tetap dinilai dengan global.
+func TestSchedulerHoldingPerTangki(t *testing.T) {
+	po := []ProductionOrder{{
+		POID: "PO-1", Priority: 1,
+		Lines:       []POLine{{SKU: "SKU-250", QtyLiter: 4000}},
+		DueDatetime: "2026-11-24T08:00:00+07:00",
+	}}
+	siap := waktuDemo.Add(-9 * time.Hour)
+
+	in := inputUjiJadwal(po)
+	in.Params.Machines = in.Params.Machines[:1] // FM-A, tangki AT-01
+	in.Params.HoldingPerTangki = map[string]float64{"AT-01": 8}
+	in.SusuSiapPada = &siap
+	sch := bangunJadwal(in)
+	var holding *WarningJadwal
+	for i, w := range sch.Warnings {
+		if w.Type == "HOLDING_TIME" {
+			holding = &sch.Warnings[i]
+		}
+	}
+	if holding == nil {
+		t.Fatalf("proyeksi 9 jam harus memicu HOLDING_TIME terhadap batas tangki 8 jam: %+v", sch.Warnings)
+	}
+	if *holding.LimitH != 8 || *holding.ProjectedH != 9 {
+		t.Errorf("holding: limit %v projected %v, mau 8/9 (per tangki, bukan global 10.5)", *holding.LimitH, *holding.ProjectedH)
+	}
+
+	// Tangki yang sama tanpa cakupan data: global 10,5 jam berlaku, 9 jam
+	// belum melewati, jadi tidak ada peringatan.
+	in.Params.HoldingPerTangki = nil
+	sch = bangunJadwal(in)
+	for _, w := range sch.Warnings {
+		if w.Type == "HOLDING_TIME" {
+			t.Errorf("tanpa cakupan per tangki, proyeksi 9 jam tidak boleh memicu peringatan (global 10.5): %+v", w)
+		}
 	}
 }
 

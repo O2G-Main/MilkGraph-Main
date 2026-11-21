@@ -3,7 +3,6 @@ package api
 import (
 	"math"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -15,7 +14,8 @@ import (
 //   - satu filling machine (FM) menjalankan satu SKU pada satu waktu;
 //   - run hanya boleh di FM yang fm_capable untuk SKU-nya;
 //   - ganti ukuran/rasa pada FM yang sama menyisipkan changeover sebelum run
-//     berikutnya (durasi dari matriks SOP di limits.json, bukan konstanta);
+//     berikutnya (durasi dari aturan kelas transisi resmi changeover_rules,
+//     bukan konstanta dan bukan matriks nama-pasangan lama);
 //   - FM tidak tersedia selama jendela downtime; penempatan mencoba FM lain
 //     yang capable (termasuk backup_fm) sebelum menerima start yang lebih
 //     lambat di FM utama.
@@ -67,8 +67,7 @@ var reasonCodeValid = map[string]bool{
 
 // InfoSKU adalah turunan master data untuk satu finished SKU.
 type InfoSKU struct {
-	SizeML     int
-	NamaTampil string // nama produk tampilan untuk matriks changeover, mis. "UHT Cokelat 200 ml"
+	SizeML int
 }
 
 // MesinJadwal adalah parameter satu filling line untuk scheduler.
@@ -77,6 +76,10 @@ type MesinJadwal struct {
 	SKUCapable   []string // finished SKU yang boleh dijalankan (fm_capable)
 	BackupID     string   // backup_fm: line lain dalam grup dedikasi yang sama
 	TangkiSumber string   // source aseptic tank dari line dedication
+	// SpeedPackPerHour adalah speed resmi lini dalam pack per jam dari
+	// line_dedication/asset_configuration; 0 berarti lini tidak tercakup
+	// data speed dan rate-nya jatuh ke cadangan per ukuran kemasan.
+	SpeedPackPerHour int
 }
 
 // TangkiJadwal adalah parameter satu tangki sumber untuk scheduler.
@@ -87,15 +90,45 @@ type TangkiJadwal struct {
 	MaxHoldingHours float64
 }
 
+// TransisiJadwal adalah hasil penilaian satu transisi SKU ke SKU lain
+// menurut aturan kelas resmi changeover_rules: durasi changeover, kelas
+// aturannya, dan kewajiban CIP yang mengikuti transisi itu (dari cip_rules
+// lewat klasifier master). CIP dilaporkan sebagai konteks pada run, bukan
+// komponen durasi, karena durasi CIP per aset adalah urusan eksekusi
+// cleaning, bukan jeda changeover pada lini.
+type TransisiJadwal struct {
+	DurasiMenit int
+	RuleID      string // VARIANT, SIZE, PAPER, atau NONE
+	PerluCIP    bool
+	CIPRuleID   string // rule_id cip_rules bila PerluCIP
+}
+
 // ParamsJadwal mengumpulkan seluruh parameter scheduler dari master data,
-// limits, dan ops. RateLPerHour diindeks ukuran kemasan (ml); Changeover
-// diindeks "Nama Produk A>Nama Produk B" mengikuti matriks SOP limits.json.
+// limits, dan ops.
+//
+//   - Rate utama bersifat per lini: rate L per jam satu run pada lini L
+//     untuk SKU berukuran M ml adalah SpeedPackPerHour(L) * M / 1000.
+//     Speed resmi dalam pack per jam, scheduler berpikir dalam liter per
+//     jam, jadi ukuran kemasan SKU adalah jembatan satuannya.
+//   - RateLPerHour (per ukuran kemasan) hanya cadangan untuk lini atau SKU
+//     yang tidak tercakup data speed resmi; isinya nilai contoh coaching
+//     lama dan tidak dipakai bila speed lini tersedia.
+//   - Transisi diindeks "finishedSKU A>finishedSKU B" dan dinilai sekali
+//     saat parameter dirakit dari klasifier + changeover_rules master.
+//   - HoldingLimitH adalah batas holding global (bawaan 630 menit dari
+//     limits) untuk tangki di luar cakupan data; HoldingPerTangki memuat
+//     batas per tangki dari asset_configuration dan menang atas global.
 type ParamsJadwal struct {
-	Machines      []MesinJadwal
-	Tanks         []TangkiJadwal
-	RateLPerHour  map[int]float64
-	Changeover    map[string]int
-	HoldingLimitH float64
+	Machines     []MesinJadwal
+	Tanks        []TangkiJadwal
+	RateLPerHour map[int]float64
+	Transisi     map[string]TransisiJadwal
+	// ChangeoverCadanganMenit adalah durasi kelas resmi terbesar (SIZE,
+	// 60 menit), dipakai untuk pasangan SKU yang tidak ada di tabel
+	// Transisi (SKU di luar katalog master).
+	ChangeoverCadanganMenit int
+	HoldingLimitH           float64
+	HoldingPerTangki        map[string]float64
 }
 
 // JendelaWaktu adalah rentang start/end dalam format RFC3339.
@@ -114,6 +147,13 @@ type RunJadwal struct {
 	End                string  `json:"end"`
 	QtyLiter           float64 `json:"qty_liter"`
 	ChangeoverAfterMin int     `json:"changeover_after_min"`
+	// Konteks changeover sesudah run ini (mengikuti kelas aturan resmi):
+	// kelas transisinya dan kewajiban CIP yang harus dieksekusi sebelum run
+	// berikutnya di FM yang sama. CIP dilaporkan, tidak dihitung sebagai
+	// durasi di jadwal.
+	ChangeoverRuleID string `json:"changeover_rule_id,omitempty"`
+	CIPRequired      bool   `json:"cip_required,omitempty"`
+	CIPRuleID        string `json:"cip_rule_id,omitempty"`
 }
 
 type FulfilmentPO struct {
@@ -182,69 +222,48 @@ type JendelaDowntime struct {
 	End        time.Time
 }
 
-// changeoverMenit mencari durasi changeover dari SKU asal ke SKU tujuan:
-// pasangan nama produk persis di matriks SOP, lalu pasangan ukuran kemasan
-// yang sama dari matriks yang sama, terakhir nilai maksimum matriks sebagai
-// batas aman terburuk. Semua nilai berasal dari limits.json (sopChangeover).
-func changeoverMenit(p ParamsJadwal, info map[string]InfoSKU, dariSKU, keSKU string) int {
+// transisiAntar menilai transisi dari SKU asal ke SKU tujuan dari tabel
+// Transisi yang dirakit paramsJadwal (klasifikasi kelas resmi: VARIANT 45,
+// SIZE 60, PAPER 15, NONE 0 menit). SKU yang sama tidak butuh changeover.
+// Pasangan yang tidak ada di tabel (SKU di luar katalog master) jatuh ke
+// durasi cadangan kelas terbesar supaya jadwal tidak menganggap transisi
+// asing sebagai gratis.
+func transisiAntar(p ParamsJadwal, dariSKU, keSKU string) TransisiJadwal {
 	if dariSKU == keSKU {
-		return 0
+		return TransisiJadwal{DurasiMenit: 0, RuleID: "NONE"}
 	}
-	dari, okDari := info[dariSKU]
-	ke, okKe := info[keSKU]
-	if okDari && okKe {
-		if v, ok := p.Changeover[dari.NamaTampil+">"+ke.NamaTampil]; ok {
-			return v
-		}
-		// Pasangan ukuran: ambil nilai terbesar untuk arah ukuran yang sama
-		// dari seluruh pasangan nama yang ukurannya cocok.
-		best := -1
-		for kunci, v := range p.Changeover {
-			a, b, ok := strings.Cut(kunci, ">")
-			if !ok {
-				continue
-			}
-			if ukuranDariNama(a) == dari.SizeML && ukuranDariNama(b) == ke.SizeML && v > best {
-				best = v
-			}
-		}
-		if best >= 0 {
-			return best
-		}
+	if t, ok := p.Transisi[dariSKU+">"+keSKU]; ok {
+		return t
 	}
-	maks := 0
-	for _, v := range p.Changeover {
-		if v > maks {
-			maks = v
-		}
-	}
-	return maks
+	return TransisiJadwal{DurasiMenit: p.ChangeoverCadanganMenit}
 }
 
-// ukuranDariNama mengekstrak ukuran ml dari nama produk tampilan SOP,
-// mis. "UHT Cokelat 200 ml" menjadi 200 dan "UHT Full Cream 1 L" menjadi 1000.
-func ukuranDariNama(nama string) int {
-	bagian := strings.Fields(nama)
-	for i, b := range bagian {
-		if b == "ml" && i > 0 {
-			var n int
-			for _, c := range bagian[i-1] {
-				if c >= '0' && c <= '9' {
-					n = n*10 + int(c-'0')
-				} else {
-					n = 0
-					break
-				}
-			}
-			if n > 0 {
-				return n
-			}
-		}
-		if b == "L" && i > 0 && bagian[i-1] == "1" {
-			return 1000
-		}
+// rateLPerJam menghitung rate pengisian satu lini untuk satu SKU.
+//
+// Rumus konversi satuan: speed resmi lini dinyatakan dalam pack per jam,
+// sedangkan qty PO dan durasi scheduler dalam liter. Satu pack berisi
+// SizeML ml = SizeML/1000 liter, jadi:
+//
+//	rate (L per jam) = speed (pack per jam) * SizeML / 1000
+//
+// Contoh: FL-08 30.000 pack per jam pada kemasan 250 ml = 7.500 L per jam.
+// Lini tanpa speed resmi (SpeedPackPerHour 0) atau SKU tanpa ukuran jatuh
+// ke rate cadangan per ukuran kemasan.
+func rateLPerJam(p ParamsJadwal, m MesinJadwal, info InfoSKU) float64 {
+	if m.SpeedPackPerHour > 0 && info.SizeML > 0 {
+		return float64(m.SpeedPackPerHour) * float64(info.SizeML) / 1000
 	}
-	return 0
+	return p.RateLPerHour[info.SizeML]
+}
+
+// batasHoldingUntuk mengembalikan batas holding (jam) yang berlaku untuk
+// satu tangki: batas per tangki dari data aset bila tangki tercakup,
+// selain itu batas global.
+func batasHoldingUntuk(p ParamsJadwal, tangkiID string) float64 {
+	if v, ok := p.HoldingPerTangki[tangkiID]; ok {
+		return v
+	}
+	return p.HoldingLimitH
 }
 
 // geserLewatDowntime memajukan start sampai interval [start, start+dur)
@@ -344,11 +363,9 @@ func bangunJadwal(in InputJadwal) Schedule {
 		for _, line := range po.Lines {
 			h.total += line.QtyLiter
 			info, okInfo := in.SKUInfo[line.SKU]
-			rate := 0.0
-			if okInfo {
-				rate = in.Params.RateLPerHour[info.SizeML]
-			}
-			// Kumpulkan kandidat: FM yang capable dan punya rate ukuran ini.
+			// Kumpulkan kandidat: FM yang capable dan punya rate untuk SKU
+			// ini. Rate bersifat per lini (speed resmi lini dikonversi ke
+			// liter per jam), jadi durasi dihitung per kandidat.
 			type kandidat struct {
 				mesin       MesinJadwal
 				mulai       time.Time
@@ -356,19 +373,23 @@ func bangunJadwal(in InputJadwal) Schedule {
 				selesai     time.Time
 			}
 			var pilihan *kandidat
-			if rate > 0 {
-				dur := time.Duration(int(math.Ceil(line.QtyLiter/rate*60))) * time.Minute
+			if okInfo {
 				for _, m := range in.Params.Machines {
 					if !mengandung(m.SKUCapable, line.SKU) {
 						continue
 					}
+					rate := rateLPerJam(in.Params, m, info)
+					if rate <= 0 {
+						continue
+					}
+					dur := time.Duration(int(math.Ceil(line.QtyLiter/rate*60))) * time.Minute
 					k := keadaanUntuk(m.ID)
 					mulai := windowStart
 					if k.bebasPada.After(mulai) {
 						mulai = k.bebasPada
 					}
 					if k.skuTerakhir != "" && k.skuTerakhir != line.SKU {
-						mulai = mulai.Add(time.Duration(changeoverMenit(in.Params, in.SKUInfo, k.skuTerakhir, line.SKU)) * time.Minute)
+						mulai = mulai.Add(time.Duration(transisiAntar(in.Params, k.skuTerakhir, line.SKU).DurasiMenit) * time.Minute)
 					}
 					mulaiMentah := mulai
 					mulai = geserLewatDowntime(in.Downtime, m.ID, mulai, dur)
@@ -414,13 +435,18 @@ func bangunJadwal(in InputJadwal) Schedule {
 	}
 
 	// changeover_after_min: jeda sesudah run sebelum run berikutnya di FM
-	// yang sama, hanya bila SKU berubah.
+	// yang sama, hanya bila SKU berubah; kelas transisi dan kewajiban CIP
+	// nya ikut dilaporkan sebagai konteks run.
 	for _, k := range keadaan {
 		for i := 0; i+1 < len(k.indeksRun); i++ {
 			a := &sch.Runs[k.indeksRun[i]]
 			b := sch.Runs[k.indeksRun[i+1]]
 			if a.SKU != b.SKU {
-				a.ChangeoverAfterMin = changeoverMenit(in.Params, in.SKUInfo, a.SKU, b.SKU)
+				t := transisiAntar(in.Params, a.SKU, b.SKU)
+				a.ChangeoverAfterMin = t.DurasiMenit
+				a.ChangeoverRuleID = t.RuleID
+				a.CIPRequired = t.PerluCIP
+				a.CIPRuleID = t.CIPRuleID
 			}
 		}
 	}
@@ -459,7 +485,7 @@ func bangunJadwal(in InputJadwal) Schedule {
 		mulaiTerakhir, err := parseWaktu(runTerakhir.Start)
 		if err == nil {
 			proyeksi := math.Round(mulaiTerakhir.Sub(*in.SusuSiapPada).Hours()*10) / 10
-			batas := in.Params.HoldingLimitH
+			batas := batasHoldingUntuk(in.Params, runTerakhir.TankSource)
 			if proyeksi > batas {
 				sch.Warnings = append(sch.Warnings, WarningJadwal{
 					Type: "HOLDING_TIME", ResourceID: runTerakhir.TankSource,

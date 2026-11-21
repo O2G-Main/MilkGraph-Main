@@ -9,12 +9,13 @@ func TestClassifyChangeover(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name     string
-		from     string
-		to       string
-		wantRule string
-		wantAct  string
-		wantCIP  bool
+		name      string
+		from      string
+		to        string
+		wantRule  string
+		wantAct   string
+		wantCIP   bool
+		wantCIPID string
 	}{
 		{
 			name:     "flavour change FC to CH",
@@ -25,20 +26,22 @@ func TestClassifyChangeover(t *testing.T) {
 			wantCIP:  false,
 		},
 		{
-			name:     "flavour change CH to ST (CIP mandatory)",
-			from:     "UHT-CH-1000-LOCAL",
-			to:       "UHT-ST-1000-LOCAL",
-			wantRule: "VARIANT",
-			wantAct:  "Variant Changeover",
-			wantCIP:  true,
+			name:      "flavour change CH to ST (CIP mandatory)",
+			from:      "UHT-CH-1000-LOCAL",
+			to:        "UHT-ST-1000-LOCAL",
+			wantRule:  "VARIANT",
+			wantAct:   "Variant Changeover",
+			wantCIP:   true,
+			wantCIPID: "CIP_CH_ST",
 		},
 		{
-			name:     "flavour change ST to FC (CIP mandatory)",
-			from:     "UHT-ST-1000-LOCAL",
-			to:       "UHT-FC-1000-LOCAL",
-			wantRule: "VARIANT",
-			wantAct:  "Variant Changeover",
-			wantCIP:  true,
+			name:      "flavour change ST to FC (CIP mandatory)",
+			from:      "UHT-ST-1000-LOCAL",
+			to:        "UHT-FC-1000-LOCAL",
+			wantRule:  "VARIANT",
+			wantAct:   "Variant Changeover",
+			wantCIP:   true,
+			wantCIPID: "CIP_FLAVOUR",
 		},
 		{
 			name:     "size change same flavour any market",
@@ -73,6 +76,9 @@ func TestClassifyChangeover(t *testing.T) {
 			if res.RuleID != tc.wantRule || res.Activity != tc.wantAct || res.RequiresCIP != tc.wantCIP {
 				t.Fatalf("got rule=%s act=%s cip=%v, want rule=%s act=%s cip=%v",
 					res.RuleID, res.Activity, res.RequiresCIP, tc.wantRule, tc.wantAct, tc.wantCIP)
+			}
+			if tc.wantCIPID != "" && res.CIPRuleID != tc.wantCIPID {
+				t.Fatalf("got cipRuleId=%s, want %s (mengikuti trigger cip_rules.csv)", res.CIPRuleID, tc.wantCIPID)
 			}
 		})
 	}

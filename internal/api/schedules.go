@@ -77,9 +77,8 @@ func (s *Server) katalogMaster() (*master.Catalog, error) {
 }
 
 // infoSKU membangun turunan master untuk seluruh finished SKU: ukuran
-// kemasan (ml) dan nama produk tampilan untuk matriks changeover SOP.
-// Nama tampilan mengikuti kosakata limits.json: UHT-CH -> "UHT Cokelat",
-// UHT-FC -> "UHT Full Cream", UHT-ST -> "UHT Stroberi".
+// kemasan (ml) dari pack_size_codes, dipakai untuk validasi SKU dan
+// konversi rate per lini (pack per jam ke liter per jam).
 func infoSKU(katalog *master.Catalog) map[string]InfoSKU {
 	ukuranKode := map[string]int{}
 	for _, row := range katalog.Tables["pack_size_codes"] {
@@ -87,25 +86,31 @@ func infoSKU(katalog *master.Catalog) map[string]InfoSKU {
 			ukuranKode[row["pack_size_code"]] = n
 		}
 	}
-	namaProduk := map[string]string{}
-	for _, row := range katalog.Tables["product_catalog"] {
-		namaProduk[row["sku_id"]] = row["product_name"]
-	}
-	basisNama := map[string]string{"UHT-CH": "UHT Cokelat", "UHT-FC": "UHT Full Cream", "UHT-ST": "UHT Stroberi"}
 	out := map[string]InfoSKU{}
 	for _, row := range katalog.Tables["finished_sku_catalog"] {
-		ml := ukuranKode[row["pack_size_code"]]
-		basis, ok := basisNama[row["liquid_sku_id"]]
-		if !ok {
-			basis = namaProduk[row["liquid_sku_id"]]
-		}
-		label := strconv.Itoa(ml) + " ml"
-		if ml == 1000 {
-			label = "1 L"
-		}
-		out[row["finished_sku_id"]] = InfoSKU{SizeML: ml, NamaTampil: basis + " " + label}
+		out[row["finished_sku_id"]] = InfoSKU{SizeML: ukuranKode[row["pack_size_code"]]}
 	}
 	return out
+}
+
+// normalisasiIDAset menyamakan ID aset gaya seed ops ("AT-1") dengan ID
+// resmi asset_configuration ("AT-01"): akhiran angka di-nol-kan menjadi
+// dua digit. ID yang tidak berpola awalan-angka dikembalikan apa adanya.
+func normalisasiIDAset(id string) string {
+	i := strings.LastIndex(id, "-")
+	if i < 0 || i == len(id)-1 {
+		return id
+	}
+	akhir := id[i+1:]
+	for _, c := range akhir {
+		if c < '0' || c > '9' {
+			return id
+		}
+	}
+	for len(akhir) < 2 {
+		akhir = "0" + akhir
+	}
+	return id[:i+1] + akhir
 }
 
 // paramsJadwal merakit parameter scheduler dari data repo yang nyata:
@@ -114,19 +119,40 @@ func infoSKU(katalog *master.Catalog) map[string]InfoSKU {
 //     backup_fm adalah line berikutnya dalam grup dedikasi yang sama
 //     (allowed_sku_ids + pack_size_codes identik); tangki sumber dari
 //     source_aseptic_tank_id dedikasi.
-//   - Tangki dari ops.json asepticTanks (capacity + level nyata). Batas
-//     holding per tangki belum terisi di master CSV (nilainya "X"), jadi
-//     dipakai batas holding global dari limits (holdingMin, 630 menit).
-//   - Rate per ukuran adalah nilai contoh dokumen coaching Bootcamp 3
-//     (250 ml: 4000 L/jam, 1000 ml: 6000 L/jam; ukuran kecil lain mengikuti
-//     4000, ukuran besar lain 6000) karena speed_packph master masih "X".
-//   - Changeover dari matriks sopChangeover di limits.json.
+//   - Speed per lini dari speed_packph line_dedication (cadangan:
+//     speed_packph asset_configuration untuk aset lini yang sama). Rate
+//     liter per jam diturunkan scheduler per lini dari speed ini.
+//     RateLPerHour per ukuran hanya cadangan untuk lini tanpa speed;
+//     isinya tetap nilai contoh coaching Bootcamp 3 dan tidak dipakai
+//     selama speed resmi tersedia.
+//   - Changeover dinilai dari klasifier master + durasi changeover_rules
+//     resmi (VARIANT 45, SIZE 60, PAPER 15, NONE 0 menit). Matriks
+//     nama-pasangan sopChangeover di limits.json TIDAK lagi dibaca
+//     scheduler sejak kalibrasi ini (Keputusan 7 pemetaan Greenfields);
+//     matriks di ops.json juga tidak dibaca scheduler (ia hanya disajikan
+//     endpoint tampilan /production/changeover-matrix untuk mesin aturan
+//     skenario lama).
+//   - Batas holding per tangki dari holding_time_limit_hours
+//     asset_configuration untuk tangki yang tercakup; batas global dari
+//     limits (holdingMin, 630 menit) tetap bawaan untuk sisanya
+//     (Keputusan 9 pemetaan Greenfields).
 func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]InfoSKU, error) {
 	katalog, e := s.katalogMaster()
 	if e != nil {
 		return ParamsJadwal{}, nil, e
 	}
 	info := infoSKU(katalog)
+
+	asetByID := map[string]map[string]string{}
+	for _, row := range katalog.Tables["asset_configuration"] {
+		asetByID[row["asset_id"]] = row
+	}
+	speedAset := func(lineID string) int {
+		if v, ok := master.ParseAngkaID(asetByID[lineID]["speed_packph"]); ok {
+			return int(v)
+		}
+		return 0
+	}
 
 	capable := map[string][]string{}
 	for _, row := range katalog.Tables["line_finished_sku_compatibility"] {
@@ -136,13 +162,22 @@ func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]Inf
 	}
 	type dedikasi struct {
 		id, tangki, grup string
+		speed            int
 	}
 	ded := []dedikasi{}
 	for _, row := range katalog.Tables["line_dedication"] {
+		speed := 0
+		if v, ok := master.ParseAngkaID(row["speed_packph"]); ok {
+			speed = int(v)
+		}
+		if speed == 0 {
+			speed = speedAset(row["line_id"])
+		}
 		ded = append(ded, dedikasi{
 			id:     row["line_id"],
 			tangki: row["source_aseptic_tank_id"],
 			grup:   row["allowed_sku_ids"] + "|" + row["pack_size_codes"],
+			speed:  speed,
 		})
 	}
 	sort.Slice(ded, func(i, j int) bool { return ded[i].id < ded[j].id })
@@ -151,8 +186,9 @@ func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]Inf
 		grupLine[d.grup] = append(grupLine[d.grup], d.id)
 	}
 	params := ParamsJadwal{
-		RateLPerHour: map[int]float64{200: 4000, 250: 4000, 320: 4000, 950: 6000, 1000: 6000},
-		Changeover:   map[string]int{},
+		RateLPerHour:     map[int]float64{200: 4000, 250: 4000, 320: 4000, 950: 6000, 1000: 6000},
+		Transisi:         map[string]TransisiJadwal{},
+		HoldingPerTangki: map[string]float64{},
 	}
 	for _, d := range ded {
 		backup := ""
@@ -166,8 +202,49 @@ func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]Inf
 		sort.Strings(sku)
 		params.Machines = append(params.Machines, MesinJadwal{
 			ID: d.id, SKUCapable: sku, BackupID: backup, TangkiSumber: d.tangki,
+			SpeedPackPerHour: d.speed,
 		})
 	}
+
+	// Tabel transisi: nilai setiap pasangan finished SKU sekali di sini
+	// dari klasifier master, durasinya dari changeover_rules resmi.
+	durasiKelas := katalog.DurasiChangeoverMenit()
+	for _, v := range durasiKelas {
+		if v > params.ChangeoverCadanganMenit {
+			params.ChangeoverCadanganMenit = v
+		}
+	}
+	skuIDs := make([]string, 0, len(info))
+	for id := range info {
+		skuIDs = append(skuIDs, id)
+	}
+	sort.Strings(skuIDs)
+	for _, dari := range skuIDs {
+		for _, ke := range skuIDs {
+			if dari == ke {
+				continue
+			}
+			eval, err := katalog.ClassifyChangeover(dari, ke)
+			if err != nil {
+				return ParamsJadwal{}, nil, err
+			}
+			params.Transisi[dari+">"+ke] = TransisiJadwal{
+				DurasiMenit: durasiKelas[eval.RuleID],
+				RuleID:      eval.RuleID,
+				PerluCIP:    eval.RequiresCIP,
+				CIPRuleID:   eval.CIPRuleID,
+			}
+		}
+	}
+
+	// Batas holding per aset dari asset_configuration (hanya baris yang
+	// batasnya terbaca sebagai angka; "N/A" berarti tidak tercakup).
+	for _, row := range katalog.Tables["asset_configuration"] {
+		if v, ok := master.ParseAngkaID(row["holding_time_limit_hours"]); ok {
+			params.HoldingPerTangki[row["asset_id"]] = v
+		}
+	}
+
 	l, e := s.limits(ctx)
 	if e != nil {
 		return ParamsJadwal{}, nil, e
@@ -175,17 +252,17 @@ func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]Inf
 	params.HoldingLimitH = float64(l.HoldingMin) / 60
 	for _, raw := range arr(s.seeds.Ops["asepticTanks"]) {
 		t := obj(raw)
+		id := str(t["id"])
+		batas := params.HoldingLimitH
+		if v, ok := params.HoldingPerTangki[normalisasiIDAset(id)]; ok {
+			batas = v
+		}
 		params.Tanks = append(params.Tanks, TangkiJadwal{
-			ID:              str(t["id"]),
+			ID:              id,
 			CapacityL:       floatValue(t["capacity"]),
 			LevelL:          floatValue(t["level"]),
-			MaxHoldingHours: params.HoldingLimitH,
+			MaxHoldingHours: batas,
 		})
-	}
-	if raw, ok := s.seeds.Limits["sopChangeover"].(map[string]any); ok {
-		for k, v := range raw {
-			params.Changeover[k] = num(v)
-		}
 	}
 	return params, info, nil
 }

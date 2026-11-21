@@ -54,14 +54,16 @@ func (c *Catalog) ClassifyChangeover(fromFinishedSKU, toFinishedSKU string) (Cha
 			Condition:      "Flavour_variant_changes",
 			AdditionalNote: "Override Size Change dan Paper Change; CIP tetap independen",
 		}
-		// Check CIP requirements based on cip_rules.csv
+		// Check CIP requirements based on cip_rules.csv. ID aturan mengikuti
+		// trigger di cip_rules.csv: CIP_CH_ST untuk Chocolate<->Strawberry,
+		// CIP_FLAVOUR untuk Chocolate/Strawberry ke Full Cream.
 		if (flavourFrom == "Chocolate" && flavourTo == "Strawberry") || (flavourFrom == "Strawberry" && flavourTo == "Chocolate") {
 			eval.RequiresCIP = true
-			eval.CIPRuleID = "CIP_FLAVOUR"
+			eval.CIPRuleID = "CIP_CH_ST"
 			eval.CIPRequirement = "CIP wajib untuk Chocolate ke Strawberry dan Strawberry ke Chocolate"
 		} else if (flavourFrom == "Chocolate" || flavourFrom == "Strawberry") && flavourTo == "Full Cream" {
 			eval.RequiresCIP = true
-			eval.CIPRuleID = "CIP_CH_ST"
+			eval.CIPRuleID = "CIP_FLAVOUR"
 			eval.CIPRequirement = "CIP selesai sebelum Full Cream diproses"
 		}
 		return eval, nil
