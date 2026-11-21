@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { scenario } from "@/lib/data";
 import { number } from "@/lib/format";
 import type { Answer } from "@/mock/types";
-import { Badge, Icon, SourceButton } from "@/components/ui";
+import { Icon, SourceButton } from "@/components/ui";
 import { Equipment, KIND_LABEL } from "./equipment";
 import { HandoffChain, lotAction } from "./genealogy";
 
@@ -55,7 +55,7 @@ export function TraceTable({ answer, onSource, onHighlight }: { answer: Answer; 
   const packs = answer.lots?.reduce((sum, lot) => sum + lot.packs, 0) ?? 0;
   return <div className="trace-table">
     {answer.mix && <div className="table-wrap"><table><thead><tr><th>RT</th><th>Asal</th><th className="numeric">Volume ke RMT-2</th><th className="numeric">Porsi di {scenario.qcEvent.lot}</th></tr></thead><tbody>{answer.mix.map(m => { const id = m.id.toLowerCase(); const farm = scenario.graph.edges.find(e => e.target === id && e.label === "COLLECTED"); const fill = scenario.graph.edges.find(e => e.source === id && e.label.startsWith("FILLED_INTO")); return <tr key={m.id} className={m.id === "RT-04" ? "suspect-row" : ""} onMouseEnter={() => onHighlight(id)} onMouseLeave={() => onHighlight(null)}><td><strong className="mono">{m.id}</strong></td><td data-label="Asal">{farm ? nodeById(farm.source)!.label : "Tidak tercatat"}</td><td data-label="Volume" className="numeric">{fill ? `${number(liters(fill.label)!)} L` : "-"}</td><td data-label="Porsi" className="numeric">{m.percent}%</td></tr>; })}</tbody></table></div>}
-    {answer.lots && <div className="lot-results"><table><thead><tr><th>Lot</th><th className="numeric">Isi RT-04</th><th className="numeric">Pak</th><th>Tindakan</th></tr></thead><tbody>{answer.lots.map(lot => { const at = lotAction(lot.id); return <tr key={lot.id}><td><strong className="mono">{lot.id}</strong><span className="table-sub">{lot.product}</span></td><td data-label="Isi RT-04" className="numeric">{lot.percent}%</td><td data-label="Pak" className="numeric">{number(lot.packs)}</td><td data-label="Tindakan" className={at.shipped ? "crit-text" : ""}>{at.shipped ? "Recall" : "Hold"}</td></tr>; })}</tbody></table><p className="hold-compare"><Icon icon={Check} size={15} /><span>Hold <strong>{answer.lots.length} lot · {number(packs)} pak</strong>, dibanding {scenario.holdBaseline.lots} lot · {number(scenario.holdBaseline.packs)} pak tanpa genealogi volume [simulasi].</span></p></div>}
+    {answer.lots && <div className="lot-results"><table><thead><tr><th>Lot</th><th className="numeric">Isi RT-04</th><th className="numeric">Pak</th><th>Tindakan</th></tr></thead><tbody>{answer.lots.map(lot => { const at = lotAction(lot.id); return <tr key={lot.id}><td><strong className="mono">{lot.id}</strong><span className="table-sub">{lot.product}</span></td><td data-label="Isi RT-04" className="numeric">{lot.percent}%</td><td data-label="Pak" className="numeric">{number(lot.packs)}</td><td data-label="Tindakan" className={at.shipped ? "crit-text" : ""}>{at.shipped ? "Recall" : "Hold"}</td></tr>; })}</tbody></table><p className="hold-compare"><Icon icon={Check} size={15} /><span>Hold <strong>{answer.lots.length} lot · {number(packs)} pak</strong>, dibanding {scenario.holdBaseline.lots} lot · {number(scenario.holdBaseline.packs)} pak tanpa genealogi volume.</span></p></div>}
     <h3 className="factors-title">Rantai serah-terima batch</h3>
     <HandoffChain onSource={onSource} />
   </div>;
@@ -68,7 +68,7 @@ export function MassBalance({ onSource }: { onSource: (id: string) => void }) {
   const steps = scenario.handoffs.slice(1).map(h => ({ ...h, liters: liters(h.volume, true) }));
   const max = Math.max(...steps.map(s => s.liters ?? 0));
   return <div className="mass-balance">
-    <div className="mass-head"><p className="small muted">Volume batch {steps[0].batch} per tahap, dari catatan serah-terima.</p><Badge>Data simulasi</Badge></div>
+    <div className="mass-head"><p className="small muted">Volume batch {steps[0].batch} per tahap, dari catatan serah-terima.</p></div>
     <ol className="mass-rows">{steps.map((s, i) => {
       const prev = steps.slice(0, i).reverse().find(p => p.liters)?.liters;
       const delta = s.liters && prev ? s.liters - prev : null;

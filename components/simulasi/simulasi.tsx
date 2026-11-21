@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, CalendarClock, Crosshair, Mouse, Move3d, Scan } from "lucide-react";
-import { Badge, Card, Icon, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Card, Icon, PageLink, SectionTitle, Toggle } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 import { BOTTLENECKS as bottlenecks } from "@/mock/site";
 import { PlantScene, type Focus, type SceneState, type SiteLayout, type SiteStatus } from "./plant-scene";
@@ -52,11 +51,11 @@ export function Simulasi() {
           <h1>Simulasi 3D</h1>
           <p>Model plant dengan tata letak nyata. Di sini terlihat alur susu, kondisi bay dan tangki, dan lokasi bottleneck.</p>
         </div>
-        <Link className="button primary" href="/rencana">
+        <PageLink className="button primary" href="/rencana">
           <Icon icon={CalendarClock} />
           Buka rencana
           <Icon icon={ArrowUpRight} size={16} />
-        </Link>
+        </PageLink>
       </div>
 
       <div className="page-tabs">
@@ -161,7 +160,7 @@ export function Simulasi() {
             </span>
           </div>
           <p className="small muted">
-            Tata letak dan ukuran gedung ditelusuri dari citra satelit publik plant susu di Ngajum, Malang (skala ±0,3 m). Fungsi gedung dan isi ruang proses adalah perkiraan tim mengikuti konfigurasi proses [asumsi]. Status unit digerakkan data simulator [simulasi].
+            Tata letak dan ukuran gedung ditelusuri dari citra satelit publik plant susu di Ngajum, Malang (skala ±0,3 m). Fungsi gedung dan isi ruang proses adalah perkiraan tim mengikuti konfigurasi proses [asumsi].
           </p>
         </Card>
       </div>

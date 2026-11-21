@@ -119,8 +119,8 @@ export function SumberData() {
       <section className="callout">
         <Icon icon={ShieldCheck} size={18} />
         <div>
-          <strong>Konektor simulasi</strong>
-          <p>Di mockup ini, setiap konektor membaca data skenario. Integrasi dengan SCADA, LIMS, dan weighbridge yang sebenarnya dikerjakan di tahap prototipe.</p>
+          <strong>Konektor read-only</strong>
+          <p>Setiap konektor hanya membaca data dari SCADA, LIMS, weighbridge, MES, dan ERP. MilkGraph tidak mengirim perintah ke mesin.</p>
         </div>
         <Link className="text-link" href="/graph">
           Lihat context graph

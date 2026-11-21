@@ -36,7 +36,7 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 2. **Kandidat, bukan vonis.** Trace mundur menghasilkan kandidat sumber; QA memastikan lewat uji ulang.
 3. **Kode/solver yang menghitung.** Genealogi dari irisan waktu dan proporsi volume; kelayakan dari constraint. LLM hanya merangkai penjelasan.
 4. **Manusia yang memutuskan.** Rekomendasi jadwal, hold, recall, dan rilis lab tidak berlaku sebelum disetujui peran yang berwenang. Aplikasi tidak mengendalikan bay, mesin, atau stok.
-5. **Jujur soal data.** Data mockup sintetis, dikalibrasi ke angka tantangan, diberi label `Data simulasi`. Parameter yang belum divalidasi mentor diberi label `[asumsi]`; fungsi gedung 3D diberi label "perkiraan".
+5. **Jujur soal data.** Revisi 21 Nov 2026: label `Data simulasi`,, dan catatan chatbot "belum memakai AI generatif" dihapus dari tampilan karena aplikasi akan memakai data dan AI asli. Parameter yang belum divalidasi mentor diberi label `[asumsi]`; fungsi gedung 3D diberi label "perkiraan".
 
 ## 5. Scope
 
@@ -45,42 +45,86 @@ Keduanya sejalan: susu yang tersendat di hulu terasa sampai lini filling, dan su
 | Grup | Halaman | Route | Status mockup | Kontrak BE |
 |---|---|---|---|---|
 | Operasional | Receiving Flow | `/` | Dibangun | `04` §3 |
+| Penerimaan | Jadwal Kedatangan RT | `/kedatangan` | Dibangun; target, estimasi, tiba aktual, keterlambatan dari server | `04` §14b |
+| | Antrean Truk (catat tiba, umur susu, bongkar) | `/receiving` | Dibangun; catatan lapangan lokal | `04` §3 |
 | | Simulasi 3D | `/simulasi` | Dibangun | `04` §15 |
 | | Bay & Tangki | `/tangki` | Dibangun | `04` §4 |
 | | Lini Filling | `/filling` | Dibangun | `04` §4 |
-| Perencanaan | Rencana & What-if | `/rencana` | Dibangun | `04` §5-6 |
+| Perencanaan | Penjadwalan | `/penjadwalan` | Dibangun (lokal, belum ada endpoint) | - |
+| | Aturan Produksi | `/aturan-produksi` | Dibangun (lokal, belum ada endpoint) | - |
+| | Rencana & What-if | `/rencana` | Dibangun | `04` §5-6 |
 | | Pasokan & Permintaan | `/pasokan` | Dibangun | `04` §7 |
 | | Constraint | `/constraint` | Dibangun | `04` §5 |
 | | Riwayat Persetujuan | `/persetujuan` | Dibangun | `04` §11 |
 | Traceability | Traceability | `/trace` | Dibangun | `04` §8 |
 | | Hasil Lab | `/lab` | Dibangun | `04` §9 |
 | | Daftar Hold | `/hold` | Dibangun | `04` §10 |
+| | Transfer & Volume (pindah dari Penerimaan) | `/transfer` | Dibangun; mode API lewat `/api/v1/trace/transfers` (selisih dari server) | `04` §15a |
 | Data | Context Graph | `/graph` | Dibangun | `04` §12 |
 | | Sumber Data | `/sumber-data` | Dibangun | `04` §13 |
-| Sistem | Pengguna & Peran | `/pengguna` | Dibangun | `04` §14 |
+| Pengaturan | Pengguna | `/pengguna` | Dibangun | `04` §14 |
+| | Role & Hak Akses | `/role-akses` | Dibangun (lokal, belum ada endpoint) | - |
+| (di luar shell) | Login | `/login` | Dibangun (demo, tanpa autentikasi) | - |
 
-Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backend). Keputusan di satu halaman terlihat di halaman lain dan tercatat di Riwayat Persetujuan. Shell: sidebar 5 grup, top bar (chip Data simulasi, shift, notifikasi, avatar), kartu akun untuk ganti peran, Panduan demo dengan "Atur ulang demo".
+Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backend). Keputusan di satu halaman terlihat di halaman lain dan tercatat di Riwayat Persetujuan. Shell: sidebar 5 grup, top bar (shift, notifikasi, avatar), kartu akun membuka konfirmasi keluar, Panduan demo dengan "Atur ulang demo". Masuk lewat `/login`: email dipilih dari akun per peran, kata sandi demo terisi otomatis; yang belum masuk diarahkan ke `/login`.
 
 ### 5.2 Peran dan hak akses (`lib/roles.ts`)
 
-| Keputusan | Planner PPIC | Koordinator receiving | Supervisor produksi | QA/Lab |
-|---|---|---|---|---|
-| Kirim kebutuhan susu ke farm | ya | | | |
-| Setujui/tolak rekomendasi rencana | ya | | | |
-| Ubah batas constraint | ya | | | |
-| Konfirmasi instruksi dari rencana disetujui | | ya (instruksi bay) | ya (instruksi filling) | |
-| Ajukan daftar hold | ya | | ya | ya |
-| Setujui/tolak/lepas hold | | | | ya |
-| Rilis/tolak hasil lab RT | | | | ya |
+Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC, Koordinator receiving, Lab (dulu QA/Lab, id `lab`), Operator produksi (dulu Supervisor produksi, id `operator`), QA/QC (id `qa`), dan Supervisor/Manager (id `manager`).
 
-Pengguna demo: Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Supervisor produksi), Sri Lestari (QA/Lab).
+| Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Operator produksi | Lab | QA/QC | Supervisor/Manager |
+|---|---|---|---|---|---|---|---|
+| Catat hasil pemeriksaan mutu barang jadi | ya | | | | | ya | |
+| Atur batas holding time dan ketentuan mutu | ya | | | | | ya | |
+| Catat produksi mulai, selesai, dan hasil di lini yang ditugaskan | ya | | | ya | | | |
+| Perbarui kondisi mesin dan catat downtime (alat yang ditugaskan) | ya | | | ya | | | |
+| Catat volume perpindahan bahan pada alat yang ditugaskan | ya | | | ya | | | |
+| Masukkan dan perbarui hasil pemeriksaan lab (RT dan batch tangki) | ya | | | | ya | | |
+| Tambah/ubah jadwal kedatangan RT, estimasi tiba, status perjalanan | ya | | ya | | | | |
+| Catat kedatangan aktual, awal umur susu, dan proses bongkar | ya | | ya | | | | |
+| Catat transfer susu dari RT ke tangki penerimaan | ya | | ya | | | | |
+| Tambah/ubah target dan jadwal produksi | ya | ya | | | | | |
+| Atur durasi changeover dan CIP (tidak boleh di bawah standar) | ya | ya | | | | | |
+| Ubah parameter simulasi, waktu maintenance, kapasitas alat (Manager: what-if di Constraint tanpa menyimpan) | ya | ya | | | | | ya |
+| Kirim kebutuhan susu ke farm | ya | ya | | | | | |
+| Setujui/tolak rekomendasi rencana | ya | ya | | | | | |
+| Ubah batas constraint | ya | ya | | | | | |
+| Konfirmasi instruksi dari rencana disetujui | ya | | ya (instruksi bay) | ya (instruksi filling) | | | |
+| Ajukan daftar hold | ya | | | | | ya | |
+| Setujui/tolak/lepas hold | ya | | | | | ya | |
+| Rilis/tolak hasil lab RT | ya | | | | | ya | |
+| Kelola pengguna dan hak akses peran | ya | | | | | | |
+| Kelola master data, konfigurasi integrasi | ya | | | | | | |
+| Ajukan hasil simulasi ke Planner | ya | | | | | | ya |
+| Terapkan atau tolak usulan simulasi | ya | ya | | | | | |
+| Lihat riwayat seluruh perubahan dan persetujuan | ya | ya | ya | ya | ya | ya | ya |
+
+**Role dan hak akses dinamis (revisi poin 2).** Pembagian tujuh role di atas adalah pengaturan awal. Superadmin menyesuaikannya di Pengaturan → Role & Hak Akses: menambah role baru (bisa menyalin menu dan izin dari role lain), mengubah nama dan deskripsi role, menghapus role baru yang belum dipakai, memilih menu dan submenu yang tampil per role, dan menyalakan atau mematikan tindakan per menu (tambah, ubah, jalankan simulasi, setujui, ekspor; lihat diatur lewat menu yang tampil, Riwayat Persetujuan lewat izin "Lihat riwayat"). Setiap izin di `lib/roles.ts` punya menu (`page`) dan jenis tindakan (`action`). Superadmin selalu memegang semua menu dan izin, dan izin kelola pengguna/role hanya miliknya. Di Pengaturan → Pengguna, Superadmin menetapkan role ke pengguna serta penugasan alat/lini (berlaku untuk role apa pun, membatasi realisasi produksi, kondisi mesin, downtime, dan transfer bahan). Role, menu, dan izin tersimpan di state (`roles`, `menus`, `access`) dan tercatat di Riwayat Persetujuan jenis Akses. Ekspor CSV Riwayat Persetujuan sekarang izin tersendiri (`audit.export`).
+
+**Menu per peran (pengaturan awal)** (`HIDDEN_PAGES` di `lib/roles.ts`, ditimpa `menus` dari Role & Hak Akses): halaman yang disembunyikan tidak ada di sidebar, dan bila dibuka lewat URL langsung dialihkan ke Beranda. Yang tidak tersedia untuk peran tidak ditampilkan sama sekali: tombol keputusan, kontrol ubah, dan tautan ke halaman tersembunyi (`PageLink`) hilang, bukan dikunci.
+- Superadmin: semua menu.
+- Planner PPIC: tanpa QC Barang Jadi, Master Alat, Sumber Data, Pengguna, dan Role & Hak Akses. Penerimaan, Kondisi Alat, dan Traceability hanya untuk dilihat. Beranda Planner menampilkan KPI kelayakan rencana, jadwal, kecukupan susu, dan lini filling jalan, lalu daftar keputusan diurutkan dari yang paling mendesak.
+- Koordinator receiving: hanya Beranda, Penerimaan (Jadwal Kedatangan RT, Antrean Truk, Transfer & Volume, Tes Lab untuk dilihat), dan Kondisi Alat (termasuk Bay & Tangki untuk melihat kesiapan bay dan tangki serta mengonfirmasi instruksi bay). Riwayat Persetujuan tetap bisa dibuka lewat Beranda. Beranda receiving menampilkan KPI RT di plant, holding paling mendesak, bay siap, dan ruang tangki penerimaan, lalu daftar urut urgensi: RT dekat batas holding, instruksi bay, bay CIP, tangki hampir penuh, transfer yang belum dicatat, tunggu lab, dan RT berikutnya.
+- Lab: hanya Beranda, Antrean Truk (dengan kartu "Perlu diperiksa lab" di atas), dan Tes Lab. Beranda Lab menampilkan KPI sampel yang perlu diperiksa, RT tertua di lab, out-of-spec, dan yang menunggu keputusan QA, lalu daftar urut urgensi: hasil out-of-spec, RT dari umur susu tertua, RT yang belum disampel, batch tangki yang menunggu uji, dan hasil lengkap yang menunggu QA.
+- Operator produksi: Beranda, Simulasi 3D, Penerimaan (hanya Transfer & Volume, bagian transfer bahan di alat proses), Operasional (Alur, Kondisi Alat termasuk Bay & Tangki dan Lini Filling), serta Rencana (Penjadwalan dan Aturan Produksi untuk dilihat). Alat yang ditugaskan disimpan per pengguna (`assets`); Hendra Kusuma mendapat F1, F2, F4, AT-1, AT-2, UHT-1, UHT-2. Penjadwalan hanya menampilkan order di lini itu dengan tombol Mulai/Selesai dan kolom realisasi (hasil baik, reject, persen target). Kondisi Alat membuka tab Ditugaskan, tombol ubah kondisi hanya di sterilizer dan mesin filling yang ditugaskan, plus tabel downtime (catat, ubah, selesaikan). Operator tetap mengonfirmasi instruksi filling dari rencana yang disetujui. Beranda Operator menampilkan KPI order lini, hasil baik, alat bermasalah, dan downtime, lalu daftar urut urgensi: mesin berhenti, alat bermasalah, order terlambat mulai, instruksi filling, dan order berikutnya.
+- QA/QC (Ratna Maharani): Beranda, Penerimaan (Tes Lab, Transfer & Volume), Operasional (QC Barang Jadi), Rencana (Aturan Produksi), dan Traceability (Riwayat Produksi termasuk Trace, Context Graph, Hold Produk). Merilis atau menolak RT di Tes Lab, mencatat hasil mutu barang jadi (lot lulus bila semua parameter dalam batas), mengajukan serta menyetujui dan melepas hold. Di Aturan Produksi mengatur batas holding time (farm sampai tersimpan dingin, Raw Milk Buffer sampai thermal) dan ketentuan mutu susu segar (suhu tiba, TPC, lemak, protein) yang langsung jadi batas parameter di Tes Lab; di halaman Constraint batas holding hanya ditampilkan. Transfer & Volume menampilkan kartu Selisih bahan (transfer dibanding timbangan RT, toleransi 0,5%). Beranda QA/QC menampilkan KPI keputusan rilis, lot gagal QC, hold, dan selisih bahan, lalu daftar urut urgensi: RT out-of-spec, RT siap rilis (umur susu tertua dulu), lot gagal tanpa hold, hold yang menunggu persetujuan, batch siap rilis, dan selisih bahan.
+- Supervisor/Manager (Wahyu Pratama): semua menu kecuali Pengaturan, untuk melihat detail Penerimaan, Operasional (termasuk Master Alat sebagai alat dan produk), dan Traceability. Di Rencana boleh mengubah parameter dan menjalankan simulasi untuk membandingkan alternatif: atur alat di Alur rencana, terapkan rekomendasi upgrade, dan menggeser batas di Constraint sebagai what-if (banner "Simulasi, tidak disimpan", tanpa tombol Simpan). Hasil simulasi bisa diajukan ke Planner/PPIC lewat tombol "Ajukan ke Planner" (wajib alasan) di Constraint (batas) serta Alur rencana, Rekomendasi upgrade, dan Kelayakan & keputusan (pengaturan alat). Planner melihat kartu "Usulan simulasi" di Kelayakan & keputusan dan di Beranda, lalu Terapkan (batas langsung berlaku, pengaturan alat masuk ke rencana aktif) atau Tolak dengan alasan; Manager melihat statusnya di Executive Dashboard. Manager tidak menyetujui rencana. Beranda tampil sebagai Executive Dashboard (judul, menu, dan breadcrumb) dengan KPI pasokan susu, penggunaan mesin, jadwal, dan pencapaian target (laju mesin terhadap target), tabel pencapaian target per lini, dan daftar perhatian manajemen lintas area.
+
+Lab: Tes Lab memuat sampel RT dan batch tangki proses (ST-6, MX-1). Lab membuat sampel untuk RT yang baru tiba dan memasukkan nilai serta hasil tiap parameter (dalam batas, di luar batas, masih berjalan), bisa menandai uji ulang. Status sampel dihitung dari parameternya: ada yang di luar batas → out-of-spec; ditandai uji ulang → uji ulang; masih ada yang berjalan → dalam uji; semua dalam batas → menunggu keputusan QA. Hasil tercatat di Riwayat Persetujuan dengan jenis Uji lab.
+
+Penerimaan: RT yang dicatat tiba pindah dari jadwal ke antrean di tahap Sampling. Bongkar hanya bisa dimulai setelah RT dirilis lab, di bay yang tidak sedang CIP atau dipakai RT lain. Umur susu berhenti dihitung saat bongkar selesai. Transfer ditolak bila melebihi sisa ruang tangki dan diberi peringatan bila selisih dengan volume timbang lebih dari 0,5%.
+
+**Transfer & Volume (Traceability, revisi Nov 2026).** Submenu Transfer & Volume pindah ke Traceability untuk mencatat perpindahan susu antar tangki/alat. Satu catatan (manual untuk sementara) langsung terhubung ke alat asal dan tujuan: volume keluar, volume diterima, jam mulai-selesai, waktu pengukuran, batch, dan catatan. Selisih keluar - diterima tampil sebagai mass balance (mis. keluar 10.000 L dari UHT-2, diterima 9.900 L di AT-2, selisih 100 L), dengan toleransi 0,5% [asumsi]. Volume terkini tangki dihitung dari level snapshot ditambah yang diterima dan dikurangi yang keluar; transfer yang diukur sampai 14.42 dianggap sudah termasuk di snapshot. Riwayat bisa difilter per alat (`/transfer?alat=AT-2`) dan per sumber (Manual/IoT). Detail tangki (Raw Milk Buffer dan tangki tengah di Bay & Tangki, tangki aseptik di Lini Filling) menampilkan volume terkini dan tombol "Lihat Riwayat Transfer". Riwayat Produksi menampilkan transfer dan selisih yang menyentuh alat atau batch di jalur output, plus catatan selisih per tahap. Data IoT Greenfields masuk lewat `POST /api/v1/transfers` (lihat `04` §15a) dan tampil dengan sumber IoT, perangkat, dan waktu pengukuran.
+
+Aturan Produksi ikut dipakai di cek kelayakan Rencana: durasi changeover menimpa SOP, dan CIP bay yang lebih pendek dari standar diperpanjang sampai standar.
+
+Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Operator produksi), Sri Lestari (Lab), Ratna Maharani (QA/QC), Wahyu Pratama (Supervisor/Manager). Data browser lama otomatis mendapat pengguna untuk peran baru. Superadmin bisa menambah pengguna dan mengubah matriks hak akses di Pengguna & Peran.
 
 ### 5.3 Isi per halaman
 
 **Shell (tampil di semua halaman)**
 - **Sidebar:** 14 halaman dalam 5 grup, menempel saat halaman di-scroll, bisa diciutkan jadi ikon saja; di HP menjadi drawer.
 - **Kartu akun (bawah sidebar) dan avatar:** membuka panel "Masuk sebagai" untuk berganti peran (Planner PPIC, Koordinator receiving, Supervisor produksi, QA/Lab). Peran menentukan tombol keputusan yang aktif di semua halaman.
-- **Chip "Data simulasi":** penanda bahwa semua angka adalah data simulasi.
 - **Pilih shift:** menampilkan shift aktif (Shift Siang, Rab 14 Okt, 14.00 - 22.00, snapshot 14.42); shift lain belum tersedia di mockup.
 - **Notifikasi (angka 3):** rencana shift tidak layak (jumlah pelanggaran mengikuti Constraint), RT-26 mendekati batas holding time, QC FG out-of-spec FG-1013-07; klik membuka buktinya.
 - **Panduan demo:** urutan demo dua skenario proposal dan tombol "Atur ulang demo" yang menghapus semua keputusan, hold, konfirmasi, dan perubahan batas di browser.
@@ -127,7 +171,7 @@ Pengguna demo: Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator rece
 
 **Rencana & What-if (`/rencana`)**
 - Skenario rencana shift (FIFO) dan what-if "CIP Bay 2 molor 40 menit".
-- Kartu sorotan rekomendasi solver: CP-SAT + waktu solve `[simulasi]`; constraint dilanggar, waktu putar RT, starvation filling, RT antre (sebelum → sesudah).
+- Kartu sorotan rekomendasi solver: CP-SAT + waktu solve; constraint dilanggar, waktu putar RT, starvation filling, RT antre (sebelum → sesudah).
 - Tabel 6 constraint (flow rate, maintenance, holding time, downtime & CIP, kapasitas tangki, changeover SOP) untuk rencana awal vs rekomendasi, dihitung dari batas tersimpan.
 - Gantt Lab test, Bay 1-3, Filling F1/F2/F4; toggle rencana awal / rekomendasi; alasan perubahan bersumber.
 - Setujui (catatan opsional) atau tolak (catatan wajib); hanya Planner PPIC.
@@ -137,7 +181,7 @@ Pengguna demo: Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator rece
 
 **Pasokan & Permintaan (`/pasokan`)**
 - Alur Farms ↔ PPIC ↔ Produksi dengan nilai saat ini.
-- Grafik tren permintaan produksi dan rencana susu masuk vs kapasitas 320 t/hari (Recharts, tooltip, tampilan tabel) `[simulasi]`.
+- Grafik tren permintaan produksi dan rencana susu masuk vs kapasitas 320 t/hari (Recharts, tooltip, tampilan tabel).
 - Terjemahan rencana produksi per SKU (Big/Medium/Small Pack) ke kebutuhan susu segar termasuk susut 3% `[asumsi]`, dibanding rencana kirim farm dan kapasitas.
 - Jadwal kirim dan kesiapan mutu per farm (lolos lab 30 hari, suhu muat, temuan terakhir); planner mengirim kebutuhan ke farm.
 
@@ -175,13 +219,13 @@ Pengguna demo: Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator rece
 **Tanya MilkGraph (asisten melayang di kanan bawah, semua halaman; masukan dosen 9 Nov 2026)**
 - Suara ke teks: tombol mikrofon (VoicePill dari React Bits) memakai pengenal suara browser berbahasa Indonesia; kode alat yang diucapkan dinormalkan ("uht dua" jadi UHT-2) dan teks bisa dikoreksi sebelum dikirim. Hanya di browser yang mendukung (Chrome, Edge, Safari) dan situs HTTPS; di Chrome suara diproses server Google.
 - Ikon robot di tombol bulat. Tombol disembunyikan dengan menggesernya ke kanan (atau panah kanan di keyboard); saat tersembunyi tersisa tab kecil di tepi kanan layar untuk memunculkannya lagi.
-- Chatbot berbahasa natural untuk jalur dan kendala alur susu, asal lot, sebaran RT, antrean truk, upgrade, dan rencana. Tanpa LLM: maksud dikenali dengan TF-IDF dan cosine similarity (`components/assistant/intent.ts`), lalu jawaban dirakit dari data dan kondisi aplikasi saat ditanya (`answer.ts`): persetujuan, hold, keputusan lab, upgrade yang diterapkan, halaman yang dibuka, peran aktif, dan alat yang terakhir dibahas. Tiap jawaban membawa tautan ke halaman buktinya. Kalimat di luar topik tidak ditebak. Panel memberi label "Jawaban dari data simulasi, belum memakai AI generatif"; `reply()` bisa diganti LLM nanti. Di mode API jawabannya tetap dari data simulasi bawaan. Orb dan ThoughtLine (animasi berpikir dengan langkah sesuai maksud pertanyaan, ikon diganti Lucide) dari React Bits (`components/assistant/bits`); pola panel mengikuti Ask Bar 21st.dev, ditulis ulang karena kodenya butuh login.
+- Chatbot berbahasa natural untuk jalur dan kendala alur susu, asal lot, sebaran RT, antrean truk, upgrade, dan rencana. Tanpa LLM: maksud dikenali dengan TF-IDF dan cosine similarity (`components/assistant/intent.ts`), lalu jawaban dirakit dari data dan kondisi aplikasi saat ditanya (`answer.ts`): persetujuan, hold, keputusan lab, upgrade yang diterapkan, halaman yang dibuka, peran aktif, dan alat yang terakhir dibahas. Tiap jawaban membawa tautan ke halaman buktinya. Kalimat di luar topik tidak ditebak. Di mode API pertanyaan dikirim ke `POST /api/v1/assistant/chat` dan jawabannya tampil bersama sumbernya; bila layanan AI belum aktif (503) atau tidak terjangkau (502), chatbot memberi keterangan singkat lalu menjawab dari data aplikasi. Orb dan ThoughtLine (animasi berpikir dengan langkah sesuai maksud pertanyaan, ikon diganti Lucide) dari React Bits (`components/assistant/bits`); pola panel mengikuti Ask Bar 21st.dev, ditulis ulang karena kodenya butuh login.
 
 **Sumber Data (`/sumber-data`)**
 - Enam konektor read-only (Historian SCADA, LIMS, weighbridge, kontroler CIP, MES filling, ERP gudang) dengan uji koneksi, sinkron, dan pemetaan ke node graph.
 
-**Pengguna & Peran (`/pengguna`)**
-- Empat pengguna demo, pindah peran, matriks hak akses.
+**Pengguna (`/pengguna`) dan Role & Hak Akses (`/role-akses`)**
+- Pengguna: daftar akun, tetapkan role, penugasan alat/lini, tambah dan nonaktifkan pengguna. Role & Hak Akses: daftar role, tambah/ubah/hapus role, menu yang tampil dan tindakan per menu untuk tiap role.
 
 ### 5.4 Penyelarasan dengan materi mitra (Ideation Bootcamp)
 
@@ -191,7 +235,7 @@ Materi bertanda tidak untuk disebarluaskan; hanya keputusan yang dicatat di sini
 |---|---|
 | Scope Milk Plant (bukan yogurt/keju); Big, Medium, Small Pack | SKU Full Cream, Low Fat, Cokelat, Stroberi dalam 1 L, 250 ml, 200 ml, 105 ml |
 | Multi department Farms, PPIC, Production | Pasokan & Permintaan |
-| Tren permintaan dan rencana susu masuk naik | Grafik tren `[simulasi]` |
+| Tren permintaan dan rencana susu masuk naik | Grafik tren |
 | Milk incoming process 7 tahap | State machine Receiving Flow |
 | Konfigurasi: unloading, degassing, raw milk buffer, thermal, separator, 6 storage, 3 cream, premix, mixing, 5 sterilisasi, 5 aseptic tank, 10 filling (1 AT untuk 2 lini) | Lini Filling, Bay & Tangki, Simulasi 3D; F2 dan F4 berbagi AT-2 |
 | Titik ketergantungan: RT siap, tangki CIP/terisi, aset hilir bersama, masalah hilir menahan hulu, risiko filling | Constraint, Bay & Tangki, Filling, Rencana |
@@ -218,7 +262,7 @@ Setiap fitur punya satu fungsi, mengambil data dari fitur lain, dan memengaruhi 
                  │ semua tercatat
 6. JEJAK       Riwayat Persetujuan
    TAMPILAN    Receiving Flow dan Simulasi 3D merangkum keadaan dari langkah 2-5
-   KENDALI     Pengguna & Peran menentukan siapa boleh melakukan langkah 4-5
+   KENDALI     Role & Hak Akses menentukan siapa boleh melakukan langkah 4-5
 ```
 
 #### Per fitur

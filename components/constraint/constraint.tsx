@@ -10,7 +10,8 @@ import { can } from "@/lib/roles";
 import { DEFAULT_LIMITS, evaluate, violations, type ConstraintId, type Limits } from "@/lib/rules";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, RoleNote, SectionTitle, SourceButton, SourceModal } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle, SourceButton, SourceModal } from "@/components/ui";
+import { ProposeButton } from "@/components/rencana/proposals";
 
 type NumberKey = { [K in keyof Limits]: Limits[K] extends number ? K : never }[keyof Limits];
 type ToggleKey = { [K in keyof Limits]: Limits[K] extends boolean ? K : never }[keyof Limits];
@@ -101,6 +102,8 @@ function formatValue(key: keyof Limits, unit: string | undefined, v: number): st
   return `${number(v)} ${unit || ""}`.trim();
 }
 
+const HOLDING: (keyof Limits)[] = ["holdingMin", "bufferMaxMin"];
+
 export function Constraint() {
   const demo = useDemo();
   const [draft, setDraft] = useState<Limits | null>(null);
@@ -114,6 +117,11 @@ export function Constraint() {
 
   const limits = draft ?? demo.limits;
   const allowed = can(demo.role, "constraint.edit");
+  // Batas holding time ditetapkan QA/QC di Aturan Produksi; di sini cukup ditampilkan.
+  const canHolding = can(demo.role, "quality.rules");
+  // Peran yang boleh simulasi (mis. Supervisor/Manager) menggeser batas sebagai what-if tanpa menyimpan.
+  const tryOnly = !allowed && can(demo.role, "plan.simulate");
+  const canMove = allowed || tryOnly;
   const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(demo.limits);
 
   const defaultLimits: Limits = schemaResource.data?.length
@@ -213,15 +221,18 @@ export function Constraint() {
 
   return (
     <div className="page-enter">
-      <PageHeading title="Constraint" subtitle="Bisakah rencana berjalan sesuai jadwal? Enam constraint diuji pada setiap rencana. Ubah batasnya, lihat dampaknya langsung, lalu simpan.">
-        <button className="button secondary" disabled={!allowed || isDefault || saving} onClick={() => setDraft(defaultLimits)}>
+      <PageHeading title="Constraint" subtitle={tryOnly ? "Bisakah rencana berjalan sesuai jadwal? Geser batasnya untuk membandingkan alternatif. Simulasi ini tidak mengubah batas yang berlaku." : "Bisakah rencana berjalan sesuai jadwal? Enam constraint diuji pada setiap rencana. Ubah batasnya, lihat dampaknya langsung, lalu simpan."}>
+        {tryOnly && <button className="button secondary" disabled={!dirty} onClick={() => setDraft(null)}><Icon icon={RotateCcw} size={16} />Kembali ke batas berlaku</button>}
+        {tryOnly && <ProposeButton kind="batas" title="Usulan batas constraint" detail={dirty ? describe(demo.limits, draft!) : "Geser batas dulu untuk membuat usulan."} limits={draft ?? undefined} disabled={!dirty} />}
+        {allowed && <>
+        <button className="button secondary" disabled={isDefault || saving} onClick={() => setDraft(defaultLimits)}>
           <Icon icon={RotateCcw} size={16} />Nilai awal
         </button>
-        <button className="button primary" disabled={!allowed || !dirty || saving} onClick={handleSave}>
+        <button className="button primary" disabled={!dirty || saving} onClick={handleSave}>
           <Icon icon={Save} size={16} />Simpan batas
         </button>
+        </>}
       </PageHeading>
-      <RoleNote permission="constraint.edit" />
       {actionError && (
         <div className="decision-banner warn" role="alert">
           <Icon icon={X} />
@@ -231,7 +242,7 @@ export function Constraint() {
       {dirty && (
         <div className="decision-banner warn" role="status">
           <Icon icon={Save} />
-          <span><strong>Perubahan belum disimpan</strong><span>{describe(demo.limits, draft!)}. Pratinjau di bawah sudah memakai nilai baru.</span></span>
+          <span><strong>{tryOnly ? "Simulasi, tidak disimpan" : "Perubahan belum disimpan"}</strong><span>{describe(demo.limits, draft!)}. Pratinjau di bawah sudah memakai nilai baru.</span></span>
         </div>
       )}
       <div className="metrics-grid">
@@ -290,29 +301,29 @@ export function Constraint() {
                           {currentVal !== defVal && ` · awal ${displayDef}`} [asumsi]
                         </small>
                       </span>
-                      <input
+                      {(HOLDING.includes(key) ? canHolding || tryOnly : canMove) && <input
                         type="range"
                         aria-label={p.label}
                         min={min}
                         max={max}
                         step={step}
                         value={currentVal}
-                        disabled={!allowed || saving}
+                        disabled={saving}
                         onChange={e => edit({ [key]: Number(e.target.value) })}
                         aria-valuetext={displayCurrent}
-                      />
+                      />}
                     </label>
                   );
                 }
                 const hint = "hint" in p ? p.hint : "";
                 return (
                   <label key={p.key} className="limit-check">
-                    <input
+                    {canMove ? <input
                       type="checkbox"
                       checked={Boolean(limits[key])}
-                      disabled={!allowed || saving}
+                      disabled={saving}
                       onChange={e => edit({ [key]: e.target.checked })}
-                    />
+                    /> : <Badge tone={limits[key] ? "warn" : "neutral"}>{limits[key] ? "Aktif" : "Tidak"}</Badge>}
                     <span>{p.label}<small>{hint}</small></span>
                   </label>
                 );

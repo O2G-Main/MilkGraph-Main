@@ -1,5 +1,11 @@
 {
   "roles": {
+    "superadmin": {
+      "label": "Superadmin",
+      "user": "Bagas Wicaksono",
+      "initials": "BW",
+      "focus": "Mengelola pengguna, peran, master data, dan konfigurasi integrasi. Semua menu dan tindakan terbuka, termasuk riwayat seluruh perubahan dan persetujuan."
+    },
     "planner": {
       "label": "Planner PPIC",
       "user": "Rino Akbar Hanif",
@@ -12,63 +18,289 @@
       "initials": "DP",
       "focus": "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time."
     },
-    "supervisor": {
-      "label": "Supervisor produksi",
+    "operator": {
+      "label": "Operator produksi",
       "user": "Hendra Kusuma",
       "initials": "HK",
-      "focus": "Lokasi bottleneck dan dampaknya ke lini filling."
+      "focus": "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime."
     },
     "qa": {
-      "label": "QA/Lab",
+      "label": "QA/QC",
+      "user": "Ratna Maharani",
+      "initials": "RM",
+      "focus": "Rilis atau tolak susu dari hasil lab, mutu barang jadi, penelusuran batch, dan hold produk."
+    },
+    "manager": {
+      "label": "Supervisor/Manager",
+      "user": "Wahyu Pratama",
+      "initials": "WP",
+      "focus": "Ringkasan pasokan, penggunaan mesin, jadwal, dan pencapaian target, serta simulasi alternatif rencana."
+    },
+    "lab": {
+      "label": "Lab",
       "user": "Sri Lestari",
       "initials": "SL",
-      "focus": "Hasil lab, lot terdampak beserta proporsi volume, dan daftar hold."
+      "focus": "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab."
     }
   },
   "permissions": {
-    "demand.send": {
-      "label": "Mengirim kebutuhan susu ke farm",
+    "schedule.edit": {
+      "label": "Menambah dan mengubah target serta jadwal produksi",
+      "short": "Target dan jadwal",
+      "page": "/penjadwalan",
+      "action": "ubah",
       "roles": [
+        "superadmin",
         "planner"
       ]
     },
-    "plan.decide": {
-      "label": "Menyetujui atau menolak rekomendasi rencana",
+    "production.record": {
+      "label": "Mencatat produksi mulai, selesai, dan hasil di lini yang ditugaskan",
+      "short": "Realisasi produksi",
+      "page": "/penjadwalan",
+      "action": "tambah",
       "roles": [
+        "superadmin",
+        "operator"
+      ]
+    },
+    "rules.edit": {
+      "label": "Mengatur durasi changeover dan CIP sesuai standar",
+      "short": "Changeover dan CIP",
+      "page": "/aturan-produksi",
+      "action": "ubah",
+      "roles": [
+        "superadmin",
         "planner"
+      ]
+    },
+    "quality.rules": {
+      "label": "Mengatur batas holding time dan ketentuan mutu",
+      "short": "Holding dan mutu",
+      "page": "/aturan-produksi",
+      "action": "ubah",
+      "roles": [
+        "superadmin",
+        "qa"
+      ]
+    },
+    "plan.simulate": {
+      "label": "Mengubah parameter simulasi, waktu maintenance, dan kapasitas alat",
+      "short": "Simulasi rencana",
+      "page": "/rencana/alur",
+      "action": "simulasi",
+      "roles": [
+        "superadmin",
+        "planner",
+        "manager"
+      ]
+    },
+    "plan.propose": {
+      "label": "Mengajukan hasil simulasi ke Planner untuk diterapkan ke jadwal aktif",
+      "short": "Ajukan usulan",
+      "page": "/rencana",
+      "action": "simulasi",
+      "roles": [
+        "superadmin",
+        "manager"
       ]
     },
     "constraint.edit": {
       "label": "Mengubah batas constraint",
+      "short": "Batas constraint",
+      "page": "/rencana",
+      "action": "ubah",
       "roles": [
+        "superadmin",
         "planner"
+      ]
+    },
+    "demand.send": {
+      "label": "Mengirim kebutuhan susu ke farm",
+      "short": "Kirim kebutuhan susu",
+      "page": "/rencana",
+      "action": "ubah",
+      "roles": [
+        "superadmin",
+        "planner"
+      ]
+    },
+    "plan.decide": {
+      "label": "Menyetujui atau menolak rekomendasi rencana dan usulan simulasi",
+      "short": "Keputusan rencana",
+      "page": "/rencana",
+      "action": "setujui",
+      "roles": [
+        "superadmin",
+        "planner"
+      ]
+    },
+    "arrival.edit": {
+      "label": "Menambah dan mengubah jadwal kedatangan RT, estimasi tiba, dan status perjalanan",
+      "short": "Jadwal kedatangan",
+      "page": "/kedatangan",
+      "action": "ubah",
+      "roles": [
+        "superadmin",
+        "receiving"
+      ]
+    },
+    "queue.record": {
+      "label": "Mencatat kedatangan aktual, waktu awal umur susu, dan proses bongkar",
+      "short": "Tiba dan bongkar",
+      "page": "/receiving",
+      "action": "tambah",
+      "roles": [
+        "superadmin",
+        "receiving"
+      ]
+    },
+    "transfer.record": {
+      "label": "Mencatat transfer susu dari RT ke tangki penerimaan",
+      "short": "Transfer RT",
+      "page": "/transfer",
+      "action": "tambah",
+      "roles": [
+        "superadmin",
+        "receiving"
+      ]
+    },
+    "process.transfer": {
+      "label": "Mencatat volume perpindahan bahan pada alat yang ditugaskan",
+      "short": "Transfer bahan",
+      "page": "/transfer",
+      "action": "tambah",
+      "roles": [
+        "superadmin",
+        "operator"
+      ]
+    },
+    "lab.record": {
+      "label": "Memasukkan dan memperbarui hasil pemeriksaan lab",
+      "short": "Hasil uji",
+      "page": "/lab",
+      "action": "tambah",
+      "roles": [
+        "superadmin",
+        "lab"
+      ]
+    },
+    "lab.decide": {
+      "label": "Merilis atau menolak hasil lab penerimaan RT",
+      "short": "Rilis atau tolak RT",
+      "page": "/lab",
+      "action": "setujui",
+      "roles": [
+        "superadmin",
+        "qa"
+      ]
+    },
+    "qc.record": {
+      "label": "Mencatat hasil pemeriksaan mutu barang jadi",
+      "short": "Hasil mutu",
+      "page": "/qc-produk",
+      "action": "tambah",
+      "roles": [
+        "superadmin",
+        "qa"
+      ]
+    },
+    "equipment.update": {
+      "label": "Memperbarui kondisi mesin dan mencatat downtime",
+      "short": "Kondisi mesin dan downtime",
+      "page": "/kondisi-alat",
+      "action": "ubah",
+      "roles": [
+        "superadmin",
+        "operator"
       ]
     },
     "instruction.ack": {
       "label": "Mengonfirmasi instruksi dari rencana yang disetujui",
+      "short": "Konfirmasi instruksi",
+      "page": "/kondisi-alat",
+      "action": "setujui",
       "roles": [
+        "superadmin",
         "receiving",
-        "supervisor"
+        "operator"
       ]
     },
     "hold.submit": {
       "label": "Mengajukan daftar hold dari hasil trace",
+      "short": "Ajukan hold",
+      "page": "/hold",
+      "action": "tambah",
       "roles": [
-        "planner",
-        "supervisor",
+        "superadmin",
         "qa"
       ]
     },
     "hold.review": {
       "label": "Menyetujui, menolak, atau melepas hold",
+      "short": "Keputusan hold",
+      "page": "/hold",
+      "action": "setujui",
       "roles": [
+        "superadmin",
         "qa"
       ]
     },
-    "lab.decide": {
-      "label": "Merilis atau menolak hasil lab penerimaan RT",
+    "master.manage": {
+      "label": "Mengelola master data",
+      "short": "Master data",
+      "page": "/master-data",
+      "action": "ubah",
       "roles": [
-        "qa"
+        "superadmin"
+      ]
+    },
+    "integration.manage": {
+      "label": "Mengelola konfigurasi integrasi sumber data",
+      "short": "Konfigurasi integrasi",
+      "page": "/sumber-data",
+      "action": "ubah",
+      "roles": [
+        "superadmin"
+      ]
+    },
+    "users.manage": {
+      "label": "Mengelola pengguna, role, dan hak akses",
+      "short": "Pengguna dan role",
+      "page": "/pengguna",
+      "action": "ubah",
+      "roles": [
+        "superadmin"
+      ]
+    },
+    "audit.view": {
+      "label": "Melihat riwayat seluruh perubahan dan persetujuan",
+      "short": "Lihat riwayat",
+      "page": "/persetujuan",
+      "action": "lihat",
+      "roles": [
+        "superadmin",
+        "planner",
+        "receiving",
+        "operator",
+        "lab",
+        "qa",
+        "manager"
+      ]
+    },
+    "audit.export": {
+      "label": "Mengekspor riwayat persetujuan ke CSV",
+      "short": "Ekspor CSV",
+      "page": "/persetujuan",
+      "action": "ekspor",
+      "roles": [
+        "superadmin",
+        "planner",
+        "receiving",
+        "operator",
+        "lab",
+        "qa",
+        "manager"
       ]
     }
   }

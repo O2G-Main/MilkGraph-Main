@@ -190,7 +190,11 @@ export function TimeField({ value, onChange, placeholder = "Pilih jam", label, i
   const minutes = Array.from({ length: Math.ceil(60 / minuteStep) }, (_, i) => pad(i * minuteStep));
   const done = () => { close(); trigger.current?.focus(); };
   useEffect(() => {
-    if (place) panel.current?.querySelectorAll<HTMLElement>("[aria-selected=true]").forEach(el => el.scrollIntoView({ block: "center" }));
+    // Gulir daftarnya saja; scrollIntoView ikut menggulir dialog induk saat dipakai di dalam Modal.
+    if (place) panel.current?.querySelectorAll<HTMLElement>("[aria-selected=true]").forEach(el => {
+      const list = el.parentElement;
+      if (list) list.scrollTop = el.offsetTop - list.offsetTop - (list.clientHeight - el.clientHeight) / 2;
+    });
   }, [place, panel]);
 
   return <>

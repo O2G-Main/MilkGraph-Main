@@ -10,7 +10,7 @@ export function mapApiState(parts: {
   instructions: { id: string; ackedBy?: string }[];
   limits: Limits;
   audit: LogEntry[];
-}): DemoState {
+}): Omit<DemoState, "users" | "access" | "account" | "schedule" | "rules" | "receiving" | "lab" | "operation" | "quality" | "proposals" | "roles" | "menus"> {
   return {
     v: 1, started: 0, role: parts.role,
     decisions: parts.decisions, holds: parts.holds,

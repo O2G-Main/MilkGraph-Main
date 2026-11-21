@@ -36,7 +36,7 @@ export function answer(ctx: ToolCtx, view: View, question: string, defaults: { a
     const clash = r.semua_bentrok.length ? ` Jam mulai yang bentrok: ${r.semua_bentrok.join(", ")}.` : " Tidak ada jam yang bentrok.";
     const effect = best.tambahan_pelanggaran ? `pelanggaran naik jadi ${best.dilanggar} dari 6` : `pelanggaran tetap ${best.dilanggar} dari 6`;
     return {
-      reply: `${alat} paling aman dimaintenance pukul ${best.mulai}-${best.selesai} (${r.durasi_menit} menit) di ${versi}. ${best.bentrok.length ? `Masih kena ${best.bentrok.join(", ")}` : "Tidak ada bongkar atau produksi yang kena"}, ${effect}.${clash} [simulasi]`,
+      reply: `${alat} paling aman dimaintenance pukul ${best.mulai}-${best.selesai} (${r.durasi_menit} menit) di ${versi}. ${best.bentrok.length ? `Masih kena ${best.bentrok.join(", ")}` : "Tidak ada bongkar atau produksi yang kena"}, ${effect}.${clash}`,
       proposals: [{ id: alat, adjust: { maintenance: { start: best.mulai, minutes: r.durasi_menit } }, reason: `Jam paling sedikit bentrok untuk ${r.durasi_menit} menit.` }],
     };
   }
@@ -53,7 +53,7 @@ export function answer(ctx: ToolCtx, view: View, question: string, defaults: { a
     const waste = r.tidak_terpakai ? ` Sisa ${fmt(r.tidak_terpakai)} L/jam tidak terpakai.` : "";
     const change = r.pelanggaran_sesudah !== r.pelanggaran_sebelum ? ` Pelanggaran di ${versi} turun dari ${r.pelanggaran_sebelum} jadi ${r.pelanggaran_sesudah}.` : ` Pelanggaran di ${versi} tetap ${r.pelanggaran_sesudah}.`;
     return {
-      reply: `${alat} dari ${fmt(r.kapasitas_sekarang)} ke ${fmt(r.kapasitas_baru)} L/jam. Yang terpakai jalur ${r.jalur}: +${fmt(r.tambahan_terpakai)} L/jam, sekitar +${fmt(r.tambahan_per_shift_8_jam)} L per shift.${waste}${change}${r.alasan_batas && !r.tambahan_terpakai ? ` ${r.alasan_batas}` : ""} [simulasi]`,
+      reply: `${alat} dari ${fmt(r.kapasitas_sekarang)} ke ${fmt(r.kapasitas_baru)} L/jam. Yang terpakai jalur ${r.jalur}: +${fmt(r.tambahan_terpakai)} L/jam, sekitar +${fmt(r.tambahan_per_shift_8_jam)} L per shift.${waste}${change}${r.alasan_batas && !r.tambahan_terpakai ? ` ${r.alasan_batas}` : ""}`,
       proposals: r.tambahan_terpakai > 0 ? [{ id: alat, adjust: { upgrade: (r.kapasitas_baru - r.kapasitas_sekarang) / r.kapasitas_sekarang * 100, upgradeTo: r.kapasitas_baru }, reason: `Tambahan terpakai +${fmt(r.tambahan_terpakai)} L/jam.` }] : [],
     };
   }

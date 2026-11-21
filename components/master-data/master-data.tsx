@@ -149,7 +149,7 @@ export function MasterDataView() {
         requiresCip,
         cipRuleId: requiresCip ? (flavourTo === "Full Cream" ? "CIP_CH_ST" : "CIP_FLAVOUR") : undefined,
         cipRequirement: requiresCip ? "CIP wajib diselesaikan sebelum produk berikutnya dijalankan" : undefined,
-        additionalNote: "Hasil evaluasi simulator aturan Greenfields v2.1",
+        additionalNote: "Hasil evaluasi aturan Greenfields v2.1",
       });
       setClassifying(false);
       return;
@@ -198,7 +198,7 @@ export function MasterDataView() {
             { value: "topologi", label: "Aset & Rute (73/118)" },
             { value: "sku", label: "Katalog Produk & SKU" },
             { value: "lini", label: "Dedikasi Lini" },
-            { value: "changeover", label: "Simulator Changeover & CIP" },
+            { value: "changeover", label: "Cek Changeover & CIP" },
           ]}
         />
       </div>
@@ -448,7 +448,7 @@ export function MasterDataView() {
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           <Card>
             <SectionTitle
-              title="Simulator Aturan Changeover &amp; CIP"
+              title="Cek Aturan Changeover &amp; CIP"
               subtitle="Evaluasi transisi antar SKU barang jadi berdasarkan aturan hirarkis Greenfields v2.1"
             />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginTop: "16px" }}>
