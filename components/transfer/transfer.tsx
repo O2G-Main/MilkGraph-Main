@@ -7,7 +7,8 @@ import { addTransfer, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { scenario } from "@/lib/data";
 import { applyQueue, checkTransfer, clock, tankRoom, toMin, type QueueRow } from "@/lib/receiving";
-import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, Modal, PageHeading, PageLink, SectionTitle } from "@/components/ui";
+import { ProcessTransfers } from "./process-transfer";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -24,12 +25,17 @@ export function Transfer() {
   const moved = new Set(transfers.map(t => t.rt));
   const ready = rows.filter(r => (r.stage === "Unloading" || r.stage === "Selesai bongkar") && !moved.has(r.id));
   const fresh = transfers.filter(t => !t.counted);
+  // Operator hanya mengurus transfer bahan di alat proses; transfer RT ke tangki penerimaan milik receiving.
+  const showReceiving = demo.role !== "operator";
+  const showProcess = can(demo.role, "process.transfer") || demo.role === "planner";
 
   return (
     <div className="page-enter">
-      <PageHeading title="Transfer & Volume" subtitle="Pindahan susu dari road tanker ke tangki penerimaan. Volume dicocokkan dengan timbangan RT dan sisa ruang tangki.">
-        {allowed && <button className="button primary" onClick={() => setOpen(true)}><Icon icon={ArrowRightLeft} size={16} />Catat transfer</button>}
+      <PageHeading title="Transfer & Volume" subtitle={showReceiving ? "Pindahan susu dari road tanker ke tangki penerimaan. Volume dicocokkan dengan timbangan RT dan sisa ruang tangki." : "Volume perpindahan bahan pada alat proses yang ditugaskan, dari sterilizer ke tangki aseptik sampai mesin filling."}>
+        {allowed && showReceiving && <button className="button primary" onClick={() => setOpen(true)}><Icon icon={ArrowRightLeft} size={16} />Catat transfer</button>}
       </PageHeading>
+      {showProcess && !showReceiving && <ProcessTransfers />}
+      {showReceiving && <>
       <div className="schedule-stats">
         {TANKS.map(t => {
           const r = room[t.id];
@@ -45,7 +51,7 @@ export function Transfer() {
         })}
       </div>
       <Card>
-        <SectionTitle title="Catatan transfer" subtitle={`${fresh.length} transfer baru di shift ini, ${number(fresh.reduce((s, t) => s + t.volume, 0))} L. Transfer sebelum snapshot 14.42 sudah termasuk di level tangki.`} action={<Link className="text-link" href="/receiving">Buka antrean truk<Icon icon={ArrowRight} size={14} /></Link>} />
+        <SectionTitle title="Catatan transfer" subtitle={`${fresh.length} transfer baru di shift ini, ${number(fresh.reduce((s, t) => s + t.volume, 0))} L. Transfer sebelum snapshot 14.42 sudah termasuk di level tangki.`} action={<PageLink className="text-link" href="/receiving">Buka antrean truk<Icon icon={ArrowRight} size={14} /></PageLink>} />
         <div className="table-wrap">
           <table className="schedule-table">
             <thead><tr><th>Transfer</th><th>RT</th><th>Tangki</th><th className="numeric">Volume</th><th>Jam</th><th>Keterangan</th></tr></thead>
@@ -68,6 +74,8 @@ export function Transfer() {
           </table>
         </div>
       </Card>
+      {showProcess && <ProcessTransfers />}
+      </>}
       {open && <TransferForm ready={ready} room={room} onClose={() => setOpen(false)} />}
     </div>
   );

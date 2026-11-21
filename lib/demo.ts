@@ -5,6 +5,7 @@ import { DEFAULT_LIMITS, SOP_CHANGEOVER, setProductionRules, type Limits } from 
 import { CIP_STANDARD, PAPER_STANDARD, type CipGroup, type ProductionRules, type ScheduleItem } from "@/lib/production";
 import { ARRIVAL_STATUS, clock, type Arrival, type ReceivingState, type RtRecord, type Transfer } from "@/lib/receiving";
 import { BATCH_SAMPLES, type LabState } from "@/lib/lab";
+import { MACHINE_STATE, type Downtime, type MachineState, type OperationState, type ProcessTransfer, type Run } from "@/lib/operation";
 import type { LabParam, LabResult } from "@/mock/ops";
 import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
 import type { Lot } from "@/mock/types";
@@ -14,21 +15,26 @@ import { createActions } from "@/lib/api/actions";
 import { mapApiState } from "@/lib/api/demo-state";
 import { invalidateResources, onApiEvent, setActiveRole, startEventStream } from "@/lib/api/resource";
 
-export type LogKind = "rencana" | "jadwal" | "aturan" | "penerimaan" | "uji" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
+export type LogKind = "rencana" | "jadwal" | "aturan" | "penerimaan" | "uji" | "produksi" | "hold" | "lab" | "constraint" | "instruksi" | "akses";
 export interface LogEntry { id: number; kind: LogKind; title: string; detail: string; note: string; by: string; role: string; at: string; tone: "ok" | "warn" | "crit" | "neutral" }
 /** adjust: pengaturan alat (mis. upgrade UHT-2) yang ikut dihitung saat keputusan diambil. */
 export interface PlanDecision { plan: string; status: "approved" | "rejected"; note: string; by: string; at: string; adjust?: string }
 export type HoldStatus = "diajukan" | "aktif" | "ditolak" | "dilepas";
 export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; note: string; status: HoldStatus; by: string; at: string; review?: { note: string; by: string; at: string } }
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
-export interface DemoUser { id: string; name: string; role: RoleId; active: boolean }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState }
+/** `assets`: alat yang ditugaskan ke pengguna (Operator); kosong berarti tidak dibatasi. */
+export interface DemoUser { id: string; name: string; role: RoleId; active: boolean; assets?: string[] }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
 const ACCOUNT_KEY = "milkgraph-account";
-const readAccount = () => { try { const a = localStorage.getItem(ACCOUNT_KEY); return a === "USR-qa" ? "USR-lab" : a; } catch { return null; } };
-const USERS: DemoUser[] = ROLE_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true }));
+/** Id akun lama dari sebelum peran diganti nama. */
+const RENAMED: Record<string, string> = { "USR-qa": "USR-lab", "USR-supervisor": "USR-operator" };
+const readAccount = () => { try { const a = localStorage.getItem(ACCOUNT_KEY); return a ? RENAMED[a] ?? a : null; } catch { return null; } };
+/** Lini fokus skenario (F1, F2, F4) beserta tangki aseptik dan sterilizer yang memasoknya. */
+export const OPERATOR_ASSETS = ["F1", "F2", "F4", "AT-1", "AT-2", "UHT-1", "UHT-2"];
+const USERS: DemoUser[] = ROLE_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true, ...(id === "operator" ? { assets: OPERATOR_ASSETS } : {}) }));
 /** Jadwal shift awal [simulasi]: F5 sengaja melebihi kapasitas karena baru jalan setelah UHT-3 CIP. */
 const SCHEDULE: ScheduleItem[] = [
   { id: "JDW-01", line: "F1", sku: "UHT Full Cream 1 L", packs: 12_000, start: "14:00", end: "16:00" },
@@ -60,8 +66,21 @@ const RECEIVING: ReceivingState = {
     { id: "TRF-02", rt: "RT-22", tank: "RMT-1", volume: 9_800, start: "13:55", end: "14:25", counted: true },
   ],
 };
+/** Lantai produksi [simulasi]: F1, F2, F4 sudah jalan sejak 14.00; F10 breakdown dan F8 ganti format tercatat sebagai downtime. */
+const OPERATION: OperationState = {
+  runs: { "JDW-01": { start: "14:00" }, "JDW-03": { start: "14:00" }, "JDW-04": { start: "14:00" } },
+  machines: {},
+  downtime: [
+    { id: "DT-01", asset: "F10", cause: "Breakdown", start: "13:50", note: "Seal jaw rusak, tiket MT-2231" },
+    { id: "DT-02", asset: "F8", cause: "Ganti format", start: "14:20", note: "Ganti format 1 L ke 250 ml" },
+  ],
+  transfers: [
+    { id: "PRS-01", from: "UHT-2", to: "AT-2", volume: 6_990, start: "13:00", end: "14:00", by: "Hendra Kusuma" },
+    { id: "PRS-02", from: "AT-1", to: "F1", volume: 6_550, start: "13:30", end: "14:30", by: "Hendra Kusuma" },
+  ],
+};
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES } });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -83,8 +102,8 @@ function load() {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as DemoState | null;
     state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits } } : initial(Date.now());
     // Peran "qa" lama (QA/Lab) sekarang bernama "lab"; peran lain yang tidak dikenal jatuh ke Planner.
-    const fix = (r: string) => (r in ROLES ? r : r === "qa" ? "lab" : "planner") as RoleId;
-    state = { ...state, role: fix(state.role), users: state.users.map(u => ({ ...u, role: fix(u.role), ...(u.id === "USR-qa" ? { id: "USR-lab" } : {}) })),
+    const fix = (r: string) => (r in ROLES ? r : r === "qa" ? "lab" : r === "supervisor" ? "operator" : "planner") as RoleId;
+    state = { ...state, role: fix(state.role), users: state.users.map(u => ({ ...u, role: fix(u.role), ...(RENAMED[u.id] ? { id: RENAMED[u.id] } : {}), ...(fix(u.role) === "operator" && !u.assets ? { assets: OPERATOR_ASSETS } : {}) })),
       access: Object.fromEntries(Object.entries(state.access).map(([k, v]) => [k, (v ?? []).map(fix)])) };
   } catch { state = initial(Date.now()); }
   state = { ...state, account: readAccount() };
@@ -124,7 +143,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab });
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -373,4 +392,25 @@ export const saveLabEntry = (sample: Pick<LabResult, "id" | "subject">, params: 
 export const addLabSample = (sample: LabResult) => act(
   s => ({ lab: { ...s.lab, samples: [...s.lab.samples, sample] } }),
   { kind: "uji", title: "Sampel baru dibuat", detail: `${sample.subject} (${sample.id}), diambil ${sample.sampled}`, note: "", tone: "neutral" },
+);
+
+/** Operator produksi. Tersimpan di browser; mode API belum punya endpoint-nya. */
+const op = (s: DemoState, patch: Partial<OperationState>) => ({ operation: { ...s.operation, ...patch } });
+/** Alat yang ditugaskan ke akun yang sedang masuk; undefined berarti tidak dibatasi. */
+export const assignedAssets = (s: DemoState) => s.role === "superadmin" ? undefined : s.users.find(u => u.id === s.account)?.assets;
+export const recordRun = (order: Pick<ScheduleItem, "id" | "line" | "sku">, patch: Run, title: string, detail: string) => act(
+  s => op(s, { runs: { ...s.operation.runs, [order.id]: { ...s.operation.runs[order.id], ...patch, by: ROLES[s.role].user } } }),
+  { kind: "produksi", title, detail: `${order.line} ${order.sku}, ${detail}`, note: "", tone: "neutral" },
+);
+export const updateMachine = (asset: string, state: MachineState, note: string) => act(
+  (s, at) => op(s, { machines: { ...s.operation.machines, [asset]: { state, note, at, by: ROLES[s.role].user } } }),
+  { kind: "produksi", title: "Kondisi mesin diperbarui", detail: `${asset}: ${MACHINE_STATE[state].label}`, note, tone: MACHINE_STATE[state].tone },
+);
+export const saveDowntime = (d: Omit<Downtime, "id"> & { id?: string }) => act(
+  s => op(s, { downtime: d.id ? s.operation.downtime.map(x => x.id === d.id ? { ...x, ...d, id: x.id } : x) : [...s.operation.downtime, { ...d, id: `DT-${String(s.operation.downtime.length + 1).padStart(2, "0")}` }] }),
+  { kind: "produksi", title: d.id ? (d.end ? "Downtime selesai" : "Downtime diubah") : "Downtime dicatat", detail: `${d.asset}, ${d.cause}, ${clock(d.start)}${d.end ? `-${clock(d.end)}` : " sampai sekarang"}`, note: d.note, tone: d.end ? "ok" : "warn" },
+);
+export const addProcessTransfer = (t: Omit<ProcessTransfer, "id" | "by">) => act(
+  s => op(s, { transfers: [...s.operation.transfers, { ...t, id: `PRS-${String(s.operation.transfers.length + 1).padStart(2, "0")}`, by: ROLES[s.role].user }] }),
+  { kind: "produksi", title: "Transfer bahan dicatat", detail: `${t.from} ke ${t.to}, ${new Intl.NumberFormat("id-ID").format(t.volume)} L, ${clock(t.start)}-${clock(t.end)}`, note: "", tone: "ok" },
 );

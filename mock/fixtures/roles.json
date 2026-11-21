@@ -18,11 +18,11 @@
       "initials": "DP",
       "focus": "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time."
     },
-    "supervisor": {
-      "label": "Supervisor produksi",
+    "operator": {
+      "label": "Operator produksi",
       "user": "Hendra Kusuma",
       "initials": "HK",
-      "focus": "Lokasi bottleneck dan dampaknya ke lini filling."
+      "focus": "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime."
     },
     "lab": {
       "label": "Lab",
@@ -81,6 +81,27 @@
         "lab"
       ]
     },
+    "production.record": {
+      "label": "Mencatat produksi mulai, selesai, dan hasil di lini yang ditugaskan",
+      "roles": [
+        "superadmin",
+        "operator"
+      ]
+    },
+    "equipment.update": {
+      "label": "Memperbarui kondisi mesin dan mencatat downtime",
+      "roles": [
+        "superadmin",
+        "operator"
+      ]
+    },
+    "process.transfer": {
+      "label": "Mencatat volume perpindahan bahan pada alat yang ditugaskan",
+      "roles": [
+        "superadmin",
+        "operator"
+      ]
+    },
     "demand.send": {
       "label": "Mengirim kebutuhan susu ke farm",
       "roles": [
@@ -107,14 +128,13 @@
       "roles": [
         "superadmin",
         "receiving",
-        "supervisor"
+        "operator"
       ]
     },
     "hold.submit": {
       "label": "Mengajukan daftar hold dari hasil trace",
       "roles": [
-        "superadmin",
-        "supervisor"
+        "superadmin"
       ]
     },
     "hold.review": {
@@ -153,7 +173,7 @@
         "superadmin",
         "planner",
         "receiving",
-        "supervisor",
+        "operator",
         "lab"
       ]
     }

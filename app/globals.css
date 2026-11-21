@@ -1643,3 +1643,5 @@ html:has(.login-page) { background: var(--color-canvas); }
 .lab-queue { margin-bottom: 16px; }
 .lab-queue .attention-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; }
 @media (max-width: 900px) { .lab-queue .attention-list { grid-template-columns: minmax(0, 1fr); } }
+
+.downtime-card, .process-transfer { margin-top: 16px; }

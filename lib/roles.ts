@@ -1,7 +1,8 @@
-export type RoleId = "superadmin" | "planner" | "receiving" | "supervisor" | "lab";
+export type RoleId = "superadmin" | "planner" | "receiving" | "operator" | "lab";
 export type Permission =
   | "schedule.edit" | "rules.edit" | "plan.simulate"
   | "arrival.edit" | "queue.record" | "transfer.record" | "lab.record"
+  | "production.record" | "equipment.update" | "process.transfer"
   | "demand.send" | "plan.decide" | "constraint.edit" | "hold.submit" | "hold.review" | "lab.decide" | "instruction.ack"
   | "users.manage" | "master.manage" | "integration.manage" | "audit.view";
 
@@ -9,7 +10,7 @@ export const ROLES: Record<RoleId, { label: string; user: string; initials: stri
   superadmin: { label: "Superadmin", user: "Bagas Wicaksono", initials: "BW", focus: "Mengelola pengguna, peran, master data, dan konfigurasi integrasi. Semua menu dan tindakan terbuka, termasuk riwayat seluruh perubahan dan persetujuan." },
   planner: { label: "Planner PPIC", user: "Rino Akbar Hanif", initials: "RA", focus: "Rencana shift yang layak dan keputusan saat gangguan." },
   receiving: { label: "Koordinator receiving", user: "Dimas Prasetyo", initials: "DP", focus: "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time." },
-  supervisor: { label: "Supervisor produksi", user: "Hendra Kusuma", initials: "HK", focus: "Lokasi bottleneck dan dampaknya ke lini filling." },
+  operator: { label: "Operator produksi", user: "Hendra Kusuma", initials: "HK", focus: "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime." },
   lab: { label: "Lab", user: "Sri Lestari", initials: "SL", focus: "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab." },
 };
 export const ROLE_IDS = Object.keys(ROLES) as RoleId[];
@@ -25,17 +26,20 @@ export const PERMISSIONS: Record<Permission, { label: string; roles: RoleId[] }>
   "queue.record": { label: "Mencatat kedatangan aktual, waktu awal umur susu, dan proses bongkar", roles: ["superadmin", "receiving"] },
   "transfer.record": { label: "Mencatat transfer susu dari RT ke tangki penerimaan", roles: ["superadmin", "receiving"] },
   "lab.record": { label: "Memasukkan dan memperbarui hasil pemeriksaan lab", roles: ["superadmin", "lab"] },
+  "production.record": { label: "Mencatat produksi mulai, selesai, dan hasil di lini yang ditugaskan", roles: ["superadmin", "operator"] },
+  "equipment.update": { label: "Memperbarui kondisi mesin dan mencatat downtime", roles: ["superadmin", "operator"] },
+  "process.transfer": { label: "Mencatat volume perpindahan bahan pada alat yang ditugaskan", roles: ["superadmin", "operator"] },
   "demand.send": { label: "Mengirim kebutuhan susu ke farm", roles: ["superadmin", "planner"] },
   "plan.decide": { label: "Menyetujui atau menolak rekomendasi rencana", roles: ["superadmin", "planner"] },
   "constraint.edit": { label: "Mengubah batas constraint", roles: ["superadmin", "planner"] },
-  "instruction.ack": { label: "Mengonfirmasi instruksi dari rencana yang disetujui", roles: ["superadmin", "receiving", "supervisor"] },
-  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin", "supervisor"] },
+  "instruction.ack": { label: "Mengonfirmasi instruksi dari rencana yang disetujui", roles: ["superadmin", "receiving", "operator"] },
+  "hold.submit": { label: "Mengajukan daftar hold dari hasil trace", roles: ["superadmin"] },
   "hold.review": { label: "Menyetujui, menolak, atau melepas hold", roles: ["superadmin"] },
   "lab.decide": { label: "Merilis atau menolak hasil lab penerimaan RT", roles: ["superadmin"] },
   "users.manage": { label: "Mengelola pengguna dan hak akses peran", roles: ["superadmin"] },
   "master.manage": { label: "Mengelola master data", roles: ["superadmin"] },
   "integration.manage": { label: "Mengelola konfigurasi integrasi sumber data", roles: ["superadmin"] },
-  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "supervisor", "lab"] },
+  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "operator", "lab"] },
 };
 /** Izin yang hanya boleh dipegang Superadmin, supaya tidak ada yang mengunci dirinya keluar dari pengelolaan akses. */
 export const LOCKED: Permission[] = ["users.manage"];
@@ -58,6 +62,11 @@ export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
   receiving: [
     "/simulasi", "/alur", "/qc-produk", "/master-data",
     "/penjadwalan", "/aturan-produksi", "/rencana/alur", "/rencana/upgrade", "/rencana",
+    "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna",
+  ],
+  operator: [
+    "/kedatangan", "/receiving", "/lab", "/qc-produk", "/master-data",
+    "/rencana/alur", "/rencana/upgrade", "/rencana",
     "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna",
   ],
   lab: [

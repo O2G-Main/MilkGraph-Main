@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, ArrowUpRight, Factory, Flame, Gauge, TriangleAlert } from "lucide-react";
 import { scenario } from "@/lib/data";
@@ -12,7 +11,7 @@ import { Instructions } from "@/components/tangki/tangki";
 import type { Block, Tone } from "@/mock/types";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, SectionTitle, SourceButton, SourceModal, Timeline } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceButton, SourceModal, Timeline } from "@/components/ui";
 
 type AsepticTank = {
   id: string;
@@ -278,14 +277,14 @@ export function Filling() {
         />
         <Timeline blocks={planData[view] as unknown as Block[]} resources={["Filling F1", "Filling F2", "Filling F4"]} onSource={setSource} />
         <p className="small muted">
-          Rencana awal {starvationBefore} menit per lini, rekomendasi {starvationAfter} menit. <Link className="inline-link" href="/rencana">Buka Rencana & What-if</Link>
+          Rencana awal {starvationBefore} menit per lini, rekomendasi {starvationAfter} menit. <PageLink className="inline-link" href="/rencana">Buka Rencana & What-if</PageLink>
         </p>
       </Card>
       <Card>
         <SectionTitle
           title="Matriks changeover (SOP)"
           subtitle="Waktu minimum dalam menit [asumsi]."
-          action={<Link className="text-link" href="/constraint">Batas changeover<Icon icon={ArrowRight} size={14} /></Link>}
+          action={<PageLink className="text-link" href="/constraint">Batas changeover<Icon icon={ArrowRight} size={14} /></PageLink>}
         />
         <div className="table-wrap">
           <table className="matrix-table">

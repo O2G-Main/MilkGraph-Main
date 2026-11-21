@@ -104,7 +104,8 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
         acked: demo.acks.includes(i.id),
       }));
 
-  const allowed = demo.role === role || demo.role === SUPERADMIN;
+  // Instruksi filling (role "supervisor" di data rencana) dikonfirmasi Operator produksi.
+  const allowed = demo.role === (role === "supervisor" ? "operator" : role) || demo.role === SUPERADMIN;
 
   if (!approved) {
     return (

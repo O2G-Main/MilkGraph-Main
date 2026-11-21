@@ -5,9 +5,10 @@ import { useState } from "react";
 import { ArrowUpRight, CalendarRange, ChevronRight, Container, Droplets, Factory, FlaskConical, Hourglass, PackageX, Send, ShieldAlert, TriangleAlert, Truck, Wrench, type LucideIcon } from "lucide-react";
 import { applyQueue, clock, tankRoom } from "@/lib/receiving";
 import { mergeLab } from "@/lib/lab";
+import { MACHINE_STATE, attainment, downtimeMinutes, isLate, mayHandle, runState } from "@/lib/operation";
 import { scenario } from "@/lib/data";
 import { duration } from "@/lib/format";
-import { useDemo } from "@/lib/demo";
+import { assignedAssets, useDemo } from "@/lib/demo";
 import { visibleNav } from "@/lib/nav";
 import { ROLES, canSee } from "@/lib/roles";
 import { holdingLeft, instructions, violations } from "@/lib/rules";
@@ -151,8 +152,34 @@ export function Beranda() {
     ...batchPending.map(s => ({ icon: FlaskConical, title: `Batch ${s.subject} menunggu uji`, meta: `${s.detail}. ${s.params.filter(p => p.ok === null).map(p => p.name).join(", ")} belum selesai`, tone: "warn" as Tone, href: `/lab?sampel=${s.id}` })),
     ...readyForQa.slice(0, 2).map(s => ({ icon: Container, title: `${s.subject} hasil lengkap`, meta: "Semua parameter dalam batas, menunggu keputusan QA", tone: "neutral" as Tone, href: `/lab?sampel=${s.id}` })),
   ];
-  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : attention;
-  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : null;
+  // Operator produksi: urutan urgensi = mesin yang berhenti, alat ditugaskan yang bermasalah, order terlambat mulai, instruksi filling, lalu order berikutnya.
+  const isOperator = demo.role === "operator";
+  const assigned = assignedAssets(demo);
+  const myAssets = ASSETS.filter(a => mayHandle(assigned, a.id)).map(a => { const u = demo.operation.machines[a.id]; return u ? { ...a, status: MACHINE_STATE[u.state].label, tone: MACHINE_STATE[u.state].tone as Tone } : a; });
+  const myOrders = demo.schedule.filter(i => mayHandle(assigned, i.line)).sort((a, b) => a.start.localeCompare(b.start));
+  const runs = demo.operation.runs;
+  const myDone = myOrders.filter(i => runState(runs[i.id]) === "selesai");
+  const myRunning = myOrders.filter(i => runState(runs[i.id]) === "jalan");
+  const late = myOrders.filter(i => isLate(i.start, runs[i.id]));
+  const myDown = demo.operation.downtime.filter(d => mayHandle(assigned, d.asset));
+  const openDown = myDown.filter(d => !d.end);
+  const troubled = myAssets.filter(a => a.tone === "crit" || a.tone === "warn");
+  const fillAcks = approved ? instructions(plan).filter(i => i.role === "supervisor" && !demo.acks.includes(i.id)) : [];
+  const operatorKpis: typeof plannerKpis = [
+    { icon: Factory, label: "Order lini saya", value: `${myRunning.length}/${myOrders.length}`, unit: "jalan", note: `${myDone.length} selesai, ${myOrders.length - myDone.length - myRunning.length} belum mulai`, tone: late.length ? "warn" : "ok", href: "/penjadwalan" },
+    { icon: CalendarRange, label: "Hasil baik order selesai", value: myDone.length ? `${attainment(myDone.reduce((s, i) => s + (runs[i.id]?.output ?? 0), 0), myDone.reduce((s, i) => s + i.packs, 0))}%` : "-", unit: myDone.length ? "dari target" : "", note: myDone.length ? `${myDone.length} order selesai` : "Belum ada order yang selesai", tone: "neutral", href: "/penjadwalan" },
+    { icon: Wrench, label: "Alat bermasalah", value: String(troubled.length), unit: `dari ${myAssets.length} alat`, note: troubled.map(a => `${a.id} ${a.status.toLowerCase()}`).join(", ") || "Semua alat yang ditugaskan normal", tone: troubled.some(a => a.tone === "crit") ? "crit" : troubled.length ? "warn" : "ok", href: "/kondisi-alat" },
+    { icon: TriangleAlert, label: "Downtime alat saya", value: `${myDown.reduce((s, d) => s + downtimeMinutes(d), 0)}`, unit: "menit", note: openDown.length ? `${openDown.length} masih berlangsung` : "Tidak ada yang berlangsung", tone: openDown.length ? "crit" : "ok", href: "/kondisi-alat" },
+  ];
+  const operatorAttention: Item[] = [
+    ...openDown.map(d => ({ icon: Wrench, title: `${d.asset} berhenti: ${d.cause.toLowerCase()}`, meta: `Sejak pukul ${clock(d.start)}, ${downtimeMinutes(d)} menit. ${d.note}`, tone: "crit" as Tone, href: "/kondisi-alat" })),
+    ...troubled.filter(a => !openDown.some(d => d.asset === a.id)).map(a => ({ icon: Container, title: `${a.id} ${a.status.toLowerCase()}`, meta: a.note, tone: a.tone, href: "/kondisi-alat" })),
+    ...late.map(i => ({ icon: CalendarRange, title: `${i.line} belum dicatat mulai`, meta: `${i.sku}, jadwal mulai pukul ${clock(i.start)}`, tone: "warn" as Tone, href: "/penjadwalan" })),
+    ...fillAcks.map(i => ({ icon: Factory, title: "Instruksi filling belum dikonfirmasi", meta: i.text, tone: "warn" as Tone, href: "/filling" })),
+    ...myOrders.filter(i => runState(runs[i.id]) === "belum" && !isLate(i.start, runs[i.id])).slice(0, 2).map(i => ({ icon: CalendarRange, title: `${i.line} mulai pukul ${clock(i.start)}`, meta: `${i.sku}, target ${fmt(i.packs)} pak`, tone: "neutral" as Tone, href: "/penjadwalan" })),
+  ];
+  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : isOperator ? operatorAttention : attention;
+  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : isOperator ? operatorKpis : null;
   const seePlan = canSee(demo.role, "/rencana");
 
   return <div className="page-enter">
@@ -160,6 +187,7 @@ export function Beranda() {
       ? `Halo, ${me.user.split(" ")[0]}. Kelayakan rencana, jadwal, dan pasokan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isReceiving ? `Halo, ${me.user.split(" ")[0]}. RT di plant, bay, tangki, dan kedatangan berikutnya Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isLab ? `Halo, ${me.user.split(" ")[0]}. Sampel RT dan batch yang perlu diperiksa Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
+      : isOperator ? `Halo, ${me.user.split(" ")[0]}. Order, mesin, dan downtime di lini ${(assigned ?? []).filter(a => a.startsWith("F")).join(", ")} Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
     {kpis
       ? <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
@@ -170,9 +198,9 @@ export function Beranda() {
         <h2>{approved ? <>Rekomendasi disetujui,<br />RT-26 pindah ke Bay 1.</> : <>Rencana tidak layak,<br />{broken} constraint dilanggar.</>}</h2>
         <div className="incident-time"><span><Icon icon={Hourglass} size={15} />Sisa holding time RT-26</span><strong>{duration(left)}</strong></div>
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
-        <Link href={seePlan ? "/rencana" : isLab ? "/lab" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
+        <Link href={seePlan ? "/rencana" : isLab ? "/lab" : isOperator ? "/penjadwalan" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
       </section>
-      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : isOperator ? "Perlu ditangani di lini" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab || isOperator ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
       </Card>
     </div>
