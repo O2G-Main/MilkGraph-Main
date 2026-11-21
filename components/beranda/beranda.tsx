@@ -19,6 +19,7 @@ import type { Tone } from "@/mock/types";
 import { Badge, Card, Icon, PageHeading, SectionTitle, SourceModal } from "@/components/ui";
 import { MetricGrid } from "@/components/receiving/metric-grid";
 import { ASSETS } from "@/lib/assets";
+import { ExecKpis, MachineCard, ScheduleCard, SupplyCard, TargetCard, type ExecKpi, type StateSlice } from "./executive";
 
 type Item = { icon: LucideIcon; title: string; meta: string; tone: Tone; href: string };
 const plan = scenario.plans[0];
@@ -234,6 +235,38 @@ export function Beranda() {
     { icon: CalendarRange, label: "Jadwal", value: approved ? "Disetujui" : String(broken), unit: approved ? "" : "constraint dilanggar", note: `${demo.schedule.length} order, ${lateAll.length} terlambat mulai`, tone: approved ? "ok" : broken ? "crit" : "ok", href: "/rencana" },
     { icon: TriangleAlert, label: "Pencapaian target", value: `${avgPace}%`, unit: "laju terhadap target", note: behind.length ? `${behind.map(l => l.line).join(", ")} di bawah 90%` : "Semua lini jalan sesuai laju", tone: avgPace < 85 ? "crit" : avgPace < 95 ? "warn" : "ok", href: "/penjadwalan" },
   ];
+  // Infografis Executive Dashboard (masukan dosen): angka besar dan grafik, kalimat seperlunya.
+  const lineKey = (id: string) => {
+    const open = demo.operation.downtime.find(d => d.asset === id && !d.end);
+    if (open) return ({ Breakdown: "breakdown", CIP: "cip", "Ganti format": "ganti-format", Maintenance: "maintenance" } as Record<string, string>)[open.cause] ?? "siaga";
+    return demo.operation.machines[id]?.state ?? fillers.find(f => f.id === id)?.state ?? "siaga";
+  };
+  // Empat kelompok supaya warnanya tetap bisa dibedakan (palet divalidasi); rinciannya ada di tooltip.
+  const STATE_GROUPS = [
+    { key: "jalan", label: "Jalan", color: "var(--color-primary)", of: ["jalan"] },
+    { key: "berhenti", label: "CIP, ganti format, maintenance", color: "#B7791F", of: ["cip", "ganti-format", "maintenance"] },
+    { key: "siaga", label: "Siaga", color: "#CBD3CD", of: ["siaga"] },
+    { key: "breakdown", label: "Breakdown", color: "var(--color-status-crit)", of: ["breakdown"] },
+  ];
+  const states: StateSlice[] = STATE_GROUPS.map(g => {
+    const ids = fillers.filter(f => g.of.includes(lineKey(f.id))).map(f => `${f.id} ${MACHINE_STATE[lineKey(f.id) as keyof typeof MACHINE_STATE]?.label.toLowerCase() ?? ""}`.trim());
+    return { key: g.key, label: g.label, count: ids.length, color: g.color, lines: ids };
+  });
+  const downByCause = Object.entries(demo.operation.downtime.reduce<Record<string, number>>((m, d) => ({ ...m, [d.cause]: (m[d.cause] ?? 0) + downtimeMinutes(d) }), {})).map(([cause, minutes]) => ({ cause, minutes })).sort((a, b) => b.minutes - a.minutes);
+  const paceRows = [...fillers].sort((a, b) => a.id.localeCompare(b.id, "id", { numeric: true })).map(f => { const st = lineState(f.id); return { line: f.id, pace: Math.round(f.speed / f.target * 100), running: st.running && f.speed > 0, state: st.label, product: f.product }; });
+  const orderState = demo.schedule.map(i => isLate(i.start, runs[i.id]) ? "terlambat" : runState(runs[i.id]));
+  const orderSegs = [
+    { key: "selesai", label: "Selesai", color: "var(--color-primary)" },
+    { key: "jalan", label: "Berjalan", color: "#6FBF8B" },
+    { key: "belum", label: "Belum mulai", color: "var(--color-neutral-fill)" },
+    { key: "terlambat", label: "Terlambat mulai", color: "var(--color-status-warn)" },
+  ].map(s => ({ ...s, count: orderState.filter(o => o === s.key).length }));
+  const execKpis: ExecKpi[] = [
+    { icon: Droplets, label: "Pasokan susu", value: cover, suffix: "%", of: "dari kebutuhan", progress: cover, note: `${fmt(milkPlanned)} dari ${fmt(milkNeed)} L`, tone: cover < 100 ? "crit" : cover < 105 ? "warn" : "ok", href: "/pasokan" },
+    { icon: Factory, label: "Lini jalan", value: runningLines.length, of: `dari ${fillers.length}`, progress: runningLines.length / fillers.length * 100, note: `Downtime ${downAll} menit`, tone: runningLines.length < fillers.length / 2 ? "crit" : "warn", href: "/kondisi-alat" },
+    { icon: CalendarRange, label: "Order selesai", value: orderSegs[0].count, of: `dari ${demo.schedule.length}`, progress: demo.schedule.length ? orderSegs[0].count / demo.schedule.length * 100 : 0, note: approved ? "Rencana disetujui" : `${broken} constraint dilanggar`, tone: approved ? "ok" : broken ? "crit" : "ok", href: "/rencana" },
+    { icon: TriangleAlert, label: "Laju terhadap target", value: avgPace, suffix: "%", progress: avgPace, note: behind.length ? `${behind.length} lini di bawah 90%` : "Semua lini sesuai laju", tone: avgPace < 85 ? "crit" : avgPace < 95 ? "warn" : "ok", href: "/penjadwalan" },
+  ];
   const managerAttention: Item[] = [
     ...(!approved ? [{ icon: TriangleAlert, title: `Rencana shift tidak layak, ${broken} constraint dilanggar`, meta: "Bandingkan alternatif di Rencana sebelum Planner memutuskan", tone: "crit" as Tone, href: "/rencana" }] : []),
     ...attention,
@@ -257,6 +290,21 @@ export function Beranda() {
       : isQa ? `Halo, ${me.user.split(" ")[0]}. Keputusan rilis susu, mutu barang jadi, hold, dan selisih bahan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isOperator ? `Halo, ${me.user.split(" ")[0]}. Order, mesin, dan downtime di lini ${(assigned ?? []).filter(a => a.startsWith("F")).join(", ")} Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
+    {isManager ? <>
+      <ExecKpis items={execKpis} />
+      <div className="exec-grid">
+        <SupplyCard cover={cover} planned={milkPlanned} need={milkNeed} farms={farms.map(f => ({ name: f.name, tiba: f.arrived, jalan: f.onTheWay, belum: Math.max(0, f.plannedRt - f.arrived - f.onTheWay), plannedL: f.plannedL }))} />
+        <MachineCard states={states} total={fillers.length} running={states[0].count} downtime={downByCause} />
+        <TargetCard rows={paceRows} />
+        <div className="exec-side">
+          <ScheduleCard segs={orderSegs} total={demo.schedule.length} plan={{ ok: !!approved, text: approved ? `Rencana disetujui ${approved.by}` : `Rencana tidak layak, ${broken} constraint dilanggar` }} />
+          <Card className="exec-card"><SectionTitle title="Perlu perhatian" action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+            <ul className="attention-list exec-attention">{shown.slice(0, 4).map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={16} /></span><span className="attention-copy"><strong>{a.title}</strong></span><Icon icon={ChevronRight} size={16} /></Link></li>)}</ul>
+            {shown.length > 4 && <p className="small muted">{shown.length - 4} hal lain di halaman masing-masing.</p>}
+          </Card>
+        </div>
+      </div>
+    </> : <>
     {kpis
       ? <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
       : <MetricGrid onSource={setSource} />}
@@ -273,20 +321,6 @@ export function Beranda() {
       </Card>
     </div>
 
-    {isManager && <Card className="home-menus"><SectionTitle title="Pencapaian target per lini" subtitle="Laju mesin terhadap target dan hasil order yang sudah selesai. Klik untuk melihat jadwal lini." action={<Link className="text-link" href="/penjadwalan">Buka Penjadwalan<Icon icon={ChevronRight} size={14} /></Link>} />
-      <div className="table-wrap"><table className="schedule-table">
-        <thead><tr><th>Lini</th><th>Order berjalan atau berikutnya</th><th>Kondisi</th><th className="numeric">Laju</th><th className="numeric">Target shift</th><th className="numeric">Hasil selesai</th></tr></thead>
-        <tbody>{lines.map(l => <tr key={l.line}>
-          <td><strong>{l.line}</strong></td>
-          <td data-label="Order">{l.current ? <>{l.current.sku}<span className="table-sub">{clock(l.current.start)}-{clock(l.current.end)}, target {fmt(l.current.packs)} pak</span></> : <span className="muted">Semua order selesai</span>}</td>
-          <td data-label="Kondisi"><Badge tone={l.st.running ? "ok" : "warn"}>{l.st.label}</Badge></td>
-          <td data-label="Laju" className={`numeric ${l.pace === null ? "muted" : l.pace < 90 ? "warn-text" : "ok-text"}`}>{l.pace === null ? "-" : `${l.pace}%`}</td>
-          <td data-label="Target shift" className="numeric">{fmt(l.target)} pak</td>
-          <td data-label="Hasil selesai" className="numeric">{l.done.length ? `${fmt(l.output)} pak (${attainment(l.output, l.done.reduce((s, i) => s + i.packs, 0))}%)` : "-"}</td>
-        </tr>)}</tbody>
-      </table></div>
-    </Card>}
-
     {/* Isi tiap menu diringkas jadi satu baris (poin 7): detailnya ada di halaman menu masing-masing. */}
     <Card className="home-menus"><SectionTitle title="Semua menu" subtitle="Satu baris per menu. Klik untuk membuka halamannya." />
       <ul className="attention-list menu-list">{visibleNav(demo.role).filter(n => summary[n.label]).map(n => { const m = summary[n.label]; return <li key={n.label}><Link href={n.tabs[0].href} className={`attention-item ${m.tone}`}><span className="attention-icon"><Icon icon={n.icon} size={18} /></span><span className="attention-copy"><strong>{n.label}</strong><span>{m.text}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>; })}</ul>
@@ -295,6 +329,7 @@ export function Beranda() {
     <Card className="home-activity"><SectionTitle title="Aktivitas terbaru" action={<Link className="text-link" href="/persetujuan">Semua riwayat<Icon icon={ChevronRight} size={14} /></Link>} />
       <ul className="activity-list">{[...demo.log, ...pastLog].slice(0, 3).map(e => <li key={e.id}><span className={`status-dot tone-${e.tone}`} aria-hidden="true" /><span><strong>{e.title}</strong><span>{e.detail}</span><span>{e.by} · {e.at}</span></span></li>)}</ul>
     </Card>
+    </>}
     <SourceModal id={source} onClose={() => setSource(null)} />
   </div>;
 }
