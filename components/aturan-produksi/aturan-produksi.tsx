@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { setChangeoverRule, setCipRule, setPaperRule, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { SOP_CHANGEOVER } from "@/lib/rules";
 import { CIP_STANDARD, PAPER_STANDARD, belowStandard, type CipGroup } from "@/lib/production";
-import { Badge, Card, Icon, PageHeading, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle } from "@/components/ui";
+import { QualityRules } from "./quality-rules";
 
 /** Isian menit per aturan: tidak boleh di bawah standar yang disepakati, disimpan per baris. */
 function RuleInput({ label, value, standard, onSave, allowed }: { label: string; value: number; standard: number; onSave: (minutes: number) => void; allowed: boolean }) {
@@ -32,12 +32,15 @@ export function AturanProduksi() {
   const demo = useDemo();
   const allowed = can(demo.role, "rules.edit");
   const { rules } = demo;
+  // QA/QC melihat bagiannya sendiri paling atas.
+  const qaFirst = can(demo.role, "quality.rules") && !allowed;
 
   return (
     <div className="page-enter">
-      <PageHeading title="Aturan Produksi" subtitle="Durasi changeover dan CIP yang dipakai saat menyusun jadwal. Nilainya boleh lebih lama dari standar yang disepakati, tapi tidak boleh lebih singkat." />
+      <PageHeading title="Aturan Produksi" subtitle="Durasi changeover dan CIP untuk jadwal (Planner), serta batas holding time dan ketentuan mutu (QA/QC). Changeover dan CIP boleh lebih lama dari standar, tapi tidak boleh lebih singkat." />
+      {qaFirst && <QualityRules />}
       <Card className="rules-card">
-        <SectionTitle title="Changeover antar-produk" subtitle="Dipakai di Penjadwalan untuk jeda antar-order dan di cek kelayakan Rencana." action={<Link className="text-link" href="/penjadwalan">Lihat jadwal<Icon icon={ArrowRight} size={14} /></Link>} />
+        <SectionTitle title="Changeover antar-produk" subtitle="Dipakai di Penjadwalan untuk jeda antar-order dan di cek kelayakan Rencana." action={<PageLink className="text-link" href="/penjadwalan">Lihat jadwal<Icon icon={ArrowRight} size={14} /></PageLink>} />
         <div className="table-wrap">
           <table className="rules-table">
             <thead><tr><th>Dari</th><th>Ke</th><th className="numeric">Standar SOP</th><th>Durasi dipakai</th><th>Status</th></tr></thead>
@@ -90,6 +93,7 @@ export function AturanProduksi() {
         </div>
         <p className="small muted">Standar CIP [asumsi]. Durasi CIP bay dipakai di cek kelayakan Rencana: kalau diperpanjang, RT tidak boleh bongkar di bay itu sebelum CIP selesai.</p>
       </Card>
+      {!qaFirst && <QualityRules />}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { DEFAULT_LIMITS, SOP_CHANGEOVER, setProductionRules, type Limits } from "@/lib/rules";
 import { CIP_STANDARD, PAPER_STANDARD, type CipGroup, type ProductionRules, type ScheduleItem } from "@/lib/production";
 import { ARRIVAL_STATUS, clock, type Arrival, type ReceivingState, type RtRecord, type Transfer } from "@/lib/receiving";
-import { BATCH_SAMPLES, type LabState } from "@/lib/lab";
+import { BATCH_SAMPLES, DEFAULT_QUALITY, type LabState, type QualitySpec } from "@/lib/lab";
 import { MACHINE_STATE, type Downtime, type MachineState, type OperationState, type ProcessTransfer, type Run } from "@/lib/operation";
 import type { LabParam, LabResult } from "@/mock/ops";
 import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
@@ -24,13 +24,13 @@ export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; no
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
 /** `assets`: alat yang ditugaskan ke pengguna (Operator); kosong berarti tidak dibatasi. */
 export interface DemoUser { id: string; name: string; role: RoleId; active: boolean; assets?: string[] }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState; quality: QualitySpec }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
 const ACCOUNT_KEY = "milkgraph-account";
 /** Id akun lama dari sebelum peran diganti nama. */
-const RENAMED: Record<string, string> = { "USR-qa": "USR-lab", "USR-supervisor": "USR-operator" };
+const RENAMED: Record<string, string> = { "USR-supervisor": "USR-operator" };
 const readAccount = () => { try { const a = localStorage.getItem(ACCOUNT_KEY); return a ? RENAMED[a] ?? a : null; } catch { return null; } };
 /** Lini fokus skenario (F1, F2, F4) beserta tangki aseptik dan sterilizer yang memasoknya. */
 export const OPERATOR_ASSETS = ["F1", "F2", "F4", "AT-1", "AT-2", "UHT-1", "UHT-2"];
@@ -80,7 +80,7 @@ const OPERATION: OperationState = {
   ],
 };
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION, quality: DEFAULT_QUALITY });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -101,11 +101,13 @@ function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as DemoState | null;
     state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits } } : initial(Date.now());
-    // Peran "qa" lama (QA/Lab) sekarang bernama "lab"; peran lain yang tidak dikenal jatuh ke Planner.
-    const fix = (r: string) => (r in ROLES ? r : r === "qa" ? "lab" : r === "supervisor" ? "operator" : "planner") as RoleId;
+    // Peran "supervisor" lama sekarang "operator"; peran lain yang tidak dikenal jatuh ke Planner. Id "qa" kini milik QA/QC.
+    const fix = (r: string) => (r in ROLES ? r : r === "supervisor" ? "operator" : "planner") as RoleId;
     state = { ...state, role: fix(state.role), users: state.users.map(u => ({ ...u, role: fix(u.role), ...(RENAMED[u.id] ? { id: RENAMED[u.id] } : {}), ...(fix(u.role) === "operator" && !u.assets ? { assets: OPERATOR_ASSETS } : {}) })),
       access: Object.fromEntries(Object.entries(state.access).map(([k, v]) => [k, (v ?? []).map(fix)])) };
   } catch { state = initial(Date.now()); }
+  // Peran baru (mis. QA/QC) mendapat pengguna demo bila belum ada di data lama.
+  state = { ...state, users: [...state.users, ...USERS.filter(u => !state.users.some(x => x.id === u.id))] };
   state = { ...state, account: readAccount() };
   setAccess(state.access);
   applyRules(state.rules);
@@ -143,7 +145,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation });
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation, quality: state.quality });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -413,4 +415,10 @@ export const saveDowntime = (d: Omit<Downtime, "id"> & { id?: string }) => act(
 export const addProcessTransfer = (t: Omit<ProcessTransfer, "id" | "by">) => act(
   s => op(s, { transfers: [...s.operation.transfers, { ...t, id: `PRS-${String(s.operation.transfers.length + 1).padStart(2, "0")}`, by: ROLES[s.role].user }] }),
   { kind: "produksi", title: "Transfer bahan dicatat", detail: `${t.from} ke ${t.to}, ${new Intl.NumberFormat("id-ID").format(t.volume)} L, ${clock(t.start)}-${clock(t.end)}`, note: "", tone: "ok" },
+);
+
+/** QA/QC: ketentuan mutu susu segar. Tersimpan di browser; mode API belum punya endpoint-nya. */
+export const setQuality = (q: QualitySpec, detail: string) => act(
+  () => ({ quality: q }),
+  { kind: "aturan", title: "Ketentuan mutu diubah", detail, note: "", tone: "neutral" },
 );

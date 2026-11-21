@@ -1645,3 +1645,4 @@ html:has(.login-page) { background: var(--color-canvas); }
 @media (max-width: 900px) { .lab-queue .attention-list { grid-template-columns: minmax(0, 1fr); } }
 
 .downtime-card, .process-transfer { margin-top: 16px; }
+.quality-input input { width: 140px; }

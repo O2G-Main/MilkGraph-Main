@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowRight, Check, CircleCheck, CircleDashed, CircleX, FlaskConical, Pencil, Plus, TriangleAlert, X } from "lucide-react";
 import { decideLab, useDemo, type LabDecision } from "@/lib/demo";
 import { can } from "@/lib/roles";
-import { mergeLab } from "@/lib/lab";
+import { applySpecs, mergeLab } from "@/lib/lab";
 import { LabEntryDialog, NewSampleDialog, unsampledRts } from "./lab-entry";
 import { labResults, type LabResult } from "@/mock/ops";
 import { OUTPUTS } from "@/mock/outputs";
@@ -59,19 +59,20 @@ export function Lab({ kind, lot, sample }: { kind: LabResult["kind"]; lot?: stri
   }
 
   const allowed = can(demo.role, "lab.decide");
-  const canRecord = can(demo.role, "lab.record");
+  // Hasil uji RT dan batch dimasukkan Lab; hasil mutu barang jadi dicatat QA/QC.
+  const canRecord = can(demo.role, kind === "qc-fg" ? "qc.record" : "lab.record");
   const intake = kind === "penerimaan";
   // Tes Lab memuat sampel RT dan batch tangki proses; hasil yang dimasukkan Lab menimpa hasil LIMS.
-  const merged = mergeLab(labResults, demo.lab);
+  const merged = applySpecs(mergeLab(labResults, demo.lab), demo.quality);
   const rows: LabResultItem[] = API_MODE ? (resultsRes.data ?? []) : merged.filter(r => intake ? r.kind === "penerimaan" || r.kind === "batch" : r.kind === kind);
   const open = rows.find(r => r.id === openId);
-  const badge = (r: LabResultItem) => r.decision ? decided(r.decision) : demo.labs[r.id] ? decided(demo.labs[r.id]) : STATUS[r.status];
+  const badge = (r: LabResultItem) => r.decision ? decided(r.decision) : demo.labs[r.id] ? decided(demo.labs[r.id]) : r.kind === "qc-fg" && r.status === "lulus" ? { label: "Lulus QC", tone: "ok" as Tone } : STATUS[r.status];
   const waiting = API_MODE ? (summaryRes.data?.waiting ?? 0) : rows.filter(r => decidable(r) && r.status !== "positif" && !demo.labs[r.id]).length;
   const avgWait = API_MODE ? (summaryRes.data?.avgWaitMin ?? 0) : 52;
   const unsampled = unsampledRts(rows, demo);
   const toCheck = rows.filter(r => pending(r) && !demo.labs[r.id]).length + unsampled.length;
   const entryOf = open ? demo.lab.entries[open.id] : undefined;
-  const editable = !!open && canRecord && !API_MODE && open.status !== "lulus" && !open.decision && !demo.labs[open.id];
+  const editable = !!open && canRecord && !API_MODE && (open.kind === "qc-fg" || (open.status !== "lulus" && !open.decision && !demo.labs[open.id]));
   const metrics = intake
     ? [{ icon: TriangleAlert, label: "Perlu diperiksa", value: toCheck, unit: "sampel" }, { icon: FlaskConical, label: "Menunggu keputusan QA", value: waiting, unit: "sampel" }, { icon: CircleDashed, label: "Rata-rata tunggu lab", value: avgWait, unit: "menit" }]
     : [{ icon: FlaskConical, label: "Lot diuji", value: rows.length, unit: "lot" }, { icon: CircleX, label: "Out-of-spec", value: rows.filter(r => r.status === "positif").length, unit: "lot" }, { icon: CircleCheck, label: "Lulus", value: rows.filter(r => r.status === "lulus").length, unit: "lot" }];
@@ -111,7 +112,7 @@ export function Lab({ kind, lot, sample }: { kind: LabResult["kind"]; lot?: stri
         {open.decision || demo.labs[open.id] ? <p className="small"><strong>{decided((open.decision || demo.labs[open.id])!).label}</strong> oleh {(open.decision || demo.labs[open.id])!.by}, {(open.decision || demo.labs[open.id])!.at}. {(open.decision || demo.labs[open.id])!.note}</p>
           : decidable(open) && allowed ? <><div className="page-actions"><button className="button secondary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("ditolak"); }}><Icon icon={X} size={16} />Tolak RT</button><button className="button primary" disabled={open.status === "uji-ulang" || open.status === "positif" || submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("dirilis"); }}><Icon icon={Check} size={16} />Rilis ke receiving</button></div>{open.status === "uji-ulang" && <p className="small muted">Rilis menunggu hasil uji ulang alcohol test, perkiraan keluar pukul {open.eta || "15.30"}. RT ini tetap bisa ditolak sekarang.</p>}</>
           : !intake ? <>
-            <p className="small muted">{open.status === "positif" ? "Lot ini gagal QC. Telusuri asalnya, lalu ajukan hold." : "Lot ini lulus QC barang jadi."}</p>
+            <p className="small muted">{open.status === "positif" ? "Lot ini gagal QC. Telusuri asalnya, lalu ajukan hold." : open.status === "dalam-uji" ? "Pemeriksaan mutu lot ini belum lengkap." : "Lot ini lulus QC barang jadi."}</p>
             <div className="page-actions">
               {open.status === "positif" && <PageLink className="button primary" href="/trace">Telusuri dan ajukan hold<Icon icon={ArrowRight} size={16} /></PageLink>}
               {OUTPUTS.some(o => o.id === open.subject) && <Link className="button secondary" href={`/riwayat-produksi?lot=${open.subject}`}>Lihat riwayat produksi lot<Icon icon={ArrowRight} size={16} /></Link>}

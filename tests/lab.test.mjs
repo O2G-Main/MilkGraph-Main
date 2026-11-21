@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deriveStatus, mergeLab, newIntakeSample } from "../lib/lab.ts";
+import { DEFAULT_QUALITY, applySpecs, deriveFgStatus, deriveStatus, mergeLab, newIntakeSample } from "../lib/lab.ts";
 
 const p = (ok) => ({ name: "X", value: "-", limit: "-", ok });
 
@@ -26,4 +26,20 @@ test("sampel baru untuk RT yang tiba dimulai dengan semua parameter berjalan", (
   assert.equal(s.status, "dalam-uji");
   assert.equal(s.params[0].value, "4,2 °C");
   assert.ok(mergeLab([], { samples: [s], entries: {} }).length === 1);
+});
+
+test("lot barang jadi lulus bila semua parameter dalam batas", () => {
+  assert.equal(deriveFgStatus([p(true), p(true)]), "lulus");
+  assert.equal(deriveFgStatus([p(true), p(null)]), "dalam-uji");
+  assert.equal(deriveFgStatus([p(true), p(false)]), "positif");
+  const fg = { id: "F", kind: "qc-fg", subject: "FG-1", detail: "", sampled: "", status: "dalam-uji", params: [p(null)], source: "" };
+  assert.equal(mergeLab([fg], { samples: [], entries: { F: { params: [p(true)], retest: false, by: "QA", at: "15.00" } } })[0].status, "lulus");
+});
+
+test("ketentuan mutu mengganti batas parameter sampel RT", () => {
+  const rt = newIntakeSample("LAB-1", "RT-1", "", "15.00", 4);
+  const [out] = applySpecs([rt], { ...DEFAULT_QUALITY, tempMax: 4, fatMin: 3.2 });
+  assert.equal(out.params.find(x => x.name === "Suhu tiba").limit, "≤ 4,0 °C");
+  assert.equal(out.params.find(x => x.name === "Lemak").limit, "≥ 3,2%");
+  assert.equal(out.params.find(x => x.name === "TPC").limit, "≤ 1.000.000 CFU/ml");
 });

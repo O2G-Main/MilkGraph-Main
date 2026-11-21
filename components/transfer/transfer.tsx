@@ -27,7 +27,11 @@ export function Transfer() {
   const fresh = transfers.filter(t => !t.counted);
   // Operator hanya mengurus transfer bahan di alat proses; transfer RT ke tangki penerimaan milik receiving.
   const showReceiving = demo.role !== "operator";
-  const showProcess = can(demo.role, "process.transfer") || demo.role === "planner";
+  const showProcess = can(demo.role, "process.transfer") || demo.role === "planner" || demo.role === "qa";
+  // QA/QC memeriksa selisih bahan: volume transfer dibanding timbangan RT.
+  const audit = demo.role === "qa" || demo.role === "superadmin";
+  const gaps = fresh.flatMap(t => { const rt = rows.find(r => r.id === t.rt); return rt ? [{ t, rt, diff: t.volume - rt.volume, pct: (t.volume - rt.volume) / rt.volume * 100 }] : []; });
+  const flagged = gaps.filter(g => Math.abs(g.pct) > 0.5);
 
   return (
     <div className="page-enter">
@@ -35,6 +39,11 @@ export function Transfer() {
         {allowed && showReceiving && <button className="button primary" onClick={() => setOpen(true)}><Icon icon={ArrowRightLeft} size={16} />Catat transfer</button>}
       </PageHeading>
       {showProcess && !showReceiving && <ProcessTransfers />}
+      {audit && <Card className="rules-card">
+        <SectionTitle title="Selisih bahan" subtitle={gaps.length ? `${gaps.length} transfer baru dibanding timbangan RT: total ${number(gaps.reduce((s, g) => s + g.t.volume, 0))} L dipindah dari ${number(gaps.reduce((s, g) => s + g.rt.volume, 0))} L ditimbang. Toleransi 0,5%.` : "Belum ada transfer baru di shift ini untuk dibandingkan dengan timbangan RT."} />
+        {flagged.length ? <ul className="attention-list">{flagged.map(g => <li key={g.t.id}><span className={`attention-item ${Math.abs(g.pct) > 2 ? "crit" : "warn"}`}><span className="attention-icon"><Icon icon={ArrowRightLeft} size={18} /></span><span className="attention-copy"><strong>{g.t.rt} ke {g.t.tank}: selisih {number(g.diff)} L ({g.pct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%)</strong><span>Timbang {number(g.rt.volume)} L, transfer {number(g.t.volume)} L, pukul {clock(g.t.start)}-{clock(g.t.end)}</span></span></span></li>)}</ul>
+          : gaps.length ? <p className="small ok-text">Semua transfer baru dalam toleransi timbangan.</p> : null}
+      </Card>}
       {showReceiving && <>
       <div className="schedule-stats">
         {TANKS.map(t => {

@@ -24,6 +24,12 @@
       "initials": "HK",
       "focus": "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime."
     },
+    "qa": {
+      "label": "QA/QC",
+      "user": "Ratna Maharani",
+      "initials": "RM",
+      "focus": "Rilis atau tolak susu dari hasil lab, mutu barang jadi, penelusuran batch, dan hold produk."
+    },
     "lab": {
       "label": "Lab",
       "user": "Sri Lestari",
@@ -102,6 +108,20 @@
         "operator"
       ]
     },
+    "qc.record": {
+      "label": "Mencatat hasil pemeriksaan mutu barang jadi",
+      "roles": [
+        "superadmin",
+        "qa"
+      ]
+    },
+    "quality.rules": {
+      "label": "Mengatur batas holding time dan ketentuan mutu",
+      "roles": [
+        "superadmin",
+        "qa"
+      ]
+    },
     "demand.send": {
       "label": "Mengirim kebutuhan susu ke farm",
       "roles": [
@@ -134,19 +154,22 @@
     "hold.submit": {
       "label": "Mengajukan daftar hold dari hasil trace",
       "roles": [
-        "superadmin"
+        "superadmin",
+        "qa"
       ]
     },
     "hold.review": {
       "label": "Menyetujui, menolak, atau melepas hold",
       "roles": [
-        "superadmin"
+        "superadmin",
+        "qa"
       ]
     },
     "lab.decide": {
       "label": "Merilis atau menolak hasil lab penerimaan RT",
       "roles": [
-        "superadmin"
+        "superadmin",
+        "qa"
       ]
     },
     "users.manage": {
@@ -174,7 +197,8 @@
         "planner",
         "receiving",
         "operator",
-        "lab"
+        "lab",
+        "qa"
       ]
     }
   }

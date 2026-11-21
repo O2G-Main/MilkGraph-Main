@@ -69,30 +69,32 @@ Semua halaman berbagi satu state (sekarang `lib/demo.ts` di browser; nanti backe
 
 ### 5.2 Peran dan hak akses (`lib/roles.ts`)
 
-Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC, Koordinator receiving, Lab (dulu QA/Lab, id `lab`), dan Operator produksi (dulu Supervisor produksi, id `operator`). Peran QA (id `qa`) menyusul dan akan memegang rilis/tolak RT, pengajuan dan keputusan hold; sampai itu hanya Superadmin yang bisa.
+Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC, Koordinator receiving, Lab (dulu QA/Lab, id `lab`), Operator produksi (dulu Supervisor produksi, id `operator`), dan QA/QC (id `qa`).
 
-| Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Operator produksi | Lab |
-|---|---|---|---|---|---|
-| Catat produksi mulai, selesai, dan hasil di lini yang ditugaskan | ya | | | ya | |
-| Perbarui kondisi mesin dan catat downtime (alat yang ditugaskan) | ya | | | ya | |
-| Catat volume perpindahan bahan pada alat yang ditugaskan | ya | | | ya | |
-| Masukkan dan perbarui hasil pemeriksaan lab (RT dan batch tangki) | ya | | | | ya |
-| Tambah/ubah jadwal kedatangan RT, estimasi tiba, status perjalanan | ya | | ya | | |
-| Catat kedatangan aktual, awal umur susu, dan proses bongkar | ya | | ya | | |
-| Catat transfer susu dari RT ke tangki penerimaan | ya | | ya | | |
-| Tambah/ubah target dan jadwal produksi | ya | ya | | | |
-| Atur durasi changeover dan CIP (tidak boleh di bawah standar) | ya | ya | | | |
-| Ubah parameter simulasi, waktu maintenance, kapasitas alat | ya | ya | | | |
-| Kirim kebutuhan susu ke farm | ya | ya | | | |
-| Setujui/tolak rekomendasi rencana | ya | ya | | | |
-| Ubah batas constraint | ya | ya | | | |
-| Konfirmasi instruksi dari rencana disetujui | ya | | ya (instruksi bay) | ya (instruksi filling) | |
-| Ajukan daftar hold (QA menyusul) | ya | | | | |
-| Setujui/tolak/lepas hold (QA menyusul) | ya | | | | |
-| Rilis/tolak hasil lab RT (QA menyusul) | ya | | | | |
-| Kelola pengguna dan hak akses peran | ya | | | | |
-| Kelola master data, konfigurasi integrasi | ya | | | | |
-| Lihat riwayat seluruh perubahan dan persetujuan | ya | ya | ya | ya | ya |
+| Keputusan | Superadmin | Planner PPIC | Koordinator receiving | Operator produksi | Lab | QA/QC |
+|---|---|---|---|---|---|---|
+| Catat hasil pemeriksaan mutu barang jadi | ya | | | | | ya |
+| Atur batas holding time dan ketentuan mutu | ya | | | | | ya |
+| Catat produksi mulai, selesai, dan hasil di lini yang ditugaskan | ya | | | ya | | |
+| Perbarui kondisi mesin dan catat downtime (alat yang ditugaskan) | ya | | | ya | | |
+| Catat volume perpindahan bahan pada alat yang ditugaskan | ya | | | ya | | |
+| Masukkan dan perbarui hasil pemeriksaan lab (RT dan batch tangki) | ya | | | | ya | |
+| Tambah/ubah jadwal kedatangan RT, estimasi tiba, status perjalanan | ya | | ya | | | |
+| Catat kedatangan aktual, awal umur susu, dan proses bongkar | ya | | ya | | | |
+| Catat transfer susu dari RT ke tangki penerimaan | ya | | ya | | | |
+| Tambah/ubah target dan jadwal produksi | ya | ya | | | | |
+| Atur durasi changeover dan CIP (tidak boleh di bawah standar) | ya | ya | | | | |
+| Ubah parameter simulasi, waktu maintenance, kapasitas alat | ya | ya | | | | |
+| Kirim kebutuhan susu ke farm | ya | ya | | | | |
+| Setujui/tolak rekomendasi rencana | ya | ya | | | | |
+| Ubah batas constraint | ya | ya | | | | |
+| Konfirmasi instruksi dari rencana disetujui | ya | | ya (instruksi bay) | ya (instruksi filling) | | |
+| Ajukan daftar hold | ya | | | | | ya |
+| Setujui/tolak/lepas hold | ya | | | | | ya |
+| Rilis/tolak hasil lab RT | ya | | | | | ya |
+| Kelola pengguna dan hak akses peran | ya | | | | | |
+| Kelola master data, konfigurasi integrasi | ya | | | | | |
+| Lihat riwayat seluruh perubahan dan persetujuan | ya | ya | ya | ya | ya | ya |
 
 **Menu per peran** (`HIDDEN_PAGES` di `lib/roles.ts`): halaman yang disembunyikan tidak ada di sidebar, dan bila dibuka lewat URL langsung dialihkan ke Beranda. Yang tidak tersedia untuk peran tidak ditampilkan sama sekali: tombol keputusan, kontrol ubah, dan tautan ke halaman tersembunyi (`PageLink`) hilang, bukan dikunci.
 - Superadmin: semua menu.
@@ -100,6 +102,7 @@ Revisi Nov 2026: peran ditetapkan satu per satu. Sudah: Superadmin, Planner PPIC
 - Koordinator receiving: hanya Beranda, Penerimaan (Jadwal Kedatangan RT, Antrean Truk, Transfer & Volume, Tes Lab untuk dilihat), dan Kondisi Alat (termasuk Bay & Tangki untuk melihat kesiapan bay dan tangki serta mengonfirmasi instruksi bay). Riwayat Persetujuan tetap bisa dibuka lewat Beranda. Beranda receiving menampilkan KPI RT di plant, holding paling mendesak, bay siap, dan ruang tangki penerimaan, lalu daftar urut urgensi: RT dekat batas holding, instruksi bay, bay CIP, tangki hampir penuh, transfer yang belum dicatat, tunggu lab, dan RT berikutnya.
 - Lab: hanya Beranda, Antrean Truk (dengan kartu "Perlu diperiksa lab" di atas), dan Tes Lab. Beranda Lab menampilkan KPI sampel yang perlu diperiksa, RT tertua di lab, out-of-spec, dan yang menunggu keputusan QA, lalu daftar urut urgensi: hasil out-of-spec, RT dari umur susu tertua, RT yang belum disampel, batch tangki yang menunggu uji, dan hasil lengkap yang menunggu QA.
 - Operator produksi: Beranda, Simulasi 3D, Penerimaan (hanya Transfer & Volume, bagian transfer bahan di alat proses), Operasional (Alur, Kondisi Alat termasuk Bay & Tangki dan Lini Filling), serta Rencana (Penjadwalan dan Aturan Produksi untuk dilihat). Alat yang ditugaskan disimpan per pengguna (`assets`); Hendra Kusuma mendapat F1, F2, F4, AT-1, AT-2, UHT-1, UHT-2. Penjadwalan hanya menampilkan order di lini itu dengan tombol Mulai/Selesai dan kolom realisasi (hasil baik, reject, persen target). Kondisi Alat membuka tab Ditugaskan, tombol ubah kondisi hanya di sterilizer dan mesin filling yang ditugaskan, plus tabel downtime (catat, ubah, selesaikan). Operator tetap mengonfirmasi instruksi filling dari rencana yang disetujui. Beranda Operator menampilkan KPI order lini, hasil baik, alat bermasalah, dan downtime, lalu daftar urut urgensi: mesin berhenti, alat bermasalah, order terlambat mulai, instruksi filling, dan order berikutnya.
+- QA/QC (Ratna Maharani): Beranda, Penerimaan (Tes Lab, Transfer & Volume), Operasional (QC Barang Jadi), Rencana (Aturan Produksi), dan Traceability (Riwayat Produksi termasuk Trace, Context Graph, Hold Produk). Merilis atau menolak RT di Tes Lab, mencatat hasil mutu barang jadi (lot lulus bila semua parameter dalam batas), mengajukan serta menyetujui dan melepas hold. Di Aturan Produksi mengatur batas holding time (farm sampai tersimpan dingin, Raw Milk Buffer sampai thermal) dan ketentuan mutu susu segar (suhu tiba, TPC, lemak, protein) yang langsung jadi batas parameter di Tes Lab; di halaman Constraint batas holding hanya ditampilkan. Transfer & Volume menampilkan kartu Selisih bahan (transfer dibanding timbangan RT, toleransi 0,5%). Beranda QA/QC menampilkan KPI keputusan rilis, lot gagal QC, hold, dan selisih bahan, lalu daftar urut urgensi: RT out-of-spec, RT siap rilis (umur susu tertua dulu), lot gagal tanpa hold, hold yang menunggu persetujuan, batch siap rilis, dan selisih bahan.
 
 Lab: Tes Lab memuat sampel RT dan batch tangki proses (ST-6, MX-1). Lab membuat sampel untuk RT yang baru tiba dan memasukkan nilai serta hasil tiap parameter (dalam batas, di luar batas, masih berjalan), bisa menandai uji ulang. Status sampel dihitung dari parameternya: ada yang di luar batas → out-of-spec; ditandai uji ulang → uji ulang; masih ada yang berjalan → dalam uji; semua dalam batas → menunggu keputusan QA. Hasil tercatat di Riwayat Persetujuan dengan jenis Uji lab.
 
@@ -107,7 +110,7 @@ Penerimaan: RT yang dicatat tiba pindah dari jadwal ke antrean di tahap Sampling
 
 Aturan Produksi ikut dipakai di cek kelayakan Rencana: durasi changeover menimpa SOP, dan CIP bay yang lebih pendek dari standar diperpanjang sampai standar.
 
-Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Operator produksi), Sri Lestari (Lab). Superadmin bisa menambah pengguna dan mengubah matriks hak akses di Pengguna & Peran.
+Pengguna demo: Bagas Wicaksono (Superadmin), Rino Akbar Hanif (Planner PPIC), Dimas Prasetyo (Koordinator receiving), Hendra Kusuma (Operator produksi), Sri Lestari (Lab), Ratna Maharani (QA/QC). Data browser lama otomatis mendapat pengguna untuk peran baru. Superadmin bisa menambah pengguna dan mengubah matriks hak akses di Pengguna & Peran.
 
 ### 5.3 Isi per halaman
 

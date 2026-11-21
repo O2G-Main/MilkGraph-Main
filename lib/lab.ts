@@ -12,14 +12,39 @@ export function deriveStatus(params: LabParam[], retest: boolean): LabResult["st
   return "hasil-siap";
 }
 
-/** Sampel dari LIMS ditambah sampel baru dari Lab, dengan hasil yang sudah dimasukkan Lab menimpa hasil LIMS. */
+/** Lot barang jadi tidak menunggu rilis: semua parameter dalam batas berarti lulus QC. */
+export function deriveFgStatus(params: LabParam[]): LabResult["status"] {
+  if (params.some(p => p.ok === false)) return "positif";
+  if (params.some(p => p.ok === null)) return "dalam-uji";
+  return "lulus";
+}
+
+/** Sampel dari LIMS ditambah sampel baru dari Lab, dengan hasil yang sudah dimasukkan menimpa hasil LIMS. */
 export function mergeLab(base: LabResult[], state: LabState): LabResult[] {
   return [...base, ...state.samples].map(r => {
     const e = state.entries[r.id];
-    // Sampel yang sudah lulus dan dirilis sebelum snapshot tidak diubah statusnya.
-    return e ? { ...r, params: e.params, status: r.status === "lulus" ? r.status : deriveStatus(e.params, e.retest) } : r;
+    if (!e) return r;
+    if (r.kind === "qc-fg") return { ...r, params: e.params, status: deriveFgStatus(e.params) };
+    // Sampel RT yang sudah lulus dan dirilis sebelum snapshot tidak diubah statusnya.
+    return { ...r, params: e.params, status: r.status === "lulus" ? r.status : deriveStatus(e.params, e.retest) };
   });
 }
+
+/** Ketentuan mutu susu segar yang diatur QA/QC; dipakai sebagai batas parameter di Tes Lab. */
+export interface QualitySpec { tempMax: number; tpcMax: number; fatMin: number; proteinMin: number }
+export const DEFAULT_QUALITY: QualitySpec = { tempMax: 4.5, tpcMax: 1_000_000, fatMin: 3.0, proteinMin: 2.8 };
+const id = (n: number, digits = 1) => n.toLocaleString("id-ID", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+export const specLimits = (q: QualitySpec): Record<string, string> => ({
+  "Suhu tiba": `≤ ${id(q.tempMax)} °C`,
+  TPC: `≤ ${q.tpcMax.toLocaleString("id-ID")} CFU/ml`,
+  Lemak: `≥ ${id(q.fatMin)}%`,
+  Protein: `≥ ${id(q.proteinMin)}%`,
+});
+/** Ganti teks batas parameter sampel RT dengan ketentuan mutu yang berlaku. */
+export const applySpecs = (results: LabResult[], q: QualitySpec) => {
+  const limits = specLimits(q);
+  return results.map(r => (r.kind === "penerimaan" ? { ...r, params: r.params.map(p => (limits[p.name] ? { ...p, limit: limits[p.name] } : p)) } : r));
+};
 
 const intakeParams = (temp: string): LabParam[] => [
   { name: "Suhu tiba", value: temp, limit: "≤ 4,5 °C", ok: null },

@@ -43,7 +43,7 @@ export function LabEntryDialog({ sample, onClose }: { sample: LabResult; onClose
             </fieldset>
           ))}
         </div>
-        <label className="check-row"><input type="checkbox" checked={retest} onChange={e => setRetest(e.target.checked)} />Perlu uji ulang sebelum diputuskan QA</label>
+        {sample.kind !== "qc-fg" && <label className="check-row"><input type="checkbox" checked={retest} onChange={e => setRetest(e.target.checked)} />Perlu uji ulang sebelum diputuskan QA</label>}
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button type="button" className="button secondary" onClick={onClose}>Batal</button>

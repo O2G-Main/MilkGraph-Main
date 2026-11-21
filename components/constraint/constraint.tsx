@@ -101,6 +101,8 @@ function formatValue(key: keyof Limits, unit: string | undefined, v: number): st
   return `${number(v)} ${unit || ""}`.trim();
 }
 
+const HOLDING: (keyof Limits)[] = ["holdingMin", "bufferMaxMin"];
+
 export function Constraint() {
   const demo = useDemo();
   const [draft, setDraft] = useState<Limits | null>(null);
@@ -114,6 +116,8 @@ export function Constraint() {
 
   const limits = draft ?? demo.limits;
   const allowed = can(demo.role, "constraint.edit");
+  // Batas holding time ditetapkan QA/QC di Aturan Produksi; di sini cukup ditampilkan.
+  const canHolding = can(demo.role, "quality.rules");
   const dirty = !!draft && JSON.stringify(draft) !== JSON.stringify(demo.limits);
 
   const defaultLimits: Limits = schemaResource.data?.length
@@ -291,7 +295,7 @@ export function Constraint() {
                           {currentVal !== defVal && ` · awal ${displayDef}`} [asumsi]
                         </small>
                       </span>
-                      {allowed && <input
+                      {(HOLDING.includes(key) ? canHolding : allowed) && <input
                         type="range"
                         aria-label={p.label}
                         min={min}
