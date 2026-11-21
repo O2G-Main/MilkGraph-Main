@@ -5,9 +5,10 @@ import { CalendarPlus, Play, RefreshCw, Sparkles, TriangleAlert } from "lucide-r
 import { apiSend, type ApiError } from "@/lib/api/client";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import {
-  FULFILMENT_LABEL, FULFILMENT_TONE, TRIGGER_REASONS, fmtWaktu, pctText, sourceText, toHHMM,
-  type BePo, type BeSchedule, type BeScheduleNarrate,
+  FULFILMENT_LABEL, FULFILMENT_TONE, PO_IMPORT_TEMPLATE, TRIGGER_REASONS, fmtWaktu, pctText, sourceText, toHHMM,
+  type BeImportPoRow, type BePo, type BeSchedule, type BeScheduleNarrate,
 } from "@/lib/api/contract";
+import { ImportCsvCard } from "@/components/import-csv-card";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
@@ -97,6 +98,26 @@ export function PenjadwalanApi({ role }: { role: string }) {
           </tbody>
         </table></div>
       </Card>
+
+      <ImportCsvCard<BeImportPoRow>
+        title="Import CSV PO"
+        subtitle="Satu baris CSV adalah satu baris SKU; baris dengan po_id sama digabung menjadi satu PO. Pratinjau dulu, baris yang gagal dilewati saat impor."
+        templateCsv={PO_IMPORT_TEMPLATE}
+        templateName="template-po.csv"
+        importPath="/pos/import"
+        role={role}
+        canImport={write}
+        gateNote="Import PO hanya untuk Planner dan Superadmin, sesuai permission plan.decide di server. Role lain cukup membaca daftar PO di atas."
+        invalidate={[POS, LATEST, "/schedules", "/dashboard/executive"]}
+        rowKey={r => r.po_id}
+        columns={[
+          { header: "PO", cell: r => <strong className="mono">{r.po_id}</strong> },
+          { header: "Prioritas", numeric: true, cell: r => r.priority },
+          { header: "Batas waktu", cell: r => fmtWaktu(r.due_datetime) },
+          { header: "Baris SKU", numeric: true, cell: r => r.jumlah_baris },
+          { header: "Total", numeric: true, cell: r => `${number(r.total_liter)} L` },
+        ]}
+      />
 
       <Card>
         <SectionTitle title="Jadwal produksi" subtitle={schedule ? `Jendela ${fmtWaktu(schedule.window.start)} sampai ${fmtWaktu(schedule.window.end)}, digenerate ${fmtWaktu(schedule.generated_at)}.` : "Belum ada jadwal tergenerate."}

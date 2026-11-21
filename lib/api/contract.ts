@@ -127,6 +127,24 @@ export interface BeExecDashboard {
   po_summary: { fulfilled: number; at_risk: number; late: number; on_track: number; fulfilment: BeFulfilment[] } | null;
 }
 
+/* ---------- Import CSV: /api/v1/pos/import dan /api/v1/supply/rt-arrivals/import ---------- */
+/** Laporan import dua tahap: commit=false pratinjau (tidak menyimpan), commit=true menyimpan baris valid. */
+export interface BeImportError { baris: number; pesan: string }
+export interface BeImportReport<Row> {
+  commit: boolean; total_baris: number; valid: number; gagal: number; dibuat: number;
+  errors: BeImportError[]; rows: Row[];
+}
+/** Ringkasan satu PO hasil grouping baris CSV pada laporan import PO. */
+export interface BeImportPoRow { po_id: string; priority: number; due_datetime: string; jumlah_baris: number; total_liter: number; label_data: string }
+export const PO_IMPORT_TEMPLATE =
+  "po_id,priority,due_datetime,sku_id,qty_liter\n" +
+  "PO-2026-1102,1,2026-11-24T08:00:00+07:00,UHT-CH-250-LOCAL,12000\n" +
+  "PO-2026-1102,1,2026-11-24T08:00:00+07:00,UHT-CH-1000-LOCAL,8000\n";
+export const RT_IMPORT_TEMPLATE =
+  "rt_id,farm_name,volume_l,depart_at,target_arrival,estimated_arrival,actual_arrival,status\n" +
+  "RT-41,Farm Tutur,9000,05:30,07:00,07:10,,Dalam Perjalanan\n" +
+  "RT-42,KUD Ngantang,11000,06:00,08:00,07:50,07:50,Sudah Tiba\n";
+
 /* ---------- Role & Hak Akses: /api/v1/roles dan /api/v1/permissions ---------- */
 /** Satu role dari registri BE. Persona (user, initials, focus) ikut dari server, bukan dari registri lokal. */
 export interface BeRole { label: string; user: string; initials: string; focus: string; builtin: boolean; permissions: string[] }
