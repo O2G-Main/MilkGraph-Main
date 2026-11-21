@@ -19,6 +19,8 @@ import type { Tone } from "@/mock/types";
 import { Badge, Card, Icon, PageHeading, SectionTitle, SourceModal } from "@/components/ui";
 import { MetricGrid } from "@/components/receiving/metric-grid";
 import { ASSETS } from "@/lib/assets";
+import { API_MODE } from "@/lib/api/client";
+import { ExecutiveDetails, ExecutiveKpis } from "./executive-api";
 
 type Item = { icon: LucideIcon; title: string; meta: string; tone: Tone; href: string };
 const plan = scenario.plans[0];
@@ -257,7 +259,9 @@ export function Beranda() {
       : isQa ? `Halo, ${me.user.split(" ")[0]}. Keputusan rilis susu, mutu barang jadi, hold, dan selisih bahan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isOperator ? `Halo, ${me.user.split(" ")[0]}. Order, mesin, dan downtime di lini ${(assigned ?? []).filter(a => a.startsWith("F")).join(", ")} Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : `Halo, ${me.user.split(" ")[0]}. Ringkasan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`} />
-    {kpis
+    {isManager && API_MODE
+      ? <ExecutiveKpis />
+      : kpis
       ? <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>
       : <MetricGrid onSource={setSource} />}
 
@@ -273,7 +277,9 @@ export function Beranda() {
       </Card>
     </div>
 
-    {isManager && <Card className="home-menus"><SectionTitle title="Pencapaian target per lini" subtitle="Laju mesin terhadap target dan hasil order yang sudah selesai. Klik untuk melihat jadwal lini." action={<Link className="text-link" href="/penjadwalan">Buka Penjadwalan<Icon icon={ChevronRight} size={14} /></Link>} />
+    {isManager && API_MODE && <ExecutiveDetails />}
+
+    {isManager && !API_MODE && <Card className="home-menus"><SectionTitle title="Pencapaian target per lini" subtitle="Laju mesin terhadap target dan hasil order yang sudah selesai. Klik untuk melihat jadwal lini." action={<Link className="text-link" href="/penjadwalan">Buka Penjadwalan<Icon icon={ChevronRight} size={14} /></Link>} />
       <div className="table-wrap"><table className="schedule-table">
         <thead><tr><th>Lini</th><th>Order berjalan atau berikutnya</th><th>Kondisi</th><th className="numeric">Laju</th><th className="numeric">Target shift</th><th className="numeric">Hasil selesai</th></tr></thead>
         <tbody>{lines.map(l => <tr key={l.line}>

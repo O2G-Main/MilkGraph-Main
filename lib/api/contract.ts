@@ -79,3 +79,56 @@ export function chatNotice(status: number | undefined): string {
   if (status === 502) return "Layanan AI sedang tidak terjangkau, jadi jawaban ini disusun dari data aplikasi.";
   return "Asisten AI belum bisa dihubungi, jadi jawaban ini disusun dari data aplikasi.";
 }
+/** 401 dan 403 adalah masalah akses peran, bukan layanan AI mati; jangan ditutupi jawaban lokal. */
+export const isAccessError = (status: number | undefined) => status === 401 || status === 403;
+
+/* ---------- Penjadwalan: /api/v1/pos dan /api/v1/schedules ---------- */
+export interface BePoLine { sku: string; qty_liter: number }
+export interface BePo { po_id: string; priority: number; lines: BePoLine[]; due_datetime: string; label_data: string }
+export interface BeRun {
+  run_id: string; po_id: string; sku: string; fm_id: string; tank_source: string;
+  start: string; end: string; qty_liter: number; changeover_after_min?: number;
+}
+export interface BeFulfilment { po_id: string; status: string; fulfilled_pct: number; planned_completion: string; root_causes: string[] }
+export interface BeScheduleWarning { type: string; resource_id: string; needed_l?: number; available_l?: number; limit_h?: number; projected_h?: number }
+export interface BeSchedule {
+  schedule_id: string; version: number; generated_at: string; triggered_by: string;
+  window: { start: string; end: string }; runs: BeRun[]; fulfilment: BeFulfilment[]; warnings: BeScheduleWarning[];
+}
+/** Balasan POST /api/v1/schedules/narrate: respons service AI apa adanya. */
+export interface BeScheduleNarrate { batch_id: string; penjelasan: string; sumber?: unknown; label_data?: string; jev?: unknown }
+
+export const FULFILMENT_LABEL: Record<string, string> = { ON_TRACK: "Sesuai rencana", AT_RISK: "Berisiko", LATE: "Terlambat", FULFILLED: "Terpenuhi" };
+export const FULFILMENT_TONE: Record<string, "ok" | "warn" | "crit" | "neutral"> = { ON_TRACK: "ok", AT_RISK: "warn", LATE: "crit", FULFILLED: "ok" };
+/** Kode pemicu regenerasi jadwal yang diterima POST /api/v1/schedules/triggers. */
+export const TRIGGER_REASONS: { code: string; label: string }[] = [
+  { code: "RT_LATE", label: "RT terlambat" },
+  { code: "RT_QUEUE", label: "Antrean RT" },
+  { code: "DOWNTIME", label: "Downtime alat" },
+  { code: "RAW_MATERIAL_SHORT", label: "Bahan baku kurang" },
+  { code: "HOLDING_EXCEEDED", label: "Holding time terlampaui" },
+  { code: "PO_CHANGED", label: "PO berubah" },
+];
+/** Stempel waktu server (RFC3339) ditampilkan sebagai tanggal dan jam WIB. */
+export function fmtWaktu(v: string | null | undefined): string {
+  if (!v) return "-";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta" });
+}
+/** fulfilled_pct dari server berupa pecahan 0 sampai 1. */
+export const pctText = (p: number) => `${Math.round((p ?? 0) * 100)}%`;
+
+/* ---------- Dashboard Eksekutif: /api/v1/dashboard/executive ---------- */
+export interface BeExecDashboard {
+  milk_received_l: { total: number; by_farm: { farm_id: string; farm_name: string; total_l: number }[] };
+  machine_utilization: { fm_id: string; used_hours: number; downtime_hours: number; pct: number }[];
+  daily_schedule: { schedule_id: string; version: number; window: { start: string; end: string }; runs_count: number; targets: { date: string; due_liter: number; scheduled_liter: number }[] } | null;
+  po_summary: { fulfilled: number; at_risk: number; late: number; on_track: number; fulfilment: BeFulfilment[] } | null;
+}
+
+/* ---------- Role & Hak Akses: /api/v1/roles dan /api/v1/permissions ---------- */
+/** Satu role dari registri BE. Persona (user, initials, focus) ikut dari server, bukan dari registri lokal. */
+export interface BeRole { label: string; user: string; initials: string; focus: string; builtin: boolean; permissions: string[] }
+export interface BeRolesResponse { roles: Record<string, BeRole>; permissions: Record<string, { label: string; roles: string[] }> }
+export interface BePermission { name: string; label: string }

@@ -154,7 +154,7 @@ export async function refreshApiState() {
   try {
     const role = load().role;
     const [session, decisions, holds, labs, instructions, limits, audit] = await Promise.all([
-      apiGet<{ role: RoleId }>("/session", role),
+      apiGet<{ role: RoleId; user?: { name?: string } }>("/session", role),
       apiGet<PlanDecision[]>("/decisions", role),
       apiGet<Hold[]>("/holds", role),
       apiGet<{ id: string; decision?: LabDecision }[]>("/lab/results", role),
@@ -162,7 +162,11 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation, quality: state.quality, proposals: state.proposals, roles: state.roles, menus: state.menus });
+    // Persona sesi mengikuti Backend: nama akun bawaan peran aktif diganti nama dari GET /session,
+    // supaya nama tampil sama dengan registri BE (mis. Planner = Rina Wulandari, bukan persona lokal).
+    const beName = session.user?.name;
+    const users = beName ? state.users.map(u => u.id === `USR-${session.role}` ? { ...u, name: beName } : u) : state.users;
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation, quality: state.quality, proposals: state.proposals, roles: state.roles, menus: state.menus });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));

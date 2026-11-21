@@ -62,7 +62,7 @@ function kendala(d: Data, s: State): Reply {
   const crit = all.filter(a => a.tone === "crit").map(a => `${a.id} (${a.status})`);
   const trucks = d.tankers.filter(t => t.tone === "crit").map(t => t.id);
   return {
-    text: `${SNAPSHOT} ada ${all.length} alat yang perlu diperhatikan.${crit.length ? ` Paling mendesak: ${list(crit)}.` : ""}${trucks.length ? ` ${list(trucks)} mendekati batas holding time.` : ""} ${planLine(d, s)}`,
+    text: `${SNAPSHOT} ada ${all.length} alat yang perlu diperhatikan.${crit.length ? ` Paling mendesak: ${list(crit)}.` : ""}${trucks.length ? ` ${list(trucks)} mendekati batas holding time.` : ""} ${planLine(d, s)} [simulasi]`,
     links: [{ label: "Buka Kondisi Alat", href: "/kondisi-alat" }, { label: "Buka Kelayakan & keputusan", href: "/rencana" }],
   };
 }
@@ -72,7 +72,7 @@ function antrean(d: Data, s: State): Reply {
   const top = waiting[0], crit = d.tankers.filter(t => t.tone === "crit");
   const decided = Object.keys(s.labs).length;
   return {
-    text: `${SNAPSHOT} ada ${waiting.length} RT yang menunggu.${top ? ` Paling lama ${top.id} (${top.stage}, ${top.wait} menit, ${fmt(top.volume)} L).` : ""}${crit.length ? ` ${crit.map(t => `${t.id} sudah berumur ${t.age}`).join(", ")} dan mendekati batas holding time.` : ""}${decided ? ` ${decided} hasil lab sudah diputuskan di sesi ini.` : ""}`,
+    text: `${SNAPSHOT} ada ${waiting.length} RT yang menunggu.${top ? ` Paling lama ${top.id} (${top.stage}, ${top.wait} menit, ${fmt(top.volume)} L).` : ""}${crit.length ? ` ${crit.map(t => `${t.id} sudah berumur ${t.age}`).join(", ")} dan mendekati batas holding time.` : ""}${decided ? ` ${decided} hasil lab sudah diputuskan di sesi ini.` : ""} [simulasi]`,
     links: [{ label: "Buka Antrean Truk", href: "/receiving" }],
   };
 }
@@ -80,7 +80,7 @@ function antrean(d: Data, s: State): Reply {
 function rencana(d: Data, s: State): Reply {
   const plan = d.plans.find(p => p.id === s.planId) ?? d.plans[0];
   return {
-    text: `${plan.label}: ${planLine(d, s)} Yang diubah solver: ${list(plan.reasons.map(r => r.title))}.`,
+    text: `${plan.label}: ${planLine(d, s)} Yang diubah solver: ${list(plan.reasons.map(r => r.title))}. [simulasi]`,
     links: [{ label: "Buka Kelayakan & keputusan", href: "/rencana" }, { label: "Lihat di Alur rencana", href: "/rencana/alur" }],
   };
 }
@@ -89,7 +89,7 @@ function upgrade(d: Data, s: State): Reply {
   const top = d.upgrades[0];
   const done = s.adjustText ? `Sudah diterapkan: ${s.adjustText}. ` : "";
   return {
-    text: `${done}${top ? `Saran teratas ${top.id} di jalur ${top.line}: naik ${fmt(top.gain)} L/jam, dari ${fmt(top.from)} ke ${fmt(top.from + top.gain)} L/jam.` : "Tidak ada upgrade lain yang menambah produksi dengan pengaturan sekarang."}`,
+    text: `${done}${top ? `Saran teratas ${top.id} di jalur ${top.line}: naik ${fmt(top.gain)} L/jam, dari ${fmt(top.from)} ke ${fmt(top.from + top.gain)} L/jam.` : "Tidak ada upgrade lain yang menambah produksi dengan pengaturan sekarang."} [simulasi]`,
     links: [{ label: "Buka Rekomendasi upgrade", href: "/rencana/upgrade" }],
   };
 }
@@ -98,13 +98,13 @@ function answerOf(d: Data, id: string) { return d.answers.find(a => a.id === id)
 
 function bay(d: Data, s: State): Reply {
   const a = answerOf(d, "bay2");
-  return { text: `${a.title}. ${a.conclusion}${approved(s) ? " Rekomendasi sudah disetujui, jadi RT-26 pindah ke Bay 1." : ""}`, links: [{ label: "Buka Bay & Tangki", href: "/tangki" }, { label: "Buka Kelayakan & keputusan", href: "/rencana" }], lastAsset: "Bay 2" };
+  return { text: `${a.title}. ${a.conclusion}${approved(s) ? " Rekomendasi sudah disetujui, jadi RT-26 pindah ke Bay 1." : ""} [simulasi]`, links: [{ label: "Buka Bay & Tangki", href: "/tangki" }, { label: "Buka Kelayakan & keputusan", href: "/rencana" }], lastAsset: "Bay 2" };
 }
 
 function genealogy(d: Data, s: State, id: "backward" | "forward"): Reply {
   const a = answerOf(d, id);
   const hold = s.holds.find(h => h.trigger === "FG-1013-07" && h.status !== "ditolak");
-  return { text: `${a.title}. ${a.conclusion}${hold ? ` Daftar hold ${hold.id} sudah diajukan oleh ${hold.by} pukul ${hold.at}, statusnya ${hold.status}.` : ""}`, links: [{ label: "Lihat Riwayat Produksi", href: "/riwayat-produksi" }, { label: "Buka Hold Produk", href: "/hold" }] };
+  return { text: `${a.title}. ${a.conclusion}${hold ? ` Daftar hold ${hold.id} sudah diajukan oleh ${hold.by} pukul ${hold.at}, statusnya ${hold.status}.` : ""} [simulasi]`, links: [{ label: "Lihat Riwayat Produksi", href: "/riwayat-produksi" }, { label: "Buka Hold Produk", href: "/hold" }] };
 }
 
 function halaman(d: Data, s: State): Reply {
@@ -148,7 +148,7 @@ export function reply(question: string, d: Data, s: State): Reply {
     case "bay": if (!named || named === "Bay 2") return bay(d, s); // alat lain dijawab sebagai status
     case "status":
       if (!asset) return needAsset;
-      return { text: `${SNAPSHOT}, ${asset.id} berstatus ${asset.status}.${asset.note ? ` ${asset.note}.` : ""}`, links: [alur, { label: "Buka Kondisi Alat", href: "/kondisi-alat" }], lastAsset: asset.id };
+      return { text: `${SNAPSHOT}, ${asset.id} berstatus ${asset.status}.${asset.note ? ` ${asset.note}.` : ""} [simulasi]`, links: [alur, { label: "Buka Kondisi Alat", href: "/kondisi-alat" }], lastAsset: asset.id };
     case "dampak": {
       if (!asset) return needAsset;
       const after = walk(d.links, asset.id, 1);
