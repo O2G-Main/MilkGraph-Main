@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
-/** Bay 2 sedang CIP sampai pukul 15.20 di snapshot [simulasi]. */
+/** Bay 2 sedang CIP sampai pukul 15.20 di snapshot. */
 const BAY_CIP: Record<string, string> = { "Bay 2": "15:20" };
 export const BAYS = ["Bay 1", "Bay 2", "Bay 3"];
 

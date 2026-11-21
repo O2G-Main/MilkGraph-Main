@@ -9,7 +9,7 @@ import { BranchedNav } from "@/components/shell/branched-nav";
 import { scenario } from "@/lib/data";
 import { Badge, Icon, Modal, SourceModal } from "@/components/ui";
 import { initialsOf, isSignedIn, logout, resetDemo, useDemo } from "@/lib/demo";
-import { ROLES, canOpen, type RoleId } from "@/lib/roles";
+import { ROLES, canOpen, roleLabel, type RoleId } from "@/lib/roles";
 import { violations } from "@/lib/rules";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -79,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const account = demo.users.find(u => u.id === demo.account && u.active);
   const me = account
-    ? { user: account.name, label: ROLES[account.role].label, initials: initialsOf(account.name) }
+    ? { user: account.name, label: roleLabel(account.role), initials: initialsOf(account.name) }
     : API_MODE && sessionRes.data?.user
       ? { user: sessionRes.data.user.name, label: sessionRes.data.user.role, initials: sessionRes.data.user.initials }
       : (ROLES[demo.role] ?? { user: demo.role, label: demo.role, initials: demo.role.slice(0, 2).toUpperCase() });
@@ -164,7 +164,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="breadcrumb">{current.item.tabs.length > 1 && <>{current.item.label}<span>/</span></>}{pathname === current.tab.href ? <strong>{tabLabel}</strong> : <Link href={current.tab.href} onClick={fromMenu}>{tabLabel}</Link>}</span>
         </div>
         <div className="topbar-actions">
-          <Badge>Data simulasi</Badge>
+          
           <button className="shift-button" onClick={() => setPanel("shift")}>
             <Icon icon={Clock3} size={16} /><span>{shiftButtonLabel}<span className="shift-date">{shiftButtonDate}</span></span>
             <Icon icon={ChevronDown} size={14} />
@@ -256,7 +256,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button className="button primary" onClick={handleLogout}><Icon icon={LogOut} size={16} />Keluar</button>
         </div>
       </>}
-      {panel === "help" && <><p>Ada dua skenario demo dari proposal, mulai dari temuan sampai keputusan.</p><ol className="guide-list"><li><strong>Antrean Truk</strong><p>Lihat antrean RT menumpuk di lab test dan Bay 2 yang sedang CIP.</p></li><li><strong>Rencana & What-if</strong><p>Rencana FIFO ditandai tidak layak. Bandingkan rekomendasi solver, lalu setujui atau tolak.</p></li><li><strong>Simulasi 3D</strong><p>Bandingkan lokasi bottleneck sebelum dan sesudah rekomendasi.</p></li><li><strong>Traceability</strong><p>Di Riwayat Produksi, pilih lot FG-1013-07 yang out-of-spec. Dari sana, telusuri mundur ke RT dan farm, lalu maju ke lot lain untuk daftar hold.</p></li></ol><Badge>Semua data adalah simulasi</Badge><button className="button secondary wide reset-demo" disabled={resetting} onClick={() => void handleResetDemo()}><Icon icon={RotateCcw} size={16} />{resetting ? "Mengatur ulang demo…" : "Atur ulang demo"}</button>{resetError && <p className="small crit-text" role="alert">{resetError}</p>}<p className="small muted">Menghapus keputusan, hold, konfirmasi, dan perubahan constraint yang tersimpan di browser ini.</p></>}
+      {panel === "help" && <><p>Ada dua skenario demo dari proposal, mulai dari temuan sampai keputusan.</p><ol className="guide-list"><li><strong>Antrean Truk</strong><p>Lihat antrean RT menumpuk di lab test dan Bay 2 yang sedang CIP.</p></li><li><strong>Rencana & What-if</strong><p>Rencana FIFO ditandai tidak layak. Bandingkan rekomendasi solver, lalu setujui atau tolak.</p></li><li><strong>Simulasi 3D</strong><p>Bandingkan lokasi bottleneck sebelum dan sesudah rekomendasi.</p></li><li><strong>Traceability</strong><p>Di Riwayat Produksi, pilih lot FG-1013-07 yang out-of-spec. Dari sana, telusuri mundur ke RT dan farm, lalu maju ke lot lain untuk daftar hold.</p></li></ol><button className="button secondary wide reset-demo" disabled={resetting} onClick={() => void handleResetDemo()}><Icon icon={RotateCcw} size={16} />{resetting ? "Mengatur ulang demo…" : "Atur ulang demo"}</button>{resetError && <p className="small crit-text" role="alert">{resetError}</p>}<p className="small muted">Menghapus keputusan, hold, konfirmasi, dan perubahan constraint yang tersimpan di browser ini.</p></>}
     </Modal>}
     <SourceModal id={source} onClose={() => setSource(null)} />
   </div>;

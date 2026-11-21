@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarClock, ClipboardCheck, Download, FlaskConical, PackageX, SlidersHorizontal, UserCog, CalendarRange, Timer, Truck, TestTubes, Factory } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useDemo, type LogEntry, type LogKind } from "@/lib/demo";
+import { can } from "@/lib/roles";
 import { pastLog } from "@/mock/ops";
 import { API_MODE, API_URL } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -68,7 +69,7 @@ export function Persetujuan() {
   }
 
   return <div className="page-enter">
-    <PageHeading title="Riwayat Persetujuan" subtitle="Jejak audit keputusan planner, QA, dan tim lapangan beserta catatan dan perannya."><button className="button secondary" onClick={exportCsv} disabled={!rows.length}><Icon icon={Download} size={16} />Unduh CSV</button></PageHeading>
+    <PageHeading title="Riwayat Persetujuan" subtitle="Jejak audit keputusan planner, QA, dan tim lapangan beserta catatan dan perannya.">{can(demo.role, "audit.export") && <button className="button secondary" onClick={exportCsv} disabled={!rows.length}><Icon icon={Download} size={16} />Unduh CSV</button>}</PageHeading>
     <div className="page-tabs"><Toggle label="Jenis keputusan" value={filter} onChange={setFilter} options={[{ value: "semua", label: `Semua (${all.length})` }, ...(Object.keys(KINDS) as LogKind[]).map(k => ({ value: k, label: `${KINDS[k].label} (${all.filter(e => e.kind === k).length})` }))]} /></div>
     <Card>{rows.length ? <ol className="audit-list">{rows.map(e => <li key={`${e.id}-${e.at}`}>
       <span className={`audit-icon ${e.tone}`}><Icon icon={KINDS[e.kind].icon} size={16} /></span>

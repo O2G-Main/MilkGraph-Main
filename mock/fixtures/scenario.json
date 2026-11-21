@@ -351,7 +351,7 @@
       "id": "TURN-01",
       "time": "14.42",
       "title": "Waktu putar RT",
-      "detail": "Rata-rata waktu sejak RT tiba di weighbridge sampai keluar setelah bongkar, dihitung dari 12 RT terakhir. Dengan urutan FIFO, waktunya 2 jam 34 menit [simulasi]."
+      "detail": "Rata-rata waktu sejak RT tiba di weighbridge sampai keluar setelah bongkar, dihitung dari 12 RT terakhir. Dengan urutan FIFO, waktunya 2 jam 34 menit."
     },
     {
       "id": "LAB-QUEUE",
@@ -493,7 +493,7 @@
       "id": "SOLVER-01",
       "time": "14.42",
       "title": "Run solver CP-SAT",
-      "detail": "Model berisi 6 constraint, 9 RT, 3 bay, dan 2 lini filling. Waktu solve dicatat untuk setiap skenario [simulasi]."
+      "detail": "Model berisi 6 constraint, 9 RT, 3 bay, dan 2 lini filling. Waktu solve dicatat untuk setiap skenario."
     },
     {
       "id": "LAB-8812",

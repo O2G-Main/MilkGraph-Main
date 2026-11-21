@@ -11,6 +11,7 @@ import { DEFAULT_LIMITS, evaluate, violations, type ConstraintId, type Limits } 
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import { Badge, Card, Icon, PageHeading, SectionTitle, SourceButton, SourceModal } from "@/components/ui";
+import { ProposeButton } from "@/components/rencana/proposals";
 
 type NumberKey = { [K in keyof Limits]: Limits[K] extends number ? K : never }[keyof Limits];
 type ToggleKey = { [K in keyof Limits]: Limits[K] extends boolean ? K : never }[keyof Limits];
@@ -222,6 +223,7 @@ export function Constraint() {
     <div className="page-enter">
       <PageHeading title="Constraint" subtitle={tryOnly ? "Bisakah rencana berjalan sesuai jadwal? Geser batasnya untuk membandingkan alternatif. Simulasi ini tidak mengubah batas yang berlaku." : "Bisakah rencana berjalan sesuai jadwal? Enam constraint diuji pada setiap rencana. Ubah batasnya, lihat dampaknya langsung, lalu simpan."}>
         {tryOnly && <button className="button secondary" disabled={!dirty} onClick={() => setDraft(null)}><Icon icon={RotateCcw} size={16} />Kembali ke batas berlaku</button>}
+        {tryOnly && <ProposeButton kind="batas" title="Usulan batas constraint" detail={dirty ? describe(demo.limits, draft!) : "Geser batas dulu untuk membuat usulan."} limits={draft ?? undefined} disabled={!dirty} />}
         {allowed && <>
         <button className="button secondary" disabled={isDefault || saving} onClick={() => setDraft(defaultLimits)}>
           <Icon icon={RotateCcw} size={16} />Nilai awal

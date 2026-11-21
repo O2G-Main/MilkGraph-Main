@@ -65,7 +65,7 @@ export function SourceModal({ id, onClose }: { id: string | null; onClose: () =>
   if (!source) {
     return <Modal title="Bukti operasional" onClose={onClose}><p className="muted">Bukti {id} tidak ditemukan.</p><button className="button secondary wide" onClick={onClose}>Tutup</button></Modal>;
   }
-  return <Modal title="Bukti operasional" onClose={onClose}><Badge>Data simulasi</Badge><h3 className="source-title">{source.title}</h3><p className="mono muted">{source.id} · {source.time}</p><p className="source-detail">{source.detail}</p><p className="small muted">Sumbernya snapshot skenario pabrik tanggal 14 Oktober 2026. Catatan ini data demo.</p><button className="button secondary wide" onClick={onClose}>Selesai membaca</button></Modal>;
+  return <Modal title="Bukti operasional" onClose={onClose}><h3 className="source-title">{source.title}</h3><p className="mono muted">{source.id} · {source.time}</p><p className="source-detail">{source.detail}</p><button className="button secondary wide" onClick={onClose}>Selesai membaca</button></Modal>;
 }
 export function Toggle<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; label: string }) {
   return <div className="toggle" role="group" aria-label={label}>{options.map(option => <button key={option.value} aria-pressed={value === option.value} className={value === option.value ? "selected" : ""} onClick={() => onChange(option.value)}>{option.label}</button>)}</div>;

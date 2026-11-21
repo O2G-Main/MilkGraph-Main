@@ -99,7 +99,7 @@ export function AssistantChat() {
   const fab = useRef<HTMLButtonElement>(null);
   const tab = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ x: number; moved: boolean } | null>(null);
-  const me = ROLES[demo.role];
+  const me = { ...(ROLES[demo.role] ?? { label: demo.role, user: "", initials: "", focus: "" }), user: demo.users.find(u => u.id === demo.account)?.name ?? ROLES[demo.role]?.user ?? "" };
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); if (closingTimer.current) clearTimeout(closingTimer.current); }, []);
   useEffect(() => { if (open) input.current?.focus(); }, [open]);
@@ -268,6 +268,6 @@ export function AssistantChat() {
         <button type="submit" className="ai-send" disabled={!draft.trim() || thinking || typing !== null || listening} aria-label="Kirim pertanyaan"><ArrowUp size={18} /></button>
       </div>
     </form>
-    <p className="ai-note" role={voiceError ? "alert" : undefined}>{voiceError || (listening ? "Mendengarkan. Tekan kotak untuk selesai." : "Jawaban dari data simulasi, belum memakai AI generatif.")}</p>
+    {(voiceError || listening) && <p className="ai-note" role={voiceError ? "alert" : undefined}>{voiceError || "Mendengarkan. Tekan kotak untuk selesai."}</p>}
   </section>;
 }

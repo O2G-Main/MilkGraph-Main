@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { demoPassword, emailOf, login, useDemo } from "@/lib/demo";
-import { ROLE_IDS, ROLES } from "@/lib/roles";
+import { ROLE_IDS, roleLabel } from "@/lib/roles";
 import { Icon } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
@@ -50,7 +50,7 @@ export function Login() {
               placeholder="Pilih email akun"
               value={userId}
               onChange={id => { setUserId(id); setError(null); }}
-              options={accounts.map(u => ({ value: u.id, label: emailOf(u.name), hint: u.name, group: ROLES[u.role].label }))}
+              options={accounts.map(u => ({ value: u.id, label: emailOf(u.name), hint: u.name, group: roleLabel(u.role) }))}
             />
           </div>
           <div className="login-field">
@@ -68,14 +68,12 @@ export function Login() {
               <Icon icon={show ? EyeOff : Eye} size={16} />
             </button>
           </div>
-          {user && <p className="login-hint">{user.name} · {ROLES[user.role].label}</p>}
+          {user && <p className="login-hint">{user.name} · {roleLabel(user.role)}</p>}
           {error && <p className="login-error" role="alert">{error}</p>}
         </div>
 
         <button type="submit" className="button primary wide login-submit" disabled={busy}>{busy ? "Memeriksa akun…" : "Masuk"}</button>
 
-        <div className="login-divider"><span>Data simulasi</span></div>
-        <p className="login-foot">Belum ada autentikasi sungguhan. Akun dan kata sandi hanya untuk demo.</p>
       </form>
     </main>
   );

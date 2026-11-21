@@ -2,7 +2,7 @@ import { canSee, type RoleId } from "@/lib/roles";
 import {
   LayoutDashboard, Box, Factory, CalendarClock, GitBranch, Settings,
   Truck, ListOrdered, Workflow, Gauge, TestTubeDiagonal,
-  History, Share2, FlaskConical, PackageX, Database, Library, Users, TrendingUp, Waypoints, ClipboardCheck, CalendarRange, Timer, CalendarDays, ArrowRightLeft,
+  History, Share2, FlaskConical, PackageX, Database, Library, Users, TrendingUp, Waypoints, ClipboardCheck, CalendarRange, Timer, CalendarDays, ArrowRightLeft, ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,7 +18,7 @@ export const navigation: NavItem[] = [
   { label: "Operasional", hint: "Alur dan kondisi produksi", icon: Factory, tabs: [{ label: "Alur", href: "/alur", icon: Workflow }, { label: "Kondisi Alat", href: "/kondisi-alat", icon: Gauge, match: ["/tangki", "/filling"] }, { label: "QC Barang Jadi", href: "/qc-produk", icon: TestTubeDiagonal }, { label: "Master Alat", href: "/master-data", icon: Library }] },
   { label: "Rencana", hint: "Jadwal dan keputusan", icon: CalendarClock, tabs: [{ label: "Penjadwalan", href: "/penjadwalan", icon: CalendarRange }, { label: "Aturan Produksi", href: "/aturan-produksi", icon: Timer }, { label: "Alur rencana", href: "/rencana/alur", icon: Waypoints }, { label: "Rekomendasi upgrade", href: "/rencana/upgrade", icon: TrendingUp }, { label: "Kelayakan & keputusan", href: "/rencana", icon: ClipboardCheck, match: ["/pasokan", "/constraint", "/persetujuan"] }] },
   { label: "Traceability", hint: "Riwayat asal produksi", icon: GitBranch, tabs: [{ label: "Riwayat Produksi", href: "/riwayat-produksi", icon: History, match: ["/trace"] }, { label: "Context Graph", href: "/graph", icon: Share2 }, { label: "Hold Produk", href: "/hold", icon: PackageX }] },
-  { label: "Pengaturan", hint: "Sumber data dan akses", icon: Settings, tabs: [{ label: "Sumber Data", href: "/sumber-data", icon: Database }, { label: "Pengguna & Peran", href: "/pengguna", icon: Users }] },
+  { label: "Pengaturan", hint: "Sumber data, pengguna, role", icon: Settings, tabs: [{ label: "Sumber Data", href: "/sumber-data", icon: Database }, { label: "Pengguna", href: "/pengguna", icon: Users }, { label: "Role & Hak Akses", href: "/role-akses", icon: ShieldCheck }] },
 ];
 
 /** Menu yang boleh dilihat peran ini; menu induk tanpa tab tersisa ikut hilang. */

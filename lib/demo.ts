@@ -7,7 +7,8 @@ import { ARRIVAL_STATUS, clock, type Arrival, type ReceivingState, type RtRecord
 import { BATCH_SAMPLES, DEFAULT_QUALITY, type LabState, type QualitySpec } from "@/lib/lab";
 import { MACHINE_STATE, type Downtime, type MachineState, type OperationState, type ProcessTransfer, type Run } from "@/lib/operation";
 import type { LabParam, LabResult } from "@/mock/ops";
-import { ROLE_IDS, ROLES, PERMISSIONS, rolesFor, setAccess, type AccessMap, type Permission, type RoleId } from "@/lib/roles";
+import type { Adjustments } from "@/components/rencana/adjust";
+import { BUILTIN_IDS, ROLES, PERMISSIONS, roleLabel, rolesFor, setAccess, setMenus, setRoles, type AccessMap, type CustomRole, type MenuMap, type Permission, type RoleId } from "@/lib/roles";
 import type { Lot } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { apiGet } from "@/lib/api/client";
@@ -24,7 +25,14 @@ export interface Hold { id: string; trigger: string; rt: string; lots: Lot[]; no
 export interface LabDecision { status: "dirilis" | "ditolak"; note: string; by: string; at: string }
 /** `assets`: alat yang ditugaskan ke pengguna (Operator); kosong berarti tidak dibatasi. */
 export interface DemoUser { id: string; name: string; role: RoleId; active: boolean; assets?: string[] }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState; quality: QualitySpec }
+/** Usulan hasil simulasi Supervisor/Manager untuk Planner: batas constraint baru atau pengaturan alat di rencana. */
+export interface Proposal {
+  id: string; kind: "batas" | "alat"; title: string; detail: string; note: string;
+  limits?: Limits; adjust?: Adjustments;
+  by: string; at: string; status: "diajukan" | "diterapkan" | "ditolak";
+  review?: { note: string; by: string; at: string };
+}
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState; quality: QualitySpec; proposals: Proposal[]; roles: CustomRole[]; menus: MenuMap }
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
@@ -34,7 +42,7 @@ const RENAMED: Record<string, string> = { "USR-supervisor": "USR-operator" };
 const readAccount = () => { try { const a = localStorage.getItem(ACCOUNT_KEY); return a ? RENAMED[a] ?? a : null; } catch { return null; } };
 /** Lini fokus skenario (F1, F2, F4) beserta tangki aseptik dan sterilizer yang memasoknya. */
 export const OPERATOR_ASSETS = ["F1", "F2", "F4", "AT-1", "AT-2", "UHT-1", "UHT-2"];
-const USERS: DemoUser[] = ROLE_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true, ...(id === "operator" ? { assets: OPERATOR_ASSETS } : {}) }));
+const USERS: DemoUser[] = BUILTIN_IDS.map(id => ({ id: `USR-${id}`, name: ROLES[id].user, role: id, active: true, ...(id === "operator" ? { assets: OPERATOR_ASSETS } : {}) }));
 /** Jadwal shift awal [simulasi]: F5 sengaja melebihi kapasitas karena baru jalan setelah UHT-3 CIP. */
 const SCHEDULE: ScheduleItem[] = [
   { id: "JDW-01", line: "F1", sku: "UHT Full Cream 1 L", packs: 12_000, start: "14:00", end: "16:00" },
@@ -80,7 +88,7 @@ const OPERATION: OperationState = {
   ],
 };
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION, quality: DEFAULT_QUALITY });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION, quality: DEFAULT_QUALITY, proposals: [], roles: [], menus: {} });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -101,6 +109,8 @@ function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as DemoState | null;
     state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits } } : initial(Date.now());
+    // Peran buatan Superadmin harus terdaftar dulu supaya tidak dianggap peran lama yang tidak dikenal.
+    setRoles(state.roles);
     // Peran "supervisor" lama sekarang "operator"; peran lain yang tidak dikenal jatuh ke Planner. Id "qa" kini milik QA/QC.
     const fix = (r: string) => (r in ROLES ? r : r === "supervisor" ? "operator" : "planner") as RoleId;
     state = { ...state, role: fix(state.role), users: state.users.map(u => ({ ...u, role: fix(u.role), ...(RENAMED[u.id] ? { id: RENAMED[u.id] } : {}), ...(fix(u.role) === "operator" && !u.assets ? { assets: OPERATOR_ASSETS } : {}) })),
@@ -109,6 +119,8 @@ function load() {
   // Peran baru (mis. QA/QC) mendapat pengguna demo bila belum ada di data lama.
   state = { ...state, users: [...state.users, ...USERS.filter(u => !state.users.some(x => x.id === u.id))] };
   state = { ...state, account: readAccount() };
+  setRoles(state.roles);
+  setMenus(state.menus);
   setAccess(state.access);
   applyRules(state.rules);
   return state;
@@ -116,6 +128,8 @@ function load() {
 function save(next: DemoState) {
   state = next;
   try { if (next.account) localStorage.setItem(ACCOUNT_KEY, next.account); else localStorage.removeItem(ACCOUNT_KEY); } catch { /* mode privat */ }
+  setRoles(next.roles);
+  setMenus(next.menus);
   setAccess(next.access);
   applyRules(next.rules);
   if (!API_MODE) {
@@ -145,7 +159,7 @@ export async function refreshApiState() {
       apiGet<Limits>("/limits", role),
       apiGet<LogEntry[]>("/audit", role),
     ]);
-    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation, quality: state.quality });
+    save({ ...mapApiState({ role: session.role, decisions, holds, labs, instructions, limits, audit }), users: state.users, access: state.access, account: state.account, schedule: state.schedule, rules: state.rules, receiving: state.receiving, lab: state.lab, operation: state.operation, quality: state.quality, proposals: state.proposals, roles: state.roles, menus: state.menus });
     apiStateError = null;
   } catch (error) {
     apiStateError = error instanceof Error ? error : new Error(String(error));
@@ -170,7 +184,9 @@ export function demoClock(s: DemoState = load()) {
   const minutes = 14 * 60 + 42 + Math.max(1, Math.ceil((Date.now() - (s.started || Date.now())) / 60000));
   return `${Math.floor(minutes / 60)}.${String(minutes % 60).padStart(2, "0")}`;
 }
-export const actor = (s: DemoState) => ({ by: ROLES[s.role].user, role: ROLES[s.role].label });
+/** Nama pelaku dari akun yang sedang masuk; peran buatan Superadmin tidak punya nama bawaan. */
+const who = (s: DemoState) => s.users.find(u => u.id === s.account)?.name ?? ROLES[s.role]?.user ?? roleLabel(s.role);
+export const actor = (s: DemoState) => ({ by: who(s), role: roleLabel(s.role) });
 
 /** Ubah state dan catat satu baris audit sekaligus. */
 function act(change: (s: DemoState, at: string) => Partial<DemoState>, entry?: Omit<LogEntry, "id" | "by" | "role" | "at">) {
@@ -214,7 +230,7 @@ export const decidePlan = async (plan: string, label: string, status: PlanDecisi
     return res;
   }
   act(
-    (s, at) => ({ decisions: [{ plan, status, note, by: ROLES[s.role].user, at, ...(adjust ? { adjust } : {}) }, ...s.decisions.filter(d => d.plan !== plan)] }),
+    (s, at) => ({ decisions: [{ plan, status, note, by: who(s), at, ...(adjust ? { adjust } : {}) }, ...s.decisions.filter(d => d.plan !== plan)] }),
     { kind: "rencana", title: `Rekomendasi ${status === "approved" ? "disetujui" : "ditolak"}`, detail: adjust ? `${label}, dengan ${adjust}` : label, note, tone: status === "approved" ? "ok" : "warn" },
   );
 };
@@ -227,7 +243,7 @@ export const submitHold = async (hold: Pick<Hold, "trigger" | "rt" | "lots" | "n
     return res;
   }
   act(
-    (s, at) => ({ holds: [{ ...hold, id: `HOLD-${String(s.holds.length + 1).padStart(3, "0")}`, status: "diajukan", by: ROLES[s.role].user, at }, ...s.holds] }),
+    (s, at) => ({ holds: [{ ...hold, id: `HOLD-${String(s.holds.length + 1).padStart(3, "0")}`, status: "diajukan", by: who(s), at }, ...s.holds] }),
     { kind: "hold", title: "Daftar hold diajukan ke QA", detail: `${hold.lots.length} lot dari ${hold.rt}, pemicu ${hold.trigger}`, note: hold.note, tone: "warn" },
   );
 };
@@ -241,7 +257,7 @@ export const reviewHold = async (id: string, status: Exclude<HoldStatus, "diajuk
     return res;
   }
   act(
-    (s, at) => ({ holds: s.holds.map(h => h.id === id ? { ...h, status, review: { note, by: ROLES[s.role].user, at } } : h) }),
+    (s, at) => ({ holds: s.holds.map(h => h.id === id ? { ...h, status, review: { note, by: who(s), at } } : h) }),
     { kind: "hold", title: HOLD_TITLE[status], detail: id, note, tone: status === "aktif" ? "crit" : status === "dilepas" ? "ok" : "neutral" },
   );
 };
@@ -254,7 +270,7 @@ export const decideLab = async (id: string, rt: string, status: LabDecision["sta
     return res;
   }
   act(
-    (s, at) => ({ labs: { ...s.labs, [id]: { status, note, by: ROLES[s.role].user, at } } }),
+    (s, at) => ({ labs: { ...s.labs, [id]: { status, note, by: who(s), at } } }),
     { kind: "lab", title: `Hasil lab ${rt} ${status}`, detail: id, note, tone: status === "dirilis" ? "ok" : "crit" },
   );
 };
@@ -295,22 +311,22 @@ export const sendDemand = async (detail: string) => {
 /** Pengelolaan pengguna dan hak akses (Superadmin). Mode API belum punya endpoint-nya, jadi hanya tersimpan di browser. */
 export const addUser = (name: string, role: RoleId) => act(
   s => ({ users: [...s.users, { id: `USR-${Date.now()}`, name, role, active: true }] }),
-  { kind: "akses", title: "Pengguna ditambahkan", detail: `${name} sebagai ${ROLES[role].label}`, note: "", tone: "ok" },
+  { kind: "akses", title: "Pengguna ditambahkan", detail: `${name} sebagai ${roleLabel(role)}`, note: "", tone: "ok" },
 );
-export const updateUser = (id: string, change: Partial<Pick<DemoUser, "role" | "active">>) => {
+export const updateUser = (id: string, change: Partial<Pick<DemoUser, "role" | "active" | "assets">>) => {
   const user = load().users.find(u => u.id === id);
   if (!user) return;
-  const detail = change.role ? `${user.name}: ${ROLES[user.role].label} jadi ${ROLES[change.role].label}` : `${user.name} ${change.active ? "diaktifkan kembali" : "dinonaktifkan"}`;
+  const detail = change.assets ? `${user.name}: alat/lini ${change.assets.join(", ") || "tidak ada"}` : change.role ? `${user.name}: ${roleLabel(user.role)} jadi ${roleLabel(change.role)}` : `${user.name} ${change.active ? "diaktifkan kembali" : "dinonaktifkan"}`;
   act(
     s => ({ users: s.users.map(u => u.id === id ? { ...u, ...change } : u) }),
-    { kind: "akses", title: change.role ? "Peran pengguna diubah" : change.active ? "Pengguna diaktifkan" : "Pengguna dinonaktifkan", detail, note: "", tone: change.active === false ? "warn" : "neutral" },
+    { kind: "akses", title: change.assets ? "Penugasan alat diubah" : change.role ? "Peran pengguna diubah" : change.active ? "Pengguna diaktifkan" : "Pengguna dinonaktifkan", detail, note: "", tone: change.active === false ? "warn" : "neutral" },
   );
 };
 export const togglePermission = (permission: Permission, role: RoleId) => {
   const has = rolesFor(permission).includes(role);
   act(
     s => ({ access: { ...s.access, [permission]: has ? rolesFor(permission).filter(r => r !== role) : [...rolesFor(permission), role] } }),
-    { kind: "akses", title: has ? "Hak akses dicabut" : "Hak akses diberikan", detail: `${ROLES[role].label}: ${PERMISSIONS[permission].label.toLowerCase()}`, note: "", tone: has ? "warn" : "ok" },
+    { kind: "akses", title: has ? "Hak akses dicabut" : "Hak akses diberikan", detail: `${roleLabel(role)}: ${PERMISSIONS[permission].label.toLowerCase()}`, note: "", tone: has ? "warn" : "ok" },
   );
 };
 
@@ -384,7 +400,7 @@ export const addTransfer = (t: Omit<Transfer, "id" | "counted">) => act(
 
 /** Lab: memasukkan hasil uji per sampel. Tersimpan di browser; mode API belum punya endpoint-nya. */
 export const saveLabEntry = (sample: Pick<LabResult, "id" | "subject">, params: LabParam[], retest: boolean) => act(
-  (s, at) => ({ lab: { ...s.lab, entries: { ...s.lab.entries, [sample.id]: { params, retest, by: ROLES[s.role].user, at } } } }),
+  (s, at) => ({ lab: { ...s.lab, entries: { ...s.lab.entries, [sample.id]: { params, retest, by: who(s), at } } } }),
   {
     kind: "uji", title: params.some(p => p.ok === false) ? "Hasil uji out-of-spec" : retest ? "Uji ulang ditandai" : params.some(p => p.ok === null) ? "Hasil uji diperbarui" : "Hasil uji lengkap",
     detail: `${sample.subject} (${sample.id}): ${params.filter(p => p.ok !== null).length} dari ${params.length} parameter selesai${params.some(p => p.ok === false) ? `, gagal: ${params.filter(p => p.ok === false).map(p => p.name).join(", ")}` : ""}`,
@@ -401,11 +417,11 @@ const op = (s: DemoState, patch: Partial<OperationState>) => ({ operation: { ...
 /** Alat yang ditugaskan ke akun yang sedang masuk; undefined berarti tidak dibatasi. */
 export const assignedAssets = (s: DemoState) => s.role === "superadmin" ? undefined : s.users.find(u => u.id === s.account)?.assets;
 export const recordRun = (order: Pick<ScheduleItem, "id" | "line" | "sku">, patch: Run, title: string, detail: string) => act(
-  s => op(s, { runs: { ...s.operation.runs, [order.id]: { ...s.operation.runs[order.id], ...patch, by: ROLES[s.role].user } } }),
+  s => op(s, { runs: { ...s.operation.runs, [order.id]: { ...s.operation.runs[order.id], ...patch, by: who(s) } } }),
   { kind: "produksi", title, detail: `${order.line} ${order.sku}, ${detail}`, note: "", tone: "neutral" },
 );
 export const updateMachine = (asset: string, state: MachineState, note: string) => act(
-  (s, at) => op(s, { machines: { ...s.operation.machines, [asset]: { state, note, at, by: ROLES[s.role].user } } }),
+  (s, at) => op(s, { machines: { ...s.operation.machines, [asset]: { state, note, at, by: who(s) } } }),
   { kind: "produksi", title: "Kondisi mesin diperbarui", detail: `${asset}: ${MACHINE_STATE[state].label}`, note, tone: MACHINE_STATE[state].tone },
 );
 export const saveDowntime = (d: Omit<Downtime, "id"> & { id?: string }) => act(
@@ -413,7 +429,7 @@ export const saveDowntime = (d: Omit<Downtime, "id"> & { id?: string }) => act(
   { kind: "produksi", title: d.id ? (d.end ? "Downtime selesai" : "Downtime diubah") : "Downtime dicatat", detail: `${d.asset}, ${d.cause}, ${clock(d.start)}${d.end ? `-${clock(d.end)}` : " sampai sekarang"}`, note: d.note, tone: d.end ? "ok" : "warn" },
 );
 export const addProcessTransfer = (t: Omit<ProcessTransfer, "id" | "by">) => act(
-  s => op(s, { transfers: [...s.operation.transfers, { ...t, id: `PRS-${String(s.operation.transfers.length + 1).padStart(2, "0")}`, by: ROLES[s.role].user }] }),
+  s => op(s, { transfers: [...s.operation.transfers, { ...t, id: `PRS-${String(s.operation.transfers.length + 1).padStart(2, "0")}`, by: who(s) }] }),
   { kind: "produksi", title: "Transfer bahan dicatat", detail: `${t.from} ke ${t.to}, ${new Intl.NumberFormat("id-ID").format(t.volume)} L, ${clock(t.start)}-${clock(t.end)}`, note: "", tone: "ok" },
 );
 
@@ -422,3 +438,55 @@ export const setQuality = (q: QualitySpec, detail: string) => act(
   () => ({ quality: q }),
   { kind: "aturan", title: "Ketentuan mutu diubah", detail, note: "", tone: "neutral" },
 );
+
+/** Supervisor/Manager mengajukan hasil simulasi; Planner menerapkan atau menolaknya. Tersimpan di browser. */
+export const submitProposal = (p: Pick<Proposal, "kind" | "title" | "detail" | "note" | "limits" | "adjust">) => act(
+  (s, at) => ({ proposals: [{ ...p, id: `USL-${String(s.proposals.length + 1).padStart(2, "0")}`, by: who(s), at, status: "diajukan" }, ...s.proposals] }),
+  { kind: "rencana", title: "Usulan simulasi diajukan ke Planner", detail: `${p.title}: ${p.detail}`, note: p.note, tone: "warn" },
+);
+/** Menerapkan usulan batas langsung mengganti batas yang berlaku; usulan alat diterapkan ke Rencana oleh pemanggil. */
+export const reviewProposal = (id: string, status: "diterapkan" | "ditolak", note: string) => {
+  const p = load().proposals.find(x => x.id === id);
+  if (!p) return;
+  act(
+    (s, at) => ({
+      proposals: s.proposals.map(x => x.id === id ? { ...x, status, review: { note, by: who(s), at } } : x),
+      ...(status === "diterapkan" && p.limits ? { limits: p.limits } : {}),
+    }),
+    { kind: "rencana", title: status === "diterapkan" ? "Usulan simulasi diterapkan" : "Usulan simulasi ditolak", detail: `${p.id} dari ${p.by}: ${p.detail}`, note, tone: status === "diterapkan" ? "ok" : "neutral" },
+  );
+};
+
+/** Role & Hak Akses (Superadmin). Peran bawaan hanya bisa diganti nama dan deskripsinya; peran baru bisa dihapus selama belum dipakai. */
+export const saveRole = (role: CustomRole, isNew: boolean, hidden?: string[], grants: Permission[] = []) => act(
+  s => ({
+    roles: [...s.roles.filter(r => r.id !== role.id), role],
+    ...(hidden ? { menus: { ...s.menus, [role.id]: hidden } } : {}),
+    // Izin yang disalin dari role lain saat role baru dibuat.
+    ...(grants.length ? { access: { ...s.access, ...Object.fromEntries(grants.map(p => [p, [...new Set([...(s.access[p] ?? PERMISSIONS[p].roles), role.id])]])) } } : {}),
+  }),
+  { kind: "akses", title: isNew ? "Role baru dibuat" : "Role diubah", detail: `${role.label}: ${role.focus || "tanpa deskripsi"}`, note: "", tone: "ok" },
+);
+export const deleteRole = (id: RoleId) => {
+  const label = roleLabel(id);
+  act(
+    s => {
+      const menus = { ...s.menus };
+      delete menus[id];
+      return {
+        roles: s.roles.filter(r => r.id !== id),
+        menus,
+        access: Object.fromEntries(Object.entries(s.access).map(([k, v]) => [k, (v ?? []).filter(r => r !== id)])) as AccessMap,
+      };
+    },
+    { kind: "akses", title: "Role dihapus", detail: label, note: "", tone: "warn" },
+  );
+};
+/** Atur satu menu tampil atau tidak untuk peran tertentu. */
+export const setRoleMenu = (role: RoleId, href: string, visible: boolean, current: string[]) => {
+  const hidden = visible ? current.filter(h => h !== href) : [...new Set([...current, href])];
+  act(
+    s => ({ menus: { ...s.menus, [role]: hidden } }),
+    { kind: "akses", title: visible ? "Menu ditampilkan" : "Menu disembunyikan", detail: `${roleLabel(role)}: ${href}`, note: "", tone: "neutral" },
+  );
+};

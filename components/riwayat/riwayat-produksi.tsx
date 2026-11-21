@@ -64,7 +64,7 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
           </dl>
           {step.gap && <p className="small rp-note">Serah-terima di tahap ini tidak tercatat langsung; disambungkan dari irisan waktu dan level tangki.</p>}
           {step.source ? <button type="button" className="button secondary wide" onClick={() => setSource(step.source)}>Lihat bukti proses<Icon icon={ArrowUpRight} size={16} /></button>
-            : <p className="small muted">Bukti proses belum tersedia di data simulasi.</p>}
+            : <p className="small muted">Bukti proses belum tersedia.</p>}
         </aside>}
       </div>
 

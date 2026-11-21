@@ -160,7 +160,7 @@ export function Simulasi() {
             </span>
           </div>
           <p className="small muted">
-            Tata letak dan ukuran gedung ditelusuri dari citra satelit publik plant susu di Ngajum, Malang (skala ±0,3 m). Fungsi gedung dan isi ruang proses adalah perkiraan tim mengikuti konfigurasi proses [asumsi]. Status unit digerakkan data simulator [simulasi].
+            Tata letak dan ukuran gedung ditelusuri dari citra satelit publik plant susu di Ngajum, Malang (skala ±0,3 m). Fungsi gedung dan isi ruang proses adalah perkiraan tim mengikuti konfigurasi proses [asumsi].
           </p>
         </Card>
       </div>

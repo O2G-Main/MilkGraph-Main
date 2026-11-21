@@ -64,8 +64,8 @@ function PlanEditor({ asset, onClose }: AsideProps) {
         <p className="small muted">{extra > 0
           ? `Naik ${fmt(extra)} L/jam (${pctText}%). Yang terpakai jalur ${room.line}: +${fmt(used)} L/jam, sekitar +${fmt(used * 8)} L per shift.${extra > used ? ` Sisa ${fmt(extra - used)} L/jam tidak terpakai.` : ""}${room.why ? ` ${room.why}` : ""}`
           : room.room > 0 ? `Jalur ${room.line} masih bisa memakai tambahan sampai ${fmt(room.room)} L/jam.` : room.why || "Upgrade tidak menambah produksi."}</p>
-        {extra > 0 && <p className="small muted">{up ?? "Efeknya ke jadwal belum dimodelkan [simulasi]."}</p>}
-      </> : <p className="small muted">Laju alat ini (L/jam) belum ada di data, jadi kapasitasnya belum bisa diatur [simulasi].</p>}
+        {extra > 0 && <p className="small muted">{up ?? "Efeknya ke jadwal belum dimodelkan."}</p>}
+      </> : <p className="small muted">Laju alat ini (L/jam) belum ada di data, jadi kapasitasnya belum bisa diatur.</p>}
     </fieldset>
 
     <fieldset className="plan-field">
@@ -76,7 +76,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
           <label><span>Mulai pukul</span><Select label="Mulai pukul" value={a.maintenance.start} onChange={start => setMaint({ ...a.maintenance!, start })} options={STARTS.map(s => ({ value: s, label: s }))} /></label>
           <label><span>Selama</span><Select label="Lama maintenance" value={a.maintenance.minutes} onChange={minutes => setMaint({ ...a.maintenance!, minutes })} options={DURATIONS.map(d => ({ value: d, label: `${d} menit` }))} /></label>
         </div>
-        <p className="small muted">{mt ?? "Status alat ini berubah jadi Maintenance pada jam itu. Efeknya ke alat lain belum dimodelkan [simulasi]."}</p>
+        <p className="small muted">{mt ?? "Status alat ini berubah jadi Maintenance pada jam itu. Efeknya ke alat lain belum dimodelkan."}</p>
       </>}
     </fieldset>
 
@@ -145,8 +145,8 @@ export function PlanFlow({ plan, adj, setAdj, view, setView, mode = "2d" }: { pl
       </div>
     </section>
     <FlowCanvas mode={mode} picked={picked} onPickedChange={setPicked} label="Alur rencana produksi" badges={badges} overrides={overrides} aside={PlanEditor} toolbar={toolbar}
-      hint={unmodelled.length ? `${unmodelled.length} pengaturan efek lanjutannya belum dimodelkan [simulasi]` : "Geser jam untuk melihat kondisi alat. Klik alat untuk mengaturnya."} />
-    <p className="small muted plan-note">Ini pratinjau di halaman Rencana saja [simulasi]. Batas di halaman Constraint dan keputusan rencana tidak ikut berubah.</p>
+      hint={unmodelled.length ? `${unmodelled.length} pengaturan efek lanjutannya belum dimodelkan` : "Geser jam untuk melihat kondisi alat. Klik alat untuk mengaturnya."} />
+    <p className="small muted plan-note">Ini pratinjau di halaman Rencana saja. Batas di halaman Constraint dan keputusan rencana tidak ikut berubah.</p>
     </div>
     </div>
   </Ctx.Provider>;

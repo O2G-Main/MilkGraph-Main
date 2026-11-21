@@ -9,8 +9,8 @@ import { MACHINE_STATE, attainment, downtimeMinutes, isLate, mayHandle, runState
 import { scenario } from "@/lib/data";
 import { duration } from "@/lib/format";
 import { assignedAssets, useDemo } from "@/lib/demo";
-import { visibleNav } from "@/lib/nav";
-import { ROLES, canSee } from "@/lib/roles";
+import { findNav, visibleNav } from "@/lib/nav";
+import { ROLES, canOpen, canSee } from "@/lib/roles";
 import { holdingLeft, instructions, violations } from "@/lib/rules";
 import { checkSchedule } from "@/lib/production";
 import { PROCESS_LOSS, UNIT_STATE, dataSources, demandPlan, farms, fillers, labResults, pastLog } from "@/mock/ops";
@@ -29,7 +29,7 @@ const forward = scenario.answers.find(a => a.id === "forward")!;
 export function Beranda() {
   const [source, setSource] = useState<string | null>(null);
   const demo = useDemo();
-  const me = ROLES[demo.role];
+  const me = { ...(ROLES[demo.role] ?? { label: demo.role, user: "", initials: "", focus: "" }), user: demo.users.find(u => u.id === demo.account)?.name ?? ROLES[demo.role]?.user ?? "" };
   const broken = violations(plan, "before", demo.limits);
   const after = violations(plan, "after", demo.limits);
   const approved = demo.decisions.find(d => d.plan === "current" && d.status === "approved");
@@ -76,8 +76,10 @@ export function Beranda() {
     { icon: Factory, label: "Lini filling jalan", value: `${running}/${fillers.length}`, unit: "lini", note: `${broke.length} breakdown, ${stopped.length} CIP atau ganti format`, tone: broke.length ? "crit" : stopped.length ? "warn" : "ok", href: "/kondisi-alat" },
   ];
   // Urutan urgensi PPIC: rencana yang tidak layak, bahan baku yang bisa terbuang, jadwal bermasalah, kapasitas yang hilang, pasokan, lalu dampak kualitas ke stok.
+  const proposalsWaiting = demo.proposals.filter(p => p.status === "diajukan");
   const plannerAttention: Item[] = [
     ...(!approved ? [{ icon: TriangleAlert, title: `Rencana shift tidak layak, ${broken} constraint dilanggar`, meta: "Bandingkan rekomendasi solver, lalu setujui atau tolak", tone: "crit" as Tone, href: "/rencana" }] : []),
+    ...proposalsWaiting.map(p => ({ icon: Send, title: `Usulan simulasi dari ${p.by.split(" ")[0]}`, meta: `${p.title}: ${p.detail}`, tone: "warn" as Tone, href: "/rencana" })),
     ...(!approved ? [{ icon: Hourglass, title: "RT-26 mendekati batas holding time", meta: `Sisa ${duration(left)}. Susu berisiko dibuang kalau urutan bongkar tidak berubah`, tone: "crit" as Tone, href: "/receiving" }] : []),
     ...badOrders.slice(0, 3).map(i => ({ icon: CalendarRange, title: `Jadwal ${i.line} ${i.sku} perlu dicek`, meta: checks[i.id].issues.filter(x => x.tone !== "neutral").map(x => x.text).join(" "), tone: (checks[i.id].issues.some(x => x.tone === "crit") ? "crit" : "warn") as Tone, href: "/penjadwalan" })),
     ...broke.map(f => ({ icon: Wrench, title: `${f.id} breakdown, kapasitas ${f.product} turun`, meta: f.note, tone: "crit" as Tone, href: "/kondisi-alat" })),
@@ -236,11 +238,14 @@ export function Beranda() {
     ...(!approved ? [{ icon: TriangleAlert, title: `Rencana shift tidak layak, ${broken} constraint dilanggar`, meta: "Bandingkan alternatif di Rencana sebelum Planner memutuskan", tone: "crit" as Tone, href: "/rencana" }] : []),
     ...attention,
     ...behind.map(l => ({ icon: Factory, title: `${l.line} jalan ${l.pace}% dari laju target`, meta: `${l.current?.sku ?? l.st.f?.product}. ${l.st.f?.note ?? ""}`, tone: "warn" as Tone, href: "/kondisi-alat" })),
+    ...demo.proposals.filter(p => p.by === me.user).slice(0, 3).map(p => ({ icon: Send, title: `Usulan ${p.id} ${p.status === "diajukan" ? "menunggu Planner" : p.status}`, meta: `${p.title}: ${p.detail}${p.review?.note ? `. ${p.review.note}` : ""}`, tone: (p.status === "ditolak" ? "warn" : p.status === "diterapkan" ? "ok" : "neutral") as Tone, href: "/rencana" })),
     ...(cover < 105 ? [{ icon: Droplets, title: `Pasokan susu ${cover}% dari kebutuhan`, meta: `Rencana kirim farm ${fmt(milkPlanned)} L, butuh ${fmt(milkNeed)} L`, tone: (cover < 100 ? "crit" : "warn") as Tone, href: "/pasokan" }] : []),
   ];
-  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : isOperator ? operatorAttention : isQa ? qaAttention : isManager ? managerAttention : attention;
+  // Hanya hal yang halamannya terbuka untuk peran ini (penting untuk role buatan Superadmin).
+  const shown = (isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : isOperator ? operatorAttention : isQa ? qaAttention : isManager ? managerAttention : attention).filter(a => canOpen(demo.role, a.href.split("?")[0], findNav(a.href.split("?")[0]).tab.href));
   const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : isOperator ? operatorKpis : isQa ? qaKpis : isManager ? managerKpis : null;
   const seePlan = canSee(demo.role, "/rencana");
+  const heroHref = seePlan ? "/rencana" : isLab || isQa ? "/lab" : isOperator ? "/penjadwalan" : "/receiving";
 
   return <div className="page-enter">
     <PageHeading title={isManager ? "Executive Dashboard" : "Beranda"} subtitle={isManager
@@ -261,7 +266,7 @@ export function Beranda() {
         <h2>{approved ? <>Rekomendasi disetujui,<br />RT-26 pindah ke Bay 1.</> : <>Rencana tidak layak,<br />{broken} constraint dilanggar.</>}</h2>
         <div className="incident-time"><span><Icon icon={Hourglass} size={15} />Sisa holding time RT-26</span><strong>{duration(left)}</strong></div>
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
-        <Link href={seePlan ? "/rencana" : isLab ? "/lab" : isOperator ? "/penjadwalan" : isQa ? "/lab" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : isQa ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
+        {canSee(demo.role, findNav(heroHref).tab.href) && <Link href={heroHref} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : isQa ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>}
       </section>
       <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : isOperator ? "Perlu ditangani di lini" : isQa ? "Perlu keputusan QA" : isManager ? "Perlu perhatian manajemen" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab || isOperator || isQa || isManager ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>

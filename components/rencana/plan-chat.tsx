@@ -82,6 +82,6 @@ export function PlanChat({ onAsk, onApply, canApply = true }: {
         onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(draft); } }} />
       <button type="submit" className="plan-chat-send" disabled={!draft.trim()} aria-label="Kirim pertanyaan"><Icon icon={SendHorizontal} size={18} /></button>
     </form>
-    <p className="small muted">Analisis dari jadwal yang tersedia [simulasi]. Keputusan tetap di planner.</p>
+    <p className="small muted">Analisis dari jadwal yang tersedia. Keputusan tetap di planner.</p>
   </section>;
 }

@@ -926,9 +926,6 @@ button.recommendation-saving { min-height: 36px; }
 .user-add .field-label { margin-bottom: 6px; }
 .user-add input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in oklab, var(--color-on-surface-muted) 45%, transparent); border-radius: var(--radius-sm); background: var(--color-surface); font: inherit; font-size: 13px; color: var(--color-on-surface); }
 .user-add .button { min-height: 44px; }
-.matrix-toggle { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--radius-sm); }
-button.matrix-toggle:hover { background: var(--color-surface-muted); }
-.matrix-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 .role-list { display: grid; gap: 8px; margin: 20px 0; }
 .role-option { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border-radius: var(--radius-md); text-align: left; background: color-mix(in oklab, var(--color-surface) 70%, transparent); box-shadow: var(--glass-rim); }
 .role-option > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; font-size: 13px; }
@@ -1646,3 +1643,38 @@ html:has(.login-page) { background: var(--color-canvas); }
 
 .downtime-card, .process-transfer { margin-top: 16px; }
 .quality-input input { width: 140px; }
+/* Usulan simulasi Manager untuk Planner */
+.proposal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.proposal-list li { padding: 14px 16px; border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--glass-rim); display: grid; gap: 6px; }
+.proposal-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.proposal-list p { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.proposal-list .page-actions { margin-top: 4px; }
+
+/* Role & Hak Akses */
+.role-layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.role-pick { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.role-pick button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md); text-align: left; background: color-mix(in oklab, var(--color-surface) 70%, transparent); box-shadow: var(--glass-rim); }
+.role-pick button:hover { background: var(--color-surface); }
+.role-pick button.selected { box-shadow: inset 0 0 0 1.5px var(--color-primary); background: var(--color-surface); }
+.role-pick button > span { display: flex; flex-direction: column; font-size: 13px; min-width: 0; }
+.role-pick button > span > span { font-size: 11px; color: var(--color-on-surface-muted); }
+.access-table td { vertical-align: top; }
+.access-table th { white-space: nowrap; }
+.access-table tr.access-group td { padding-top: 16px; font-size: 11px; font-weight: 600; text-transform: none; color: var(--color-on-surface-muted); }
+.access-table input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--color-primary); }
+.perm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.perm-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; white-space: nowrap; background: var(--color-surface-muted); color: var(--color-on-surface-muted); }
+.perm-chip.on { background: var(--color-accent-soft); color: var(--color-primary); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-primary) 35%, transparent); }
+.perm-chip:hover:not(:disabled) { filter: brightness(0.97); }
+.perm-chip:disabled { cursor: not-allowed; opacity: .55; }
+.perm-chip:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+@media (max-width: 1199px) { .role-layout { grid-template-columns: minmax(0, 1fr); } }
+.user-assets { display: inline-flex; align-items: center; gap: 6px; }
+.asset-pick { display: grid; gap: 12px; max-height: min(52dvh, 460px); overflow-y: auto; padding-right: 4px; }
+.asset-pick fieldset { margin: 0; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.asset-pick legend { padding: 0 4px; font-size: 12px; font-weight: 600; }
+.asset-pick .check-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+
+/* Tabel lebar bergulir di dalam kartunya, bukan menggeser halaman. */
+.table-wrap { max-width: 100%; overflow-x: auto; }
+.access-table td:first-child { min-width: 150px; }

@@ -7,6 +7,7 @@ import type { Plan } from "@/mock/types";
 import { PlanFlow } from "./plan-flow";
 import { UpgradePicks } from "./upgrade-picks";
 import { BASE_PLAN, ScenarioBar, useRencana } from "./rencana-state";
+import { ProposeAdjust } from "./proposals";
 
 /**
  * Sub halaman Rencana berurutan (poin 9 dan 10): 1. Alur rencana (tampilan awal, sama dengan operasi),
@@ -28,7 +29,7 @@ export function RencanaAlur() {
   // Revisi 8 Nov poin 6: tanpa skenario what-if bawaan, simulasinya diatur sendiri lewat atur alat.
   const plan = plans?.find(p => p.id === BASE_PLAN) ?? plans?.[0];
   return <div className="page-enter">
-    <div className="page-heading"><div><h1>Alur rencana</h1><p>Alur produksi mengikuti jadwal rencana, mulai dari kondisi operasi sekarang. Atur kapasitas atau maintenance alat, lalu lihat efeknya.</p></div></div>
+    <div className="page-heading"><div><h1>Alur rencana</h1><p>Alur produksi mengikuti jadwal rencana, mulai dari kondisi operasi sekarang. Atur kapasitas atau maintenance alat, lalu lihat efeknya.</p></div><div className="page-actions"><ProposeAdjust /></div></div>
     {!plan ? <p role="status">{plansError ? `Gagal memuat rencana: ${plansError.message}` : "Memuat rencana…"}</p> : <>
       <ScenarioBar withMode withScenario={false} />
       <PlanFlow plan={plan as unknown as Plan} adj={adj} setAdj={setAdj} view={view} setView={setView} mode={mode} />
@@ -41,7 +42,7 @@ export function RencanaAlur() {
 export function RencanaUpgrade() {
   const { setAdj } = useRencana();
   return <div className="page-enter">
-    <div className="page-heading"><div><h1>Rekomendasi upgrade</h1><p>Alat mana yang paling menambah produksi bila di-upgrade, diurutkan dari tambahan terbesar. Terapkan ke rencana untuk melihat efeknya ke constraint.</p></div></div>
+    <div className="page-heading"><div><h1>Rekomendasi upgrade</h1><p>Alat mana yang paling menambah produksi bila di-upgrade, diurutkan dari tambahan terbesar. Terapkan ke rencana untuk melihat efeknya ke constraint.</p></div><div className="page-actions"><ProposeAdjust /></div></div>
     <UpgradePicks onTry={(id, pct, to) => { setAdj(prev => ({ ...prev, [id]: { ...prev[id], upgrade: pct, upgradeTo: to } })); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
     <NextStep text="Berikutnya, periksa constraint dan putuskan rencananya. Upgrade yang diterapkan ikut dihitung." href="/rencana" label="Lanjut ke Kelayakan & keputusan" />
   </div>;

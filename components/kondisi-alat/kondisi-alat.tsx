@@ -43,7 +43,7 @@ export function KondisiAlat() {
   const mayUpdate = can(demo.role, "equipment.update");
   const assigned = assignedAssets(demo);
   const handles = (a: Asset) => mayUpdate && isMachine(a) && mayHandle(assigned, a.id);
-  const [view, setView] = useState<"semua" | "perhatian" | "tugas">(demo.role === "operator" ? "tugas" : "semua");
+  const [view, setView] = useState<"semua" | "perhatian" | "tugas">(assigned ? "tugas" : "semua");
   const [query, setQuery] = useState("");
   const [machine, setMachine] = useState<Asset | null>(null);
   const [downtime, setDowntime] = useState<Partial<Downtime> | null>(null);

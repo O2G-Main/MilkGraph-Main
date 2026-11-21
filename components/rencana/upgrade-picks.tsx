@@ -72,6 +72,6 @@ export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: n
         <ul>{skips.map(s => <li key={s.id}><strong className="mono">{s.id}</strong><span>{s.reason}</span></li>)}</ul>
       </div> : <p className="card upgrade-empty">Tidak ada alat yang dikecualikan dengan pengaturan sekarang.</p>}
 
-    <p className="small muted">Dihitung dari pasokan aseptic tank dan kebutuhan mesin filling yang jalan pada snapshot 14.42 [simulasi], ditambah upgrade yang sudah diterapkan ke rencana. Batas kapasitas mesin dari pabrikan belum ada di data, jadi kelayakan teknis upgrade-nya perlu dicek terpisah [asumsi]. Jalur yang sedang CIP atau siaga tidak dihitung.</p>
+    <p className="small muted">Dihitung dari pasokan aseptic tank dan kebutuhan mesin filling yang jalan pada snapshot 14.42, ditambah upgrade yang sudah diterapkan ke rencana. Batas kapasitas mesin dari pabrikan belum ada di data, jadi kelayakan teknis upgrade-nya perlu dicek terpisah [asumsi]. Jalur yang sedang CIP atau siaga tidak dihitung.</p>
   </section>;
 }
