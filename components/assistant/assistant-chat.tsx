@@ -11,7 +11,7 @@ import { scenario } from "@/lib/data";
 import { useDemo } from "@/lib/demo";
 import { ROLES } from "@/lib/roles";
 import { API_MODE, apiSend } from "@/lib/api/client";
-import { chatNotice, sourceText, type ChatReply } from "@/lib/api/contract";
+import { chatNotice, isAccessError, sourceText, type ChatReply } from "@/lib/api/contract";
 import { asepticTanks, fillers } from "@/mock/ops";
 import type { Plan } from "@/mock/types";
 import { badgeOf } from "@/components/rencana/adjust";
@@ -39,7 +39,7 @@ const noSubscribe = () => () => {};
 /** Jarak geser ke kanan (px) yang menyembunyikan tombol. */
 const HIDE_DISTANCE = 40;
 
-type Msg = { id: number; role: "user" | "bot"; text: string; links?: AnswerLink[]; steps?: string[]; working?: boolean; source?: string; notice?: string };
+type Msg = { id: number; role: "user" | "bot"; text: string; links?: AnswerLink[]; steps?: string[]; working?: boolean; source?: string; notice?: string; label?: string };
 /** Jeda antar-langkah animasi berpikir (ms). */
 const STEP_MS = 480;
 
@@ -207,11 +207,14 @@ export function AssistantChat() {
       timer.current = setTimeout(() => {
         if (n < all.length) { patch({ steps: all.slice(0, n + 1) }); advance(n + 1); return; }
         const local = () => { const r = answer(q); if (r.lastAsset) last.current = r.lastAsset; return r; };
-        if (!remote) { const r = local(); finish({ text: r.text, links: r.links }); return; }
+        if (!remote) { const r = local(); finish({ text: r.text, links: r.links, label: "simulasi" }); return; }
         void remote.then(res => {
-          if ("jawaban" in res && res.jawaban) return finish({ text: res.jawaban, source: sourceText(res.sumber) || undefined });
+          if ("jawaban" in res && res.jawaban) return finish({ text: res.jawaban, source: sourceText(res.sumber) || undefined, label: res.label_data });
+          const failed = "failed" in res ? res.failed : undefined;
+          // 401 dan 403 adalah masalah akses peran. Tampilkan apa adanya, jangan ditutupi jawaban lokal.
+          if (isAccessError(failed)) return finish({ text: `Pertanyaan tidak terkirim ke server karena peran aktif ditolak (kode ${failed}). Ini masalah akses peran, bukan layanan AI yang mati. Masuk dengan peran yang dikenal server, lalu coba lagi.` });
           const r = local();
-          finish({ text: r.text, links: r.links, notice: chatNotice("failed" in res ? res.failed : undefined) });
+          finish({ text: r.text, links: r.links, notice: chatNotice(failed), label: "simulasi" });
         });
       }, reducedMotion() ? 0 : STEP_MS);
     };
@@ -263,7 +266,7 @@ export function AssistantChat() {
           <div className="ai-body">
             <ThoughtLine working={!!m.working} steps={m.steps} label="Menganalisis data pabrik…" doneLabel="Dianalisis dalam" glyph="none" fontSize={13} color="var(--color-on-surface-muted)" />
             {!m.working && (typing === m.id ? <Typed text={m.text} onDone={() => setTyping(null)} /> : <p>{m.text}</p>)}
-            {!m.working && typing !== m.id && m.source && <p className="ai-meta">Sumber: {m.source}</p>}
+            {!m.working && typing !== m.id && m.label && <p className="ai-meta">Label data: {m.label}</p>}
             {!m.working && typing !== m.id && m.notice && <p className="ai-meta" role="status">{m.notice}</p>}
             {!m.working && typing !== m.id && !!m.links?.length && <div className="ai-links">{m.links.map(l => <Link key={l.href} href={l.href}>{l.label}<ArrowUpRight size={13} aria-hidden="true" /></Link>)}</div>}
           </div>
@@ -284,6 +287,6 @@ export function AssistantChat() {
         <button type="submit" className="ai-send" disabled={!draft.trim() || thinking || typing !== null || listening} aria-label="Kirim pertanyaan"><ArrowUp size={18} /></button>
       </div>
     </form>
-    {(voiceError || listening) && <p className="ai-note" role={voiceError ? "alert" : undefined}>{voiceError || "Mendengarkan. Tekan kotak untuk selesai."}</p>}
+    <p className="ai-note" role={voiceError ? "alert" : undefined}>{voiceError || (listening ? "Mendengarkan. Tekan kotak untuk selesai." : API_MODE ? "Jawaban berasal dari data simulasi MilkGraph, bukan data lapangan." : "Jawaban dari data simulasi, belum memakai AI generatif.")}</p>
   </section>;
 }

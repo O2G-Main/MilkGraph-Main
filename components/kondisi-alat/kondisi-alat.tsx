@@ -9,6 +9,8 @@ import { ASSETS as ALL, type Asset } from "@/lib/assets";
 import { assignedAssets, saveDowntime, updateMachine, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { DOWNTIME_CAUSE, MACHINE_STATE, NOW, downtimeMinutes, mayHandle, type Downtime, type MachineState, type OperationState } from "@/lib/operation";
+import { API_MODE } from "@/lib/api/client";
+import { DowntimeApi } from "./downtime-api";
 import { groupAttention } from "./groups";
 
 /** Mesin yang kondisinya bisa diperbarui operator: sterilizer UHT dan mesin filling. */
@@ -63,7 +65,7 @@ export function KondisiAlat() {
 
   return <div className="page-enter">
     <PageHeading title="Kondisi Alat" subtitle={assigned ? `Kondisi alat yang ditugaskan (${assigned.join(", ")}) dan semua alat lain, snapshot pukul 14.42. Perbarui kondisi mesin dan catat downtime.` : "Kondisi setiap alat pada snapshot pukul 14.42, diurutkan sesuai alur produksi."}>
-      {mayUpdate && <button className="button primary" onClick={() => setDowntime({ asset: machines[0]?.id, cause: "Breakdown", start: NOW, note: "" })}><Icon icon={TimerOff} size={16} />Catat downtime</button>}
+      {mayUpdate && !API_MODE && <button className="button primary" onClick={() => setDowntime({ asset: machines[0]?.id, cause: "Breakdown", start: NOW, note: "" })}><Icon icon={TimerOff} size={16} />Catat downtime</button>}
     </PageHeading>
     <div className="page-tabs"><Toggle label="Tampilan alat" value={view} onChange={setView} options={[...(assigned ? [{ value: "tugas" as const, label: `Ditugaskan (${mine.length})` }] : []), { value: "semua", label: `Semua (${assets.length})` }, { value: "perhatian", label: `Perlu diperhatikan (${attentionCount})` }]} /></div>
     <Card>
@@ -77,6 +79,7 @@ export function KondisiAlat() {
           <AssetTable rows={g.items} onEdit={edit} />
         </section>)}
     </Card>
+    {API_MODE ? <DowntimeApi role={demo.role} machines={machines} /> : <>
     <Card className="downtime-card">
       <SectionTitle title="Downtime" subtitle={`${downtimes.filter(d => !d.end).length} masih berlangsung, total ${duration(downtimes.reduce((s, d) => s + downtimeMinutes(d), 0))} di shift ini.`} />
       <div className="table-wrap"><table className="schedule-table">
@@ -94,6 +97,7 @@ export function KondisiAlat() {
         </tr>)}</tbody>
       </table></div>
     </Card>
+    </>}
     {machine && <MachineDialog asset={machine} onClose={() => setMachine(null)} />}
     {downtime && <DowntimeDialog value={downtime} machines={machines} onClose={() => setDowntime(null)} />}
   </div>;

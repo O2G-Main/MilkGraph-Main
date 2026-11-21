@@ -9,7 +9,8 @@ import { duration } from "@/lib/format";
 import { farms } from "@/mock/ops";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { invalidateResources, useResource } from "@/lib/api/resource";
-import { arrivalCreateBody, arrivalFromApi, arrivalUpdateBody, type ArrivalRow, type BeArrival } from "@/lib/api/contract";
+import { RT_IMPORT_TEMPLATE, arrivalCreateBody, arrivalFromApi, arrivalUpdateBody, toHHMM, type ArrivalRow, type BeArrival } from "@/lib/api/contract";
+import { ImportCsvCard } from "@/components/import-csv-card";
 import { Badge, Card, Icon, Modal, PageHeading, PageLink, SectionTitle } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
@@ -97,6 +98,27 @@ export function Kedatangan() {
           </table>
         </div>
       </Card>
+      {API_MODE && (
+        <ImportCsvCard<BeArrival>
+          title="Import CSV jadwal kedatangan"
+          subtitle="Satu baris CSV adalah satu kedatangan RT. Waktu boleh ditulis jam saja (HH:MM, digabung tanggal demo oleh server) atau datetime penuh. RT yang sudah ada tidak ditimpa."
+          templateCsv={RT_IMPORT_TEMPLATE}
+          templateName="template-kedatangan-rt.csv"
+          importPath="/supply/rt-arrivals/import"
+          role={demo.role}
+          canImport={["planner", "receiving", "supervisor", "manager", "superadmin"].includes(demo.role)}
+          gateNote="Import jadwal kedatangan untuk Planner, Manager, Supervisor, dan Receiving (khusus RT) lewat permission rt.manage atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca jadwal di atas."
+          invalidate={[PATH, "/audit", "/dashboard/executive"]}
+          rowKey={r => r.id}
+          columns={[
+            { header: "RT", cell: r => <strong className="mono">{r.rt_id}</strong> },
+            { header: "Farm", cell: r => r.farm_name },
+            { header: "Volume", numeric: true, cell: r => `${number(r.volume_l)} L` },
+            { header: "Target tiba", cell: r => toHHMM(r.target_arrival) },
+            { header: "Status", cell: r => r.status },
+          ]}
+        />
+      )}
       {editing && <ArrivalForm value={editing.item} isNew={editing.isNew} taken={list.map(a => a.id)} farmOptions={farmOptions} onClose={() => setEditing(null)} />}
     </div>
   );

@@ -9,9 +9,11 @@ import { SHIFT, checkSchedule, clockOf, toMinutes, type ScheduleItem } from "@/l
 import { demandPlan, fillers } from "@/mock/ops";
 import { Badge, Card, Icon, Modal, PageHeading, PageLink, SectionTitle } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
+import { API_MODE } from "@/lib/api/client";
+import { PenjadwalanApi } from "./penjadwalan-api";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
-/** Laju lini dalam pak per menit, dari target kecepatan mesin filling. */
+/** Laju lini dalam pak per menit, dari target kecepatan mesin filling [simulasi]. */
 const RATES = Object.fromEntries(fillers.map(f => [f.id, f.target]));
 const SKUS = demandPlan.map(d => d.sku);
 const EMPTY: Omit<ScheduleItem, "id"> = { line: "F1", sku: SKUS[0], packs: 0, start: SHIFT.start, end: SHIFT.end };
@@ -26,6 +28,8 @@ export function Penjadwalan() {
   // Pengguna dengan penugasan alat/lini hanya melihat order di lini itu.
   const mine = assigned;
   const [running, setRunning] = useState<{ item: ScheduleItem; action: "mulai" | "selesai" } | null>(null);
+  // Mode API: PO dan jadwal dari Backend (model liter), bukan order lokal per lini per shift.
+  if (API_MODE) return <PenjadwalanApi role={demo.role} />;
   const items = [...demo.schedule].filter(i => !mine || assigned.includes(i.line)).sort((a, b) => a.line.localeCompare(b.line, "id", { numeric: true }) || toMinutes(a.start) - toMinutes(b.start));
   const runs = demo.operation.runs;
   const done = items.filter(i => runState(runs[i.id]) === "selesai");
@@ -49,7 +53,7 @@ export function Penjadwalan() {
         {mine ? <Card><span className="small muted">Hasil baik order selesai</span><strong>{done.length ? `${attainment(goodOut, doneTarget)}%` : "-"}</strong><span className="small muted">{done.length} selesai, {items.filter(i => runState(runs[i.id]) === "jalan").length} jalan, {items.filter(i => runState(runs[i.id]) === "belum").length} belum mulai</span></Card> : <Card><span className="small muted">Perlu dicek</span><strong className={problems.some(i => checks[i.id].issues.some(x => x.tone === "crit")) ? "crit-text" : problems.length ? "warn-text" : "ok-text"}>{problems.length}</strong><span className="small muted">{problems.length ? "Order bentrok, kurang jeda, atau melebihi kapasitas" : "Semua order masuk akal"}</span></Card>}
       </div>
       <Card>
-        <SectionTitle title="Jadwal produksi" subtitle="Urut per lini dan jam mulai. Kapasitas dihitung dari laju target mesin dikali durasi." action={<PageLink className="text-link" href="/rencana">Cek kelayakan rencana<Icon icon={ArrowRight} size={14} /></PageLink>} />
+        <SectionTitle title="Jadwal produksi" subtitle="Urut per lini dan jam mulai. Kapasitas dihitung dari laju target mesin dikali durasi [simulasi]." action={<PageLink className="text-link" href="/rencana">Cek kelayakan rencana<Icon icon={ArrowRight} size={14} /></PageLink>} />
         <div className="table-wrap">
           <table className="schedule-table">
             <thead><tr><th>Lini</th><th>Produk</th><th>Jam</th><th className="numeric">Target</th><th className="numeric">Kapasitas</th><th>Status</th><th>Realisasi</th>{(allowed || mayRun) && <th><span className="sr-only">Aksi</span></th>}</tr></thead>
@@ -124,7 +128,7 @@ function ScheduleForm({ value, onClose }: { value: Omit<ScheduleItem, "id"> & { 
           <label><span className="field-label">Mulai</span><TimeField label="Jam mulai" value={start} onChange={v => set("start", v)} minuteStep={5} /></label>
           <label><span className="field-label">Selesai</span><TimeField label="Jam selesai" value={end} onChange={v => set("end", v)} minuteStep={5} /></label>
         </div>
-        <p className="small muted">Kapasitas {form.line} di jam ini sekitar {number(capacity)} pak.</p>
+        <p className="small muted">Kapasitas {form.line} di jam ini sekitar {number(capacity)} pak [simulasi].</p>
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button type="button" className="button secondary" onClick={onClose}>Batal</button>

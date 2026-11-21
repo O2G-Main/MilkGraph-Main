@@ -79,3 +79,114 @@ export function chatNotice(status: number | undefined): string {
   if (status === 502) return "Layanan AI sedang tidak terjangkau, jadi jawaban ini disusun dari data aplikasi.";
   return "Asisten AI belum bisa dihubungi, jadi jawaban ini disusun dari data aplikasi.";
 }
+/** 401 dan 403 adalah masalah akses peran, bukan layanan AI mati; jangan ditutupi jawaban lokal. */
+export const isAccessError = (status: number | undefined) => status === 401 || status === 403;
+
+/* ---------- Penjadwalan: /api/v1/pos dan /api/v1/schedules ---------- */
+export interface BePoLine { sku: string; qty_liter: number }
+export interface BePo { po_id: string; priority: number; lines: BePoLine[]; due_datetime: string; label_data: string }
+export interface BeRun {
+  run_id: string; po_id: string; sku: string; fm_id: string; tank_source: string;
+  start: string; end: string; qty_liter: number; changeover_after_min?: number;
+}
+export interface BeFulfilment { po_id: string; status: string; fulfilled_pct: number; planned_completion: string; root_causes: string[] }
+export interface BeScheduleWarning { type: string; resource_id: string; needed_l?: number; available_l?: number; limit_h?: number; projected_h?: number }
+export interface BeSchedule {
+  schedule_id: string; version: number; generated_at: string; triggered_by: string;
+  window: { start: string; end: string }; runs: BeRun[]; fulfilment: BeFulfilment[]; warnings: BeScheduleWarning[];
+}
+/** Balasan POST /api/v1/schedules/narrate: respons service AI apa adanya. */
+export interface BeScheduleNarrate { batch_id: string; penjelasan: string; sumber?: unknown; label_data?: string; jev?: unknown }
+
+export const FULFILMENT_LABEL: Record<string, string> = { ON_TRACK: "Sesuai rencana", AT_RISK: "Berisiko", LATE: "Terlambat", FULFILLED: "Terpenuhi" };
+export const FULFILMENT_TONE: Record<string, "ok" | "warn" | "crit" | "neutral"> = { ON_TRACK: "ok", AT_RISK: "warn", LATE: "crit", FULFILLED: "ok" };
+/** Kode pemicu regenerasi jadwal yang diterima POST /api/v1/schedules/triggers. */
+export const TRIGGER_REASONS: { code: string; label: string }[] = [
+  { code: "RT_LATE", label: "RT terlambat" },
+  { code: "RT_QUEUE", label: "Antrean RT" },
+  { code: "DOWNTIME", label: "Downtime alat" },
+  { code: "RAW_MATERIAL_SHORT", label: "Bahan baku kurang" },
+  { code: "HOLDING_EXCEEDED", label: "Holding time terlampaui" },
+  { code: "PO_CHANGED", label: "PO berubah" },
+];
+/** Stempel waktu server (RFC3339) ditampilkan sebagai tanggal dan jam WIB. */
+export function fmtWaktu(v: string | null | undefined): string {
+  if (!v) return "-";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Jakarta" });
+}
+/** fulfilled_pct dari server berupa pecahan 0 sampai 1. */
+export const pctText = (p: number) => `${Math.round((p ?? 0) * 100)}%`;
+
+/* ---------- Dashboard Eksekutif: /api/v1/dashboard/executive ---------- */
+export interface BeExecDashboard {
+  milk_received_l: { total: number; by_farm: { farm_id: string; farm_name: string; total_l: number }[] };
+  machine_utilization: { fm_id: string; used_hours: number; downtime_hours: number; pct: number }[];
+  daily_schedule: { schedule_id: string; version: number; window: { start: string; end: string }; runs_count: number; targets: { date: string; due_liter: number; scheduled_liter: number }[] } | null;
+  po_summary: { fulfilled: number; at_risk: number; late: number; on_track: number; fulfilment: BeFulfilment[] } | null;
+}
+
+/* ---------- Import CSV: /api/v1/pos/import dan /api/v1/supply/rt-arrivals/import ---------- */
+/** Laporan import dua tahap: commit=false pratinjau (tidak menyimpan), commit=true menyimpan baris valid. */
+export interface BeImportError { baris: number; pesan: string }
+export interface BeImportReport<Row> {
+  commit: boolean; total_baris: number; valid: number; gagal: number; dibuat: number;
+  errors: BeImportError[]; rows: Row[];
+}
+/** Ringkasan satu PO hasil grouping baris CSV pada laporan import PO. */
+export interface BeImportPoRow { po_id: string; priority: number; due_datetime: string; jumlah_baris: number; total_liter: number; label_data: string }
+export const PO_IMPORT_TEMPLATE =
+  "po_id,priority,due_datetime,sku_id,qty_liter\n" +
+  "PO-2026-1102,1,2026-11-24T08:00:00+07:00,UHT-CH-250-LOCAL,12000\n" +
+  "PO-2026-1102,1,2026-11-24T08:00:00+07:00,UHT-CH-1000-LOCAL,8000\n";
+export const RT_IMPORT_TEMPLATE =
+  "rt_id,farm_name,volume_l,depart_at,target_arrival,estimated_arrival,actual_arrival,status\n" +
+  "RT-41,Farm Tutur,9000,05:30,07:00,07:10,,Dalam Perjalanan\n" +
+  "RT-42,KUD Ngantang,11000,06:00,08:00,07:50,07:50,Sudah Tiba\n";
+
+/* ---------- Downtime, Prediksi, Rekomendasi: /api/v1/downtime-events dan /api/v1/maintenance/recommendation ---------- */
+export type BeDowntimeType = "planned_maintenance" | "breakdown" | "cleaning";
+export type BeDowntimeSource = "user_input" | "iot" | "predicted";
+export interface BeDowntimeEvent {
+  event_id: string; resource_id: string; start: string; end: string;
+  type: BeDowntimeType; source: BeDowntimeSource;
+}
+export const DOWNTIME_TYPE_LABEL: Record<string, string> = {
+  planned_maintenance: "Maintenance terencana", breakdown: "Breakdown", cleaning: "Pembersihan (CIP)",
+};
+export const DOWNTIME_SOURCE_LABEL: Record<string, string> = {
+  user_input: "Catatan pengguna", iot: "IoT", predicted: "Prediksi",
+};
+/** Prediksi downtime dari server. Field null berarti belum bisa dihitung, bukan nol. */
+export interface BeDowntimePrediction {
+  resource_id: string; events_count: number; intervals_days: number[];
+  avg_interval_days: number | null; last_event_at: string | null; predicted_next: string | null;
+  days_remaining: number | null; alert: string; basis: string;
+}
+export const PREDICTION_BASIS_LABEL: Record<string, string> = {
+  history: "Rata-rata interval riwayat kejadian",
+  configured: "Parameter interval yang diisi pemanggil",
+  insufficient_data: "Data belum cukup untuk menghitung prediksi",
+};
+export const PREDICTION_ALERT_LABEL: Record<string, string> = {
+  AMAN: "Aman", MENDEKATI: "Mendekati", LEWAT: "Lewat", INSUFFICIENT_DATA: "Data belum cukup",
+};
+export const PREDICTION_ALERT_TONE: Record<string, "ok" | "warn" | "crit" | "neutral"> = {
+  AMAN: "ok", MENDEKATI: "warn", LEWAT: "crit", INSUFFICIENT_DATA: "neutral",
+};
+/** Rekomendasi jendela maintenance dari server; 404 berarti belum ada rekomendasi. */
+export interface BeMaintenanceRecommendation {
+  resource_id: string; recommended_start: string; recommended_end: string;
+  duration_hours: number; reason: string;
+}
+
+/* ---------- Saldo Volume Aset: /api/v1/trace/assets/{ref}/volume ---------- */
+/** Saldo satu titik rantai, diturunkan server dari seluruh catatan transfer. Ref tidak dikenal dibalas 404. */
+export interface BeAssetVolume { ref: string; total_in_l: number; total_out_l: number; balance_l: number; jumlah_transfer: number }
+
+/* ---------- Role & Hak Akses: /api/v1/roles dan /api/v1/permissions ---------- */
+/** Satu role dari registri BE. Persona (user, initials, focus) ikut dari server, bukan dari registri lokal. */
+export interface BeRole { label: string; user: string; initials: string; focus: string; builtin: boolean; permissions: string[] }
+export interface BeRolesResponse { roles: Record<string, BeRole>; permissions: Record<string, { label: string; roles: string[] }> }
+export interface BePermission { name: string; label: string }

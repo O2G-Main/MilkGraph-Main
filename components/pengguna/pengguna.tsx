@@ -4,18 +4,19 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Pencil, UserPlus } from "lucide-react";
 import { addUser, updateUser, useDemo, type DemoUser } from "@/lib/demo";
-import { ROLE_IDS, SUPERADMIN, can, roleLabel, type Role, type RoleId } from "@/lib/roles";
+import { ROLE_IDS, SUPERADMIN, can, roleLabel, type RoleId } from "@/lib/roles";
 import { ASSETS, STAGES } from "@/lib/assets";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
+import type { BeRole } from "@/lib/api/contract";
 
 const SUBTITLE = "Tetapkan role dan alat/lini yang ditugaskan untuk setiap pengguna. Menu dan tindakan tiap role diatur di Role & Hak Akses.";
 
 export function Pengguna() {
   const demo = useDemo();
-  const rolesRes = useResource<{ roles: Record<RoleId, Role> }>(API_MODE ? "/roles" : null);
+  const rolesRes = useResource<{ roles: Record<string, BeRole> }>(API_MODE ? "/roles" : null);
   // Pengelolaan pengguna baru tersedia di mode lokal; mode API menunggu endpoint backend.
   const manage = !API_MODE && can(demo.role, "users.manage");
 
@@ -25,7 +26,7 @@ export function Pengguna() {
         <PageHeading title="Pengguna" subtitle={SUBTITLE} />
         {rolesRes.error ? <p className="crit-text" role="alert">Gagal memuat peran: {rolesRes.error.message}</p>
           : !rolesRes.data ? <p className="muted" role="status">Memuat data peran…</p>
-          : <Card><SectionTitle title="Role terdaftar" /><ul className="attention-list">{Object.entries(rolesRes.data.roles).map(([id, r]) => <li key={id} className="attention-item"><span className="attention-copy"><strong>{r.label}</strong><span>{r.user}</span></span></li>)}</ul></Card>}
+          : <Card><SectionTitle title="Role terdaftar" subtitle="Persona dan permission dari registri Backend." /><ul className="attention-list">{Object.entries(rolesRes.data.roles).map(([id, r]) => <li key={id} className="attention-item"><span className="attention-copy"><strong>{r.label}</strong><span>{r.user} · {r.permissions?.length ?? 0} permission · {r.builtin ? "role bawaan" : "role kustom"}</span></span></li>)}</ul></Card>}
       </div>
     );
   }

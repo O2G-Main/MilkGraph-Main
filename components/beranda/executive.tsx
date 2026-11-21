@@ -12,25 +12,28 @@ const AXIS = { fontSize: 11, fill: "var(--color-on-surface-muted)" };
 const GAP = { stroke: "var(--color-surface)", strokeWidth: 2 };
 
 /* ---------- KPI: angka besar, bar progres, satu frasa ---------- */
-export type ExecKpi = { icon: LucideIcon; label: string; value: number; suffix?: string; of?: string; progress: number; note: string; tone: Tone; href: string };
+/** `value` null = data belum ada di sumbernya; tampil "Belum ada", bukan 0. `progress` kosong = tanpa bar. */
+export type ExecKpi = { icon: LucideIcon; label: string; value: number | null; suffix?: string; of?: string; decimals?: number; progress?: number; note: string; tone: Tone; href: string };
 export function ExecKpis({ items }: { items: ExecKpi[] }) {
   return <div className="schedule-stats planner-kpis exec-kpis">{items.map(k => (
     <Link key={k.label} href={k.href} className={`card planner-kpi exec-kpi ${k.tone}`}>
       <span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span>
-      <strong><CountUp to={k.value} separator="." duration={1.2} suffix={k.suffix} />{k.of && <small> {k.of}</small>}</strong>
-      <span className="exec-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, k.progress))}%` }} /></span>
+      {k.value === null
+        ? <strong className="exec-kpi-empty">Belum ada</strong>
+        : <strong><CountUp to={k.value} separator="." decimals={k.decimals} duration={1.2} suffix={k.suffix} />{k.of && <small> {k.of}</small>}</strong>}
+      {k.progress !== undefined && <span className="exec-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, k.progress))}%` }} /></span>}
       <span className="small muted">{k.note}</span>
     </Link>
   ))}</div>;
 }
 
-function Tip({ active, payload, unit }: TooltipContentProps & { unit?: string }) {
+export function Tip({ active, payload, unit }: TooltipContentProps & { unit?: string }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload as { name?: string; label?: string };
   return <div className="lc-tooltip"><span>{row.label ?? row.name}</span>{payload.map(p => <strong key={String(p.dataKey ?? p.name)}>{p.name}: {fmt(Number(p.value))}{unit ? ` ${unit}` : ""}</strong>)}</div>;
 }
 
-function Legend({ items }: { items: { label: string; color: string; value?: string }[] }) {
+export function Legend({ items }: { items: { label: string; color: string; value?: string }[] }) {
   return <ul className="exec-legend">{items.map(i => <li key={i.label}><i style={{ background: i.color }} aria-hidden="true" />{i.label}{i.value && <strong>{i.value}</strong>}</li>)}</ul>;
 }
 
@@ -77,6 +80,18 @@ export function SupplyCard({ cover, planned, need, farms }: { cover: number; pla
 
 /* ---------- Mesin: donut status lini + downtime per penyebab ---------- */
 export type StateSlice = { key: string; label: string; count: number; color: string; lines: string[] };
+/** Bullet bar HTML: satu baris per item, isi relatif terhadap `max`, garis putus-putus opsional di `mark`. */
+export type BulletRow = { key: string; label: string; value: number; text: string; sub?: string; color: string; href?: string };
+export function Bullets({ rows, max, mark, labelWidth = 40, label }: { rows: BulletRow[]; max: number; mark?: number; labelWidth?: number; label: string }) {
+  return <ul className="exec-bullets" aria-label={label} style={{ ["--exec-label" as string]: `${labelWidth}px` }}>
+    {rows.map(r => { const body = <>
+      <strong>{r.label}{r.sub && <small className="table-sub">{r.sub}</small>}</strong>
+      <span className="exec-bullet-track" aria-hidden="true"><i style={{ width: `${max ? Math.min(100, (r.value / max) * 100) : 0}%`, background: r.color }} />{mark !== undefined && <b style={{ left: `${(mark / max) * 100}%` }} />}</span>
+      <span className="exec-bullet-value">{r.text}</span>
+    </>; return <li key={r.key}>{r.href ? <a href={r.href} className="exec-bullet-link">{body}</a> : body}</li>; })}
+  </ul>;
+}
+
 export function MachineCard({ states, total, running, downtime }: { states: StateSlice[]; total: number; running: number; downtime: { cause: string; minutes: number }[] }) {
   const shown = states.filter(s => s.count);
   return <Card className="exec-card">

@@ -7,6 +7,8 @@ import { navigation } from "@/lib/nav";
 import { ACTIONS, LOCKED, PERMISSIONS, ROLE_IDS, ROLES, SUPERADMIN, can, hiddenFor, isBuiltin, roleLabel, rolesFor, type Action, type Permission, type RoleId } from "@/lib/roles";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
+import { API_MODE } from "@/lib/api/client";
+import { RoleAksesApi } from "./role-akses-api";
 
 /** Semua halaman yang bisa diatur, mengikuti urutan menu; Beranda selalu tampil. */
 const PAGES = navigation.flatMap(item => item.tabs.map(t => ({ group: item.label, href: t.href, label: t.label })));
@@ -21,6 +23,8 @@ export function RoleAkses() {
   const [selected, setSelected] = useState<RoleId>("planner");
   const [editing, setEditing] = useState<{ isNew: boolean; id: RoleId } | null>(null);
   const [removing, setRemoving] = useState(false);
+  // Mode API: registri role dibaca dari Backend, bukan dari registri lokal.
+  if (API_MODE) return <RoleAksesApi />;
   const role = ROLES[selected] ? selected : SUPERADMIN;
   const isAdmin = role === SUPERADMIN;
   const hidden = hiddenFor(role);
