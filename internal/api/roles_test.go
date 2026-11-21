@@ -8,8 +8,8 @@ import (
 
 func TestSeedRegistriRoleMatriks(t *testing.T) {
 	reg := seedRoleRegistry()
-	if len(reg) != 7 {
-		t.Fatalf("registri seed harus 7 role, dapat %d", len(reg))
+	if len(reg) != 8 {
+		t.Fatalf("registri seed harus 8 role, dapat %d", len(reg))
 	}
 	ingin := map[string][]string{
 		"superadmin": {"constraint.edit", "cost.edit", "demand.send", "downtime.record", "hold.review", "hold.submit", "instruction.ack", "lab.decide", "plan.decide", "role.manage", "rt.manage", "transfer.record"},
@@ -21,6 +21,9 @@ func TestSeedRegistriRoleMatriks(t *testing.T) {
 		"operator":   {"downtime.record", "instruction.ack", "transfer.record"},
 		"qa":         {"constraint.edit", "hold.review", "hold.submit", "lab.decide"},
 		"supervisor": {"cost.edit", "hold.review", "hold.submit", "instruction.ack"},
+		// Manager adalah alias FE untuk Supervisor/Manager: grant-nya
+		// harus persis supervisor.
+		"manager": {"cost.edit", "hold.review", "hold.submit", "instruction.ack"},
 	}
 	for _, rec := range reg {
 		want, ok := ingin[rec.RoleID]
@@ -49,8 +52,8 @@ func TestRolesShapeDanKatalog(t *testing.T) {
 	}
 	body := decodeMap(t, w)
 	roles := obj(body["roles"])
-	if len(roles) != 7 {
-		t.Fatalf("GET /roles harus memuat 7 role: %s", w.Body.String())
+	if len(roles) != 8 {
+		t.Fatalf("GET /roles harus memuat 8 role: %s", w.Body.String())
 	}
 	planner := obj(roles["planner"])
 	if planner["label"] != "Planner PPIC" || planner["user"] != "Rina Wulandari" || planner["initials"] != "RW" || planner["builtin"] != true {
@@ -102,8 +105,10 @@ func TestOtorisasiEndpointTahap3(t *testing.T) {
 		{"operator catat downtime", "POST", "/downtime-events", "operator", `{"resource_id":"FL-01","start":"2026-10-14T08:00:00+07:00","end":"2026-10-14T09:00:00+07:00","type":"breakdown"}`, 503},
 		{"operator buat item biaya", "POST", "/costs/items", "operator", `{"kategori":"deployment","nama":"VPS","jumlah":1000}`, 403},
 		{"supervisor buat item biaya", "POST", "/costs/items", "supervisor", `{"kategori":"deployment","nama":"VPS","jumlah":1000}`, 503},
-		{"operator catat transfer", "POST", "/trace/transfers", "operator", `{"batch_id":"FG-1013-07","from_ref":"SP-1","to_ref":"ST-4","volume_out_l":100,"volume_in_l":100}`, 503},
-		{"qa catat transfer", "POST", "/trace/transfers", "qa", `{"batch_id":"FG-1013-07","from_ref":"SP-1","to_ref":"ST-4","volume_out_l":100,"volume_in_l":100}`, 403},
+		{"manager buat item biaya", "POST", "/costs/items", "manager", `{"kategori":"deployment","nama":"VPS","jumlah":1000}`, 503},
+		{"manager generate jadwal", "POST", "/schedules/generate", "manager", `{}`, 403},
+		{"operator catat transfer", "POST", "/trace/transfers", "operator", `{"batch_id":"FG-1013-07","from_ref":"SFP-01","to_ref":"ST-4","volume_out_l":100,"volume_in_l":100}`, 503},
+		{"qa catat transfer", "POST", "/trace/transfers", "qa", `{"batch_id":"FG-1013-07","from_ref":"SFP-01","to_ref":"ST-4","volume_out_l":100,"volume_in_l":100}`, 403},
 		{"planner kelola role", "POST", "/roles", "planner", `{"role_id":"auditor","nama":"Auditor","permissions":[]}`, 403},
 		{"superadmin kelola role", "POST", "/roles", "superadmin", `{"role_id":"auditor","nama":"Auditor","permissions":[]}`, 503},
 	}
@@ -144,6 +149,49 @@ func TestSesiRoleBaru(t *testing.T) {
 	}
 }
 
+func TestRoleManagerAliasFE(t *testing.T) {
+	h := (&Server{Mode: "demo"}).Handler()
+
+	// POST /session/role menerima manager (validasi registri).
+	w := durableRequest(h, "POST", "/session/role", "planner", `{"role":"manager"}`)
+	if w.Code != 200 {
+		t.Fatalf("POST /session/role manager = %d: %s", w.Code, w.Body.String())
+	}
+	sess := obj(decodeMap(t, w)["result"])
+	if sess["role"] != "manager" {
+		t.Errorf("role sesi = %v, mau manager", sess["role"])
+	}
+	if obj(sess["user"])["role"] != "Supervisor/Manager" {
+		t.Errorf("label sesi manager = %v", sess["user"])
+	}
+
+	// Header X-Demo-Role: manager sah dan membawa grant supervisor.
+	w = durableRequest(h, "GET", "/session", "manager", "")
+	if w.Code != 200 {
+		t.Fatalf("GET /session sebagai manager = %d: %s", w.Code, w.Body.String())
+	}
+	sess = decodeMap(t, w)
+	found := false
+	for _, p := range arr(sess["permissions"]) {
+		if p == "cost.edit" {
+			found = true
+		}
+		if p == "plan.decide" {
+			t.Errorf("manager tidak boleh memegang plan.decide")
+		}
+	}
+	if !found {
+		t.Errorf("sesi manager harus memuat cost.edit: %v", sess["permissions"])
+	}
+
+	// GET /roles memuat manager sebagai role bawaan berlabel benar.
+	w = durableRequest(h, "GET", "/roles", "planner", "")
+	mgr := obj(obj(decodeMap(t, w)["roles"])["manager"])
+	if mgr["label"] != "Supervisor/Manager" || mgr["builtin"] != true {
+		t.Errorf("entri manager di GET /roles tidak sesuai: %v", mgr)
+	}
+}
+
 func TestRoleCRUDDenganDB(t *testing.T) {
 	db := testDB(t)
 	if err := db.Reset(t.Context()); err != nil {
@@ -162,7 +210,7 @@ func TestRoleCRUDDenganDB(t *testing.T) {
 	}
 
 	// Role kustom langsung bisa dipakai sebagai X-Demo-Role.
-	w = durableRequest(h, "POST", "/trace/transfers", "auditor", `{"batch_id":"FG-1013-07","from_ref":"SP-1","to_ref":"ST-4","volume_out_l":100,"volume_in_l":98}`)
+	w = durableRequest(h, "POST", "/trace/transfers", "auditor", `{"batch_id":"FG-1013-07","from_ref":"SFP-01","to_ref":"ST-4","volume_out_l":100,"volume_in_l":98}`)
 	if w.Code != 200 {
 		t.Fatalf("auditor POST transfer = %d: %s", w.Code, w.Body.String())
 	}

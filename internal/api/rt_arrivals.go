@@ -54,6 +54,39 @@ func parseWaktu(s string) (time.Time, error) {
 	return time.Time{}, &apiError{422, "VALIDATION", "Format waktu tidak valid.", ""}
 }
 
+// parseWaktuKedatangan adalah parser khusus jalur kedatangan RT. Selain
+// format parseWaktu, ia menerima jam saja ("15:04") yang digabungkan
+// dengan tanggal skenario demo (waktuDemo), karena form FE mengirim
+// depart_at/target_arrival/estimated_arrival sebagai string jam.
+// parseWaktu sendiri dipakai bersama scheduler, dashboard, dan downtime,
+// di mana jam tanpa tanggal akan ambigu, jadi fallback ini sengaja
+// dibatasi di jalur kedatangan saja.
+func parseWaktuKedatangan(s string) (time.Time, error) {
+	if t, err := parseWaktu(s); err == nil {
+		return t, nil
+	}
+	jam, err := time.ParseInLocation("15:04", strings.TrimSpace(s), waktuDemo.Location())
+	if err != nil {
+		return time.Time{}, &apiError{422, "VALIDATION", "Format waktu tidak valid.", ""}
+	}
+	return time.Date(waktuDemo.Year(), waktuDemo.Month(), waktuDemo.Day(), jam.Hour(), jam.Minute(), 0, 0, waktuDemo.Location()), nil
+}
+
+// normalisasiWaktuKedatangan mengubah input jam saja menjadi stempel
+// RFC3339 lengkap pada tanggal demo; format lain yang sudah dikenal
+// parseWaktu dikembalikan apa adanya supaya perilaku lama tidak berubah.
+// Nilai yang tersimpan selalu format penuh, jadi pembaca lain
+// (hitungLateMenit, sortRTArrivals) tidak perlu tahu soal fallback ini.
+func normalisasiWaktuKedatangan(s string) string {
+	if _, err := parseWaktu(s); err == nil {
+		return s
+	}
+	if t, err := parseWaktuKedatangan(s); err == nil {
+		return formatWaktu(t)
+	}
+	return s
+}
+
 func formatWaktu(t time.Time) string { return t.Format(time.RFC3339) }
 
 // hitungLateMenit menghitung selisih estimated terhadap target dalam menit;
@@ -156,7 +189,7 @@ func validasiWaktuKedatangan(nilai, field string) error {
 	if strings.TrimSpace(nilai) == "" {
 		return invalid("Waktu wajib diisi.", field)
 	}
-	if _, e := parseWaktu(nilai); e != nil {
+	if _, e := parseWaktuKedatangan(nilai); e != nil {
 		return invalid("Format waktu tidak valid.", field)
 	}
 	return nil
@@ -230,6 +263,15 @@ func (s *Server) registerRTArrivals(register func(string, string, endpoint)) {
 				return nil, e
 			}
 		}
+		// Input jam saja ("15:04") dinormalisasi ke stempel penuh
+		// tanggal demo sebelum disimpan.
+		b.DepartAt = normalisasiWaktuKedatangan(b.DepartAt)
+		b.TargetArrival = normalisasiWaktuKedatangan(b.TargetArrival)
+		b.EstimatedArrival = normalisasiWaktuKedatangan(b.EstimatedArrival)
+		if b.ActualArrival != nil && *b.ActualArrival != "" {
+			v := normalisasiWaktuKedatangan(*b.ActualArrival)
+			b.ActualArrival = &v
+		}
 		status := b.Status
 		if status == "" {
 			status = "Dijadwalkan"
@@ -297,6 +339,14 @@ func (s *Server) registerRTArrivals(register func(string, string, endpoint)) {
 		}
 		if b.Status != nil && !statusKedatanganValid[*b.Status] {
 			return nil, invalid("Status kedatangan tidak valid.", "status")
+		}
+		if b.EstimatedArrival != nil {
+			v := normalisasiWaktuKedatangan(*b.EstimatedArrival)
+			b.EstimatedArrival = &v
+		}
+		if b.ActualArrival != nil && *b.ActualArrival != "" {
+			v := normalisasiWaktuKedatangan(*b.ActualArrival)
+			b.ActualArrival = &v
 		}
 		var updated RTArrival
 		result, e := s.change(r.Context(), "rt-arrival", "current", func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {

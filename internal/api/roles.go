@@ -92,6 +92,11 @@ func permissionDikenal(name string) bool {
 //   - supervisor (Supervisor/Manager): memantau Executive Dashboard,
 //     meninjau hold (hold.review), dan mengajukan simulasi Rencana;
 //     biaya operasional berada di area manajerial (cost.edit).
+//   - manager: alias id yang dipakai Frontend untuk peran
+//     Supervisor/Manager (persona Wahyu Pratama di FE). Ditambahkan
+//     sebagai role bawaan tersendiri dengan grant persis supervisor
+//     supaya X-Demo-Role: manager sah tanpa FE mengubah id-nya; temuan
+//     audit FE/BE Tahap 3 (login Manager 401/422) ditutup dari sini.
 var ekstensiRoleTahap3 = map[string][]string{
 	"planner":    {"instruction.ack", "rt.manage", "transfer.record"},
 	"receiving":  {"hold.submit", "rt.manage", "transfer.record"},
@@ -99,10 +104,11 @@ var ekstensiRoleTahap3 = map[string][]string{
 	"operator":   {"downtime.record", "instruction.ack", "transfer.record"},
 	"qa":         {"constraint.edit"},
 	"supervisor": {"cost.edit", "hold.review"},
+	"manager":    {"cost.edit", "hold.review", "hold.submit", "instruction.ack"},
 }
 
 // urutanRoleSeed adalah urutan tampil registri bawaan.
-var urutanRoleSeed = []string{"superadmin", "planner", "receiving", "lab", "operator", "qa", "supervisor"}
+var urutanRoleSeed = []string{"superadmin", "planner", "receiving", "lab", "operator", "qa", "supervisor", "manager"}
 
 // namaRoleSeed adalah nama tampil role baru; empat role lama mengambil
 // label dari domain.RolesMap agar konsisten dengan roles.json.
@@ -110,6 +116,7 @@ var namaRoleSeed = map[string]string{
 	"superadmin": "Superadmin",
 	"lab":        "Lab",
 	"operator":   "Operator Produksi",
+	"manager":    "Supervisor/Manager",
 }
 
 // seedRoleRegistry membangun matriks bawaan: basis grant diambil dari

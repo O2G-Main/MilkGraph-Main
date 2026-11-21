@@ -148,7 +148,7 @@ func TestChatAISaatAIDown502(t *testing.T) {
 
 func TestFondasiDinamisButuhDB(t *testing.T) {
 	h := (&Server{Mode: "demo"}).Handler()
-	w := durableRequest(h, "POST", "/trace/transfers", "planner", `{"batch_id":"FG-1013-07","from_ref":"SP-1","to_ref":"ST-4","volume_out_l":12200,"volume_in_l":12000}`)
+	w := durableRequest(h, "POST", "/trace/transfers", "planner", `{"batch_id":"FG-1013-07","from_ref":"SFP-01","to_ref":"ST-4","volume_out_l":12200,"volume_in_l":12000}`)
 	if w.Code != 503 {
 		t.Fatalf("POST transfer tanpa DB harus 503, dapat %d: %s", w.Code, w.Body.String())
 	}
@@ -167,7 +167,7 @@ func TestFondasiDinamisDenganDB(t *testing.T) {
 	h := (&Server{Mode: "demo", DB: db}).Handler()
 
 	// Transfer: selisih dihitung server.
-	w := durableRequest(h, "POST", "/trace/transfers", "planner", `{"batch_id":"FG-1013-07","from_ref":"SP-1","to_ref":"ST-4","volume_out_l":12200,"volume_in_l":12000}`)
+	w := durableRequest(h, "POST", "/trace/transfers", "planner", `{"batch_id":"FG-1013-07","from_ref":"SFP-01","to_ref":"ST-4","volume_out_l":12200,"volume_in_l":12000}`)
 	if w.Code != 200 {
 		t.Fatalf("POST transfer = %d: %s", w.Code, w.Body.String())
 	}
@@ -175,7 +175,7 @@ func TestFondasiDinamisDenganDB(t *testing.T) {
 	if rec["selisih_l"] != 200.0 || rec["source"] != "Manual" || rec["id"] != "TRF-001" {
 		t.Errorf("record transfer tidak sesuai: %v", rec)
 	}
-	w = durableRequest(h, "POST", "/trace/transfers", "planner", `{"batch_id":"LOT-LAIN","from_ref":"TH-1","to_ref":"MX-2","volume_out_l":5000,"volume_in_l":4950,"source":"IoT"}`)
+	w = durableRequest(h, "POST", "/trace/transfers", "planner", `{"batch_id":"LOT-LAIN","from_ref":"TH-01","to_ref":"MX-2","volume_out_l":5000,"volume_in_l":4950,"source":"IoT"}`)
 	if w.Code != 200 {
 		t.Fatalf("POST transfer kedua = %d: %s", w.Code, w.Body.String())
 	}
@@ -219,5 +219,64 @@ func TestFondasiDinamisDenganDB(t *testing.T) {
 	arrivals = nil
 	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 9 {
 		t.Fatalf("GET rt-arrivals akhir harus 9 baris: %s", w.Body.String())
+	}
+}
+
+func TestParseWaktuKedatanganJamSaja(t *testing.T) {
+	// Parser bersama tidak berubah: jam saja tetap ditolak di sana.
+	if _, err := parseWaktu("15:04"); err == nil {
+		t.Fatal("parseWaktu bersama harus tetap menolak format jam saja")
+	}
+	t1, err := parseWaktuKedatangan("15:04")
+	if err != nil {
+		t.Fatalf("parseWaktuKedatangan(\"15:04\") error: %v", err)
+	}
+	if got := formatWaktu(t1); got != "2026-10-14T15:04:00+07:00" {
+		t.Errorf("jam saja harus jatuh pada tanggal demo, dapat %s", got)
+	}
+	if got := normalisasiWaktuKedatangan("09:30"); got != "2026-10-14T09:30:00+07:00" {
+		t.Errorf("normalisasi jam saja = %s", got)
+	}
+	// Format lama lolos apa adanya, tidak ditulis ulang.
+	for _, s := range []string{"2026-10-14T13:00:00+07:00", "2026-10-14 13:00:05", "2026-10-14 13:00"} {
+		if _, err := parseWaktuKedatangan(s); err != nil {
+			t.Errorf("format lama %q harus tetap diterima: %v", s, err)
+		}
+		if got := normalisasiWaktuKedatangan(s); got != s {
+			t.Errorf("normalisasi tidak boleh mengubah format lama %q, dapat %q", s, got)
+		}
+	}
+	if _, err := parseWaktuKedatangan("25:99"); err == nil {
+		t.Error("jam tidak valid harus ditolak")
+	}
+}
+
+func TestRTArrivalsFormatJamSajaDenganDB(t *testing.T) {
+	db := testDB(t)
+	if err := db.Reset(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	h := (&Server{Mode: "demo", DB: db}).Handler()
+
+	// Form FE mengirim jam "HH:MM": server menggabungkannya dengan
+	// tanggal skenario demo dan menyimpannya sebagai stempel penuh.
+	w := durableRequest(h, "POST", "/supply/rt-arrivals", "planner", `{"farm_name":"Farm Tutur","rt_id":"RT-98","volume_l":5000,"depart_at":"13:00","target_arrival":"15:00","estimated_arrival":"15:10"}`)
+	if w.Code != 200 {
+		t.Fatalf("POST rt-arrivals jam saja = %d: %s", w.Code, w.Body.String())
+	}
+	created := obj(decodeMap(t, w)["result"])
+	if created["depart_at"] != "2026-10-14T13:00:00+07:00" || created["target_arrival"] != "2026-10-14T15:00:00+07:00" || created["estimated_arrival"] != "2026-10-14T15:10:00+07:00" {
+		t.Errorf("waktu jam saja tidak tersimpan pada tanggal demo: %v", created)
+	}
+	if created["late_minutes"] != 10.0 {
+		t.Errorf("late_minutes dari jam saja = %v, mau 10", created["late_minutes"])
+	}
+	w = durableRequest(h, "PUT", "/supply/rt-arrivals/ARR-RT-98", "planner", `{"estimated_arrival":"15:40","status":"Dalam Perjalanan"}`)
+	if w.Code != 200 {
+		t.Fatalf("PUT rt-arrivals jam saja = %d: %s", w.Code, w.Body.String())
+	}
+	updated := obj(decodeMap(t, w)["result"])
+	if updated["estimated_arrival"] != "2026-10-14T15:40:00+07:00" || updated["late_minutes"] != 40.0 {
+		t.Errorf("update jam saja tidak sesuai: %v", updated)
 	}
 }
