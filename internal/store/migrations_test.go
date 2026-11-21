@@ -102,7 +102,7 @@ func TestMigrationFreshAndRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := db.Pool
-	if countMigrationVersions(t, p) != 1 {
+	if countMigrationVersions(t, p) != 3 {
 		t.Fatal("fresh migration missing")
 	}
 	_, err = p.Exec(ctx, `INSERT INTO milkgraph.state(entity,id,body) VALUES ('test','kept','{"x":1}')`)
@@ -115,7 +115,7 @@ func TestMigrationFreshAndRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if countMigrationVersions(t, db.Pool) != 1 {
+	if countMigrationVersions(t, db.Pool) != 3 {
 		t.Fatal("restart duplicated migration")
 	}
 	var body string
@@ -145,7 +145,7 @@ func TestMigrationLegacyBaseline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if countMigrationVersions(t, p) != 1 {
+	if countMigrationVersions(t, p) != 3 {
 		t.Fatal("legacy version not stamped")
 	}
 	var n int
@@ -188,7 +188,7 @@ func TestMigrationRejectsPartialAndAlteredLegacy(t *testing.T) {
 }
 
 func TestMigrationRejectsChecksumDriftAndUnknownVersion(t *testing.T) {
-	for _, version := range []int{1, 2} {
+	for _, version := range []int{1, 4} {
 		t.Run(fmt.Sprint(version), func(t *testing.T) {
 			dsn := isolatedMigrationDB(t)
 			db, err := Open(context.Background(), dsn)
@@ -198,7 +198,7 @@ func TestMigrationRejectsChecksumDriftAndUnknownVersion(t *testing.T) {
 			if version == 1 {
 				_, err = db.Pool.Exec(context.Background(), "UPDATE milkgraph.schema_migrations SET checksum='bad' WHERE version=1")
 			} else {
-				_, err = db.Pool.Exec(context.Background(), "INSERT INTO milkgraph.schema_migrations(version, checksum) VALUES(2, 'unknown')")
+				_, err = db.Pool.Exec(context.Background(), "INSERT INTO milkgraph.schema_migrations(version, checksum) VALUES(4, 'unknown')")
 			}
 			db.Close()
 			if err != nil {
@@ -238,7 +238,7 @@ func TestMigrationConcurrentOpen(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if n := countMigrationVersions(t, migrationConn(t, dsn)); n != 1 {
+	if n := countMigrationVersions(t, migrationConn(t, dsn)); n != 3 {
 		t.Fatalf("versions = %d", n)
 	}
 }
