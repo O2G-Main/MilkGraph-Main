@@ -69,6 +69,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const drawerRef = useRef<HTMLDialogElement>(null);
   const current = findNav(pathname);
   const demo = useDemo();
+  // Supervisor/Manager membuka Beranda sebagai Executive Dashboard.
+  const tabLabel = demo.role === "manager" && current.tab.href === "/" ? "Executive Dashboard" : current.tab.label;
 
   const metaRes = useResource<Meta>(API_MODE ? "/meta" : null);
   const shiftsRes = useResource<Shift[]>(API_MODE ? "/shifts" : null);
@@ -159,7 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="topbar">
         <div className="topbar-start">
           <button ref={menuButton} className="icon-button mobile-menu" aria-label="Buka menu" aria-expanded={drawer} aria-controls="mobile-navigation" onClick={() => setDrawer(true)}><Icon icon={Menu} /></button>
-          <span className="breadcrumb">{current.item.tabs.length > 1 && <>{current.item.label}<span>/</span></>}{pathname === current.tab.href ? <strong>{current.tab.label}</strong> : <Link href={current.tab.href} onClick={fromMenu}>{current.tab.label}</Link>}</span>
+          <span className="breadcrumb">{current.item.tabs.length > 1 && <>{current.item.label}<span>/</span></>}{pathname === current.tab.href ? <strong>{tabLabel}</strong> : <Link href={current.tab.href} onClick={fromMenu}>{tabLabel}</Link>}</span>
         </div>
         <div className="topbar-actions">
           <Badge>Data simulasi</Badge>

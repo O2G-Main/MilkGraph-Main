@@ -13,7 +13,7 @@ import { visibleNav } from "@/lib/nav";
 import { ROLES, canSee } from "@/lib/roles";
 import { holdingLeft, instructions, violations } from "@/lib/rules";
 import { checkSchedule } from "@/lib/production";
-import { PROCESS_LOSS, dataSources, demandPlan, farms, fillers, labResults, pastLog } from "@/mock/ops";
+import { PROCESS_LOSS, UNIT_STATE, dataSources, demandPlan, farms, fillers, labResults, pastLog } from "@/mock/ops";
 import { BOTTLENECKS } from "@/mock/site";
 import type { Tone } from "@/mock/types";
 import { Badge, Card, Icon, PageHeading, SectionTitle, SourceModal } from "@/components/ui";
@@ -204,12 +204,48 @@ export function Beranda() {
     ...batchReady.map(s => ({ icon: Container, title: `Batch ${s.subject} siap dirilis`, meta: `${s.detail}. Semua parameter dalam batas`, tone: "neutral" as Tone, href: `/lab?sampel=${s.id}` })),
     ...gaps.map(g => ({ icon: Droplets, title: `Selisih ${fmt(g.diff)} L pada ${g.t.rt}`, meta: `Transfer ke ${g.t.tank} dibanding timbangan RT`, tone: "warn" as Tone, href: "/transfer" })),
   ];
-  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : isOperator ? operatorAttention : isQa ? qaAttention : attention;
-  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : isOperator ? operatorKpis : isQa ? qaKpis : null;
+  // Supervisor/Manager: Executive Dashboard = pasokan, penggunaan mesin, jadwal, dan pencapaian target per lini.
+  const isManager = demo.role === "manager";
+  const lineState = (id: string) => {
+    const f = fillers.find(x => x.id === id);
+    const open = demo.operation.downtime.find(d => d.asset === id && !d.end);
+    const u = demo.operation.machines[id];
+    return { f, running: !open && (u ? u.state === "jalan" : f?.state === "jalan"), label: open ? open.cause : u ? MACHINE_STATE[u.state].label : f ? UNIT_STATE[f.state].label : "-" };
+  };
+  const lines = [...new Set(demo.schedule.map(i => i.line))].sort((a, b) => a.localeCompare(b, "id", { numeric: true })).map(line => {
+    const orders = demo.schedule.filter(i => i.line === line).sort((a, b) => a.start.localeCompare(b.start));
+    const done = orders.filter(i => runState(runs[i.id]) === "selesai");
+    const current = orders.find(i => runState(runs[i.id]) === "jalan") ?? orders.find(i => runState(runs[i.id]) === "belum");
+    const st = lineState(line);
+    const pace = st.f && st.running ? Math.round(st.f.speed / st.f.target * 100) : null;
+    return { line, orders, done, current, st, pace, target: orders.reduce((s, i) => s + i.packs, 0), output: done.reduce((s, i) => s + (runs[i.id]?.output ?? 0), 0) };
+  });
+  const runningLines = fillers.filter(f => lineState(f.id).running);
+  const pacing = lines.filter(l => l.pace !== null);
+  const avgPace = pacing.length ? Math.round(pacing.reduce((s, l) => s + l.st.f!.speed, 0) / pacing.reduce((s, l) => s + l.st.f!.target, 0) * 100) : 0;
+  const behind = pacing.filter(l => l.pace! < 90);
+  const downAll = demo.operation.downtime.reduce((s, d) => s + downtimeMinutes(d), 0);
+  const lateAll = demo.schedule.filter(i => isLate(i.start, runs[i.id]));
+  const managerKpis: typeof plannerKpis = [
+    { icon: Droplets, label: "Pasokan susu", value: `${cover}%`, unit: "dari kebutuhan", note: `${queue.filter(r => r.stage !== "Selesai bongkar").length} RT di plant, ${demo.receiving.arrivals.filter(a => a.status === "perjalanan").length} dalam perjalanan`, tone: cover < 100 ? "crit" : cover < 105 ? "warn" : "ok", href: "/pasokan" },
+    { icon: Factory, label: "Penggunaan mesin", value: `${runningLines.length}/${fillers.length}`, unit: "lini jalan", note: `Downtime ${downAll} menit, ${demo.operation.downtime.filter(d => !d.end).length} masih berlangsung`, tone: runningLines.length < fillers.length / 2 ? "crit" : "warn", href: "/kondisi-alat" },
+    { icon: CalendarRange, label: "Jadwal", value: approved ? "Disetujui" : String(broken), unit: approved ? "" : "constraint dilanggar", note: `${demo.schedule.length} order, ${lateAll.length} terlambat mulai`, tone: approved ? "ok" : broken ? "crit" : "ok", href: "/rencana" },
+    { icon: TriangleAlert, label: "Pencapaian target", value: `${avgPace}%`, unit: "laju terhadap target", note: behind.length ? `${behind.map(l => l.line).join(", ")} di bawah 90%` : "Semua lini jalan sesuai laju", tone: avgPace < 85 ? "crit" : avgPace < 95 ? "warn" : "ok", href: "/penjadwalan" },
+  ];
+  const managerAttention: Item[] = [
+    ...(!approved ? [{ icon: TriangleAlert, title: `Rencana shift tidak layak, ${broken} constraint dilanggar`, meta: "Bandingkan alternatif di Rencana sebelum Planner memutuskan", tone: "crit" as Tone, href: "/rencana" }] : []),
+    ...attention,
+    ...behind.map(l => ({ icon: Factory, title: `${l.line} jalan ${l.pace}% dari laju target`, meta: `${l.current?.sku ?? l.st.f?.product}. ${l.st.f?.note ?? ""}`, tone: "warn" as Tone, href: "/kondisi-alat" })),
+    ...(cover < 105 ? [{ icon: Droplets, title: `Pasokan susu ${cover}% dari kebutuhan`, meta: `Rencana kirim farm ${fmt(milkPlanned)} L, butuh ${fmt(milkNeed)} L`, tone: (cover < 100 ? "crit" : "warn") as Tone, href: "/pasokan" }] : []),
+  ];
+  const shown = isPlanner ? plannerAttention : isReceiving ? receivingAttention : isLab ? labAttention : isOperator ? operatorAttention : isQa ? qaAttention : isManager ? managerAttention : attention;
+  const kpis = isPlanner ? plannerKpis : isReceiving ? receivingKpis : isLab ? labKpis : isOperator ? operatorKpis : isQa ? qaKpis : isManager ? managerKpis : null;
   const seePlan = canSee(demo.role, "/rencana");
 
   return <div className="page-enter">
-    <PageHeading title="Beranda" subtitle={isPlanner
+    <PageHeading title={isManager ? "Executive Dashboard" : "Beranda"} subtitle={isManager
+      ? `Halo, ${me.user.split(" ")[0]}. Ringkasan pasokan, penggunaan mesin, jadwal, dan pencapaian target Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
+      : isPlanner
       ? `Halo, ${me.user.split(" ")[0]}. Kelayakan rencana, jadwal, dan pasokan Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isReceiving ? `Halo, ${me.user.split(" ")[0]}. RT di plant, bay, tangki, dan kedatangan berikutnya Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
       : isLab ? `Halo, ${me.user.split(" ")[0]}. Sampel RT dan batch yang perlu diperiksa Shift Siang, ${scenario.date}, snapshot ${scenario.now}.`
@@ -227,10 +263,24 @@ export function Beranda() {
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
         <Link href={seePlan ? "/rencana" : isLab ? "/lab" : isOperator ? "/penjadwalan" : isQa ? "/lab" : "/receiving"} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : isQa ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>
       </section>
-      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : isOperator ? "Perlu ditangani di lini" : isQa ? "Perlu keputusan QA" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab || isOperator || isQa ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+      <Card className="home-attention"><SectionTitle title={isPlanner ? "Perlu keputusan Planner" : isReceiving ? "Perlu ditangani receiving" : isLab ? "Perlu diperiksa lab" : isOperator ? "Perlu ditangani di lini" : isQa ? "Perlu keputusan QA" : isManager ? "Perlu perhatian manajemen" : "Perlu perhatian"} subtitle={isPlanner || isReceiving || isLab || isOperator || isQa || isManager ? "Diurutkan dari yang paling mendesak." : undefined} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
       </Card>
     </div>
+
+    {isManager && <Card className="home-menus"><SectionTitle title="Pencapaian target per lini" subtitle="Laju mesin terhadap target dan hasil order yang sudah selesai. Klik untuk melihat jadwal lini." action={<Link className="text-link" href="/penjadwalan">Buka Penjadwalan<Icon icon={ChevronRight} size={14} /></Link>} />
+      <div className="table-wrap"><table className="schedule-table">
+        <thead><tr><th>Lini</th><th>Order berjalan atau berikutnya</th><th>Kondisi</th><th className="numeric">Laju</th><th className="numeric">Target shift</th><th className="numeric">Hasil selesai</th></tr></thead>
+        <tbody>{lines.map(l => <tr key={l.line}>
+          <td><strong>{l.line}</strong></td>
+          <td data-label="Order">{l.current ? <>{l.current.sku}<span className="table-sub">{clock(l.current.start)}-{clock(l.current.end)}, target {fmt(l.current.packs)} pak</span></> : <span className="muted">Semua order selesai</span>}</td>
+          <td data-label="Kondisi"><Badge tone={l.st.running ? "ok" : "warn"}>{l.st.label}</Badge></td>
+          <td data-label="Laju" className={`numeric ${l.pace === null ? "muted" : l.pace < 90 ? "warn-text" : "ok-text"}`}>{l.pace === null ? "-" : `${l.pace}%`}</td>
+          <td data-label="Target shift" className="numeric">{fmt(l.target)} pak</td>
+          <td data-label="Hasil selesai" className="numeric">{l.done.length ? `${fmt(l.output)} pak (${attainment(l.output, l.done.reduce((s, i) => s + i.packs, 0))}%)` : "-"}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </Card>}
 
     {/* Isi tiap menu diringkas jadi satu baris (poin 7): detailnya ada di halaman menu masing-masing. */}
     <Card className="home-menus"><SectionTitle title="Semua menu" subtitle="Satu baris per menu. Klik untuk membuka halamannya." />

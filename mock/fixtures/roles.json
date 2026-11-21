@@ -30,6 +30,12 @@
       "initials": "RM",
       "focus": "Rilis atau tolak susu dari hasil lab, mutu barang jadi, penelusuran batch, dan hold produk."
     },
+    "manager": {
+      "label": "Supervisor/Manager",
+      "user": "Wahyu Pratama",
+      "initials": "WP",
+      "focus": "Ringkasan pasokan, penggunaan mesin, jadwal, dan pencapaian target, serta simulasi alternatif rencana."
+    },
     "lab": {
       "label": "Lab",
       "user": "Sri Lestari",
@@ -56,7 +62,8 @@
       "label": "Mengubah parameter simulasi, waktu maintenance, dan kapasitas alat",
       "roles": [
         "superadmin",
-        "planner"
+        "planner",
+        "manager"
       ]
     },
     "arrival.edit": {
@@ -198,7 +205,8 @@
         "receiving",
         "operator",
         "lab",
-        "qa"
+        "qa",
+        "manager"
       ]
     }
   }

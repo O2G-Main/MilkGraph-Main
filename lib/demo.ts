@@ -66,9 +66,9 @@ const RECEIVING: ReceivingState = {
     { id: "TRF-02", rt: "RT-22", tank: "RMT-1", volume: 9_800, start: "13:55", end: "14:25", counted: true },
   ],
 };
-/** Lantai produksi [simulasi]: F1, F2, F4 sudah jalan sejak 14.00; F10 breakdown dan F8 ganti format tercatat sebagai downtime. */
+/** Lantai produksi [simulasi]: F1, F2, F4, F7 sudah jalan sejak 14.00; F10 breakdown dan F8 ganti format tercatat sebagai downtime. */
 const OPERATION: OperationState = {
-  runs: { "JDW-01": { start: "14:00" }, "JDW-03": { start: "14:00" }, "JDW-04": { start: "14:00" } },
+  runs: { "JDW-01": { start: "14:00" }, "JDW-03": { start: "14:00" }, "JDW-04": { start: "14:00" }, "JDW-06": { start: "14:00" } },
   machines: {},
   downtime: [
     { id: "DT-01", asset: "F10", cause: "Breakdown", start: "13:50", note: "Seal jaw rusak, tiket MT-2231" },

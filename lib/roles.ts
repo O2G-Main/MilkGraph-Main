@@ -1,4 +1,4 @@
-export type RoleId = "superadmin" | "planner" | "receiving" | "operator" | "lab" | "qa";
+export type RoleId = "superadmin" | "planner" | "receiving" | "operator" | "lab" | "qa" | "manager";
 export type Permission =
   | "schedule.edit" | "rules.edit" | "plan.simulate"
   | "arrival.edit" | "queue.record" | "transfer.record" | "lab.record"
@@ -12,6 +12,7 @@ export const ROLES: Record<RoleId, { label: string; user: string; initials: stri
   receiving: { label: "Koordinator receiving", user: "Dimas Prasetyo", initials: "DP", focus: "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time." },
   operator: { label: "Operator produksi", user: "Hendra Kusuma", initials: "HK", focus: "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime." },
   qa: { label: "QA/QC", user: "Ratna Maharani", initials: "RM", focus: "Rilis atau tolak susu dari hasil lab, mutu barang jadi, penelusuran batch, dan hold produk." },
+  manager: { label: "Supervisor/Manager", user: "Wahyu Pratama", initials: "WP", focus: "Ringkasan pasokan, penggunaan mesin, jadwal, dan pencapaian target, serta simulasi alternatif rencana." },
   lab: { label: "Lab", user: "Sri Lestari", initials: "SL", focus: "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab." },
 };
 export const ROLE_IDS = Object.keys(ROLES) as RoleId[];
@@ -22,7 +23,7 @@ export const SUPERADMIN: RoleId = "superadmin";
 export const PERMISSIONS: Record<Permission, { label: string; roles: RoleId[] }> = {
   "schedule.edit": { label: "Menambah dan mengubah target serta jadwal produksi", roles: ["superadmin", "planner"] },
   "rules.edit": { label: "Mengatur durasi changeover dan CIP sesuai standar", roles: ["superadmin", "planner"] },
-  "plan.simulate": { label: "Mengubah parameter simulasi, waktu maintenance, dan kapasitas alat", roles: ["superadmin", "planner"] },
+  "plan.simulate": { label: "Mengubah parameter simulasi, waktu maintenance, dan kapasitas alat", roles: ["superadmin", "planner", "manager"] },
   "arrival.edit": { label: "Menambah dan mengubah jadwal kedatangan RT, estimasi tiba, dan status perjalanan", roles: ["superadmin", "receiving"] },
   "queue.record": { label: "Mencatat kedatangan aktual, waktu awal umur susu, dan proses bongkar", roles: ["superadmin", "receiving"] },
   "transfer.record": { label: "Mencatat transfer susu dari RT ke tangki penerimaan", roles: ["superadmin", "receiving"] },
@@ -42,7 +43,7 @@ export const PERMISSIONS: Record<Permission, { label: string; roles: RoleId[] }>
   "users.manage": { label: "Mengelola pengguna dan hak akses peran", roles: ["superadmin"] },
   "master.manage": { label: "Mengelola master data", roles: ["superadmin"] },
   "integration.manage": { label: "Mengelola konfigurasi integrasi sumber data", roles: ["superadmin"] },
-  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "operator", "lab", "qa"] },
+  "audit.view": { label: "Melihat riwayat seluruh perubahan dan persetujuan", roles: ["superadmin", "planner", "receiving", "operator", "lab", "qa", "manager"] },
 };
 /** Izin yang hanya boleh dipegang Superadmin, supaya tidak ada yang mengunci dirinya keluar dari pengelolaan akses. */
 export const LOCKED: Permission[] = ["users.manage"];
@@ -72,6 +73,7 @@ export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
     "/rencana/alur", "/rencana/upgrade", "/rencana",
     "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna",
   ],
+  manager: ["/sumber-data", "/pengguna"],
   qa: [
     "/simulasi", "/kedatangan", "/receiving", "/alur", "/kondisi-alat", "/master-data",
     "/penjadwalan", "/rencana/alur", "/rencana/upgrade", "/rencana", "/sumber-data", "/pengguna",

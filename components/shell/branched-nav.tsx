@@ -26,7 +26,7 @@ export function BranchedNav({ items, pathname, onNavigate }: { items: NavItem[];
 
   return <nav aria-label="Navigasi utama" className="nav-list">
     {items.map(item => {
-      const inSection = item.label === current.item.label;
+      const inSection = item.tabs.some(t => t.href === current.tab.href);
       const kids = item.tabs.length > 1 ? item.tabs : null;
       const open = kids ? (toggled[item.label] ?? inSection) : false;
       const id = `nav-sub-${item.label.toLowerCase().replace(/\W+/g, "-")}`;

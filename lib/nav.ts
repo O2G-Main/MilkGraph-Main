@@ -23,6 +23,8 @@ export const navigation: NavItem[] = [
 
 /** Menu yang boleh dilihat peran ini; menu induk tanpa tab tersisa ikut hilang. */
 export const visibleNav = (role: RoleId) => navigation
+  // Supervisor/Manager membuka Beranda sebagai Executive Dashboard.
+  .map(item => (role === "manager" && item.label === "Beranda" ? { ...item, label: "Executive Dashboard", hint: "Pasokan, mesin, jadwal, target", tabs: [{ ...item.tabs[0], label: "Executive Dashboard" }] } : item))
   .map(item => ({ ...item, tabs: item.tabs.filter(t => canSee(role, t.href)) }))
   .filter(item => item.tabs.length > 0);
 
