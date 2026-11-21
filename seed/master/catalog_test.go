@@ -16,7 +16,7 @@ func TestTopologyProjection(t *testing.T) {
 	}
 	nodes := top["nodes"].([]Row)
 	edges := top["edges"].([]Row)
-	if len(nodes) != 73 || len(edges) != 118 {
+	if len(nodes) != 63 || len(edges) != 118 {
 		t.Fatalf("nodes=%d edges=%d", len(nodes), len(edges))
 	}
 }
@@ -26,20 +26,28 @@ func TestEmbeddedCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for table, count := range map[string]int{"asset_configuration": 73, "asset_connections": 118, "asset_units": 7, "changeover_rules": 4, "cip_rules": 5, "constraint_catalog": 21, "finished_sku_catalog": 44, "line_dedication": 10, "line_finished_sku_compatibility": 116, "line_product_compatibility": 58, "market_variants": 2, "pack_size_codes": 5, "product_catalog": 8} {
+	for table, count := range map[string]int{"asset_configuration": 63, "asset_connections": 118, "asset_units": 7, "changeover_rules": 4, "cip_rules": 5, "constraint_catalog": 21, "finished_sku_catalog": 44, "line_dedication": 10, "line_finished_sku_compatibility": 116, "line_product_compatibility": 58, "market_variants": 2, "pack_size_codes": 5, "product_catalog": 8} {
 		if got := len(c.Tables[table]); got != count {
 			t.Errorf("%s got %d, want %d", table, got, count)
 		}
 	}
-	if c.Tables["asset_configuration"][0]["capacity_l"] != "X" {
-		t.Fatal("X lost")
+	// Paket historis resmi menggantikan nilai penanda "X" dengan nilai terukur.
+	for _, row := range c.Tables["asset_configuration"] {
+		for _, col := range []string{"capacity_l", "input_flow_lph", "output_flow_lph", "process_speed_lph", "holding_time_limit_hours", "cip_duration_minutes", "speed_packph"} {
+			if row[col] == "X" {
+				t.Fatalf("placeholder X remains on asset %s column %s", row["asset_id"], col)
+			}
+		}
+	}
+	if got := byKey(c.Tables["asset_configuration"], "asset_id")["AT-01"]["capacity_l"]; got != "20000" {
+		t.Fatalf("AT-01 capacity_l = %q, want 20000 from the historical package", got)
 	}
 	if c.Tables["asset_connections"][0]["via_asset_id"] != "" {
 		t.Fatal("blank via lost")
 	}
 	for _, row := range c.Tables["asset_connections"] {
-		if row["max_flow_lph"] != "X" {
-			t.Fatal("unexpected measured max flow")
+		if row["max_flow_lph"] == "X" || row["max_flow_lph"] == "" {
+			t.Fatal("max_flow_lph must carry the measured value from the historical package")
 		}
 	}
 }

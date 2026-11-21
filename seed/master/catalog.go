@@ -10,11 +10,11 @@ import (
 )
 
 var schemas = map[string][]string{
-	"asset_configuration":             {"asset_id", "asset_type", "compatible_product_family", "capacity_l", "input_flow_lph", "output_flow_lph", "process_speed_lph", "holding_time_limit_hours", "cip_duration_minutes", "speed_packph", "node_role", "asset_name"},
-	"asset_connections":               {"connection_id", "source_asset_id", "destination_asset_id", "via_asset_id", "max_flow_lph", "flow_type", "routing_condition"},
+	"asset_configuration":             {"asset_id", "asset_type", "compatible_product_family", "capacity_l", "input_flow_lph", "output_flow_lph", "process_speed_lph", "holding_time_limit_hours", "cip_duration_minutes", "speed_packph", "asset_name"},
+	"asset_connections":               {"connection_id", "source_asset_id", "destination_asset_id", "via_asset_id", "max_flow_lph", "flow_type"},
 	"asset_units":                     {"field", "applies_to", "unit", "definition"},
 	"changeover_rules":                {"rule_id", "precedence", "condition", "activity", "duration_minutes", "additional_note"},
-	"cip_rules":                       {"rule_id", "trigger", "asset_scope", "requirement", "duration_minutes"},
+	"cip_rules":                       {"rule_id", "trigger", "asset_scope", "requirement"},
 	"constraint_catalog":              {"rule_id", "scope", "description"},
 	"finished_sku_catalog":            {"finished_sku_id", "liquid_sku_id", "pack_size_code", "market_variant"},
 	"line_dedication":                 {"line_id", "allowed_sku_ids", "pack_size_codes", "source_aseptic_tank_id", "speed_packph"},
@@ -90,9 +90,8 @@ func (c *Catalog) Summary() map[string]any {
 		"tables":                 counts,
 		"totalTables":            len(c.Tables),
 		"status":                 "structurally_valid",
-		"numericalPlanningReady": false,
-		"version":                "v2_1",
-		"source":                 "Greenfields_Ideation_Package_v2_1",
+		"numericalPlanningReady": true,
+		"source":                 "MVP-Greenfields-Historical-PlayIT!",
 	}
 }
 

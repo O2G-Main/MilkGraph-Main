@@ -24,18 +24,15 @@ func TestMasterTopologyRoute(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &topology); err != nil {
 		t.Fatal(err)
 	}
-	if topology.Kind != "route_capability" || len(topology.Nodes) != 73 || len(topology.Edges) != 118 {
+	if topology.Kind != "route_capability" || len(topology.Nodes) != 63 || len(topology.Edges) != 118 {
 		t.Fatalf("unexpected topology: kind=%q nodes=%d edges=%d", topology.Kind, len(topology.Nodes), len(topology.Edges))
 	}
-	found := false
+	// Paket historis resmi tidak lagi memuat aset pipa fisik maupun rute via;
+	// semua edge adalah koneksi langsung tanpa via_asset_id.
 	for _, edge := range topology.Edges {
 		if edge["via_asset_id"] != "" {
-			found = true
-			break
+			t.Fatalf("unexpected via route in historical package: %v", edge)
 		}
-	}
-	if !found {
-		t.Fatal("dedicated pipe route resource missing")
 	}
 }
 
@@ -65,11 +62,11 @@ func TestMasterCatalogRoutes(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &summary); err != nil {
 		t.Fatal(err)
 	}
-	if summary.Tables["asset_configuration"] != 73 || summary.Tables["asset_connections"] != 118 || summary.Tables["line_finished_sku_compatibility"] != 116 {
+	if summary.Tables["asset_configuration"] != 63 || summary.Tables["asset_connections"] != 118 || summary.Tables["line_finished_sku_compatibility"] != 116 {
 		t.Fatalf("unexpected master counts: %#v", summary.Tables)
 	}
-	if summary.NumericalPlanningReady {
-		t.Fatal("placeholder numeric data must not be planning-ready")
+	if !summary.NumericalPlanningReady {
+		t.Fatal("historical package carries measured numeric values, catalog must be planning-ready")
 	}
 
 	w = httptest.NewRecorder()
