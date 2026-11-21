@@ -28,7 +28,9 @@ func (s *Server) lampirkanNarasiAI(ctx context.Context, answer map[string]any) {
 	if !ok {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, 9*time.Second)
+	// Batas 45 detik: satu panggilan layanan AI menampung panggilan Jev
+	// ditambah narasi LLM model reasoning, yang totalnya melewati 9 detik.
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	resp, err := s.AI.NarrateRootCause(ctx, payload)
 	if err != nil {
@@ -53,7 +55,7 @@ func (s *Server) narasiAI(ctx context.Context, batchID string) (any, error) {
 	if !ok {
 		return nil, &apiError{503, "UNAVAILABLE", "Fakta batch tidak tersedia.", ""}
 	}
-	ctx, cancel := context.WithTimeout(ctx, 9*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	resp, err := s.AI.NarrateRootCause(ctx, payload)
 	if err != nil {
@@ -91,7 +93,7 @@ func (s *Server) chatAI(ctx context.Context, pertanyaan string) (any, error) {
 	if !ok {
 		return nil, &apiError{503, "UNAVAILABLE", "Fakta batch tidak tersedia.", ""}
 	}
-	ctx, cancel := context.WithTimeout(ctx, 9*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	req := ai.ChatRequest{
 		Pertanyaan:   pertanyaan,

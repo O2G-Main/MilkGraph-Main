@@ -226,7 +226,7 @@ func (s *Server) narasiJadwal(ctx context.Context, versi *int) (any, error) {
 		}
 	}
 	req := bangunExplainRequest(sch, prev, triggers, label)
-	ctx, cancel := context.WithTimeout(ctx, 9*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	resp, err := s.AI.Explain(ctx, req)
 	if err != nil {

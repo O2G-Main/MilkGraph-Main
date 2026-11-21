@@ -37,7 +37,9 @@ func New(baseURL, token string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
-		http:    &http.Client{Timeout: 12 * time.Second},
+		// Batas 60 detik harus di atas batas konteks pemanggil (45 detik),
+		// karena satu panggilan menampung Jev ditambah narasi LLM reasoning.
+		http: &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
