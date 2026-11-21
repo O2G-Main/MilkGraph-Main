@@ -106,8 +106,8 @@ export function Kedatangan() {
           templateName="template-kedatangan-rt.csv"
           importPath="/supply/rt-arrivals/import"
           role={demo.role}
-          canImport={["planner", "receiving", "superadmin"].includes(demo.role)}
-          gateNote="Import jadwal kedatangan hanya untuk Planner, Receiving, dan Superadmin, sesuai permission rt.manage di server. Role lain cukup membaca jadwal di atas."
+          canImport={["planner", "receiving", "supervisor", "manager", "superadmin"].includes(demo.role)}
+          gateNote="Import jadwal kedatangan untuk Planner, Manager, Supervisor, dan Receiving (khusus RT) lewat permission rt.manage atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca jadwal di atas."
           invalidate={[PATH, "/audit", "/dashboard/executive"]}
           rowKey={r => r.id}
           columns={[

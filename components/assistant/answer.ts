@@ -27,15 +27,18 @@ const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n);
 const list = (items: string[]) => items.join(", ");
 const unknown: Reply = { text: "Maaf, aku belum bisa menjawab itu, dan aku tidak mau menebak. Aku bisa bantu soal kendala alur susu, jalur dan dampak alat, asal lot, antrean truk, upgrade, dan rencana shift.", links: [] };
 
+// Chips pertanyaan template. Di mode API chips dikirim ke /assistant/chat yang konteks faktanya
+// hanya seputar batch FG-1013-07 (status QC, kaki perjalanan, kandidat akar masalah), jadi semua
+// chips harus bisa dijawab dari fakta itu; pertanyaan di luar konteks dijawab server "belum tersedia".
 const SUGGEST: Record<string, string[]> = {
-  "/receiving": ["Truk mana yang paling lama menunggu?", "Kenapa Bay 2 tidak bisa dipakai?", "RT mana yang mendekati batas holding time?", "Ringkas halaman ini"],
-  "/lab": ["Antrean tes lab bagaimana?", "RT-04 masuk ke lot apa?", "FG-1013-07 berasal dari mana?", "Ringkas halaman ini"],
-  "/alur": ["Ada kendala apa di alur susu?", "Kalau UHT-2 berhenti apa yang kena?", "Susu ke F2 lewat mana?", "AT-2 kenapa?"],
-  "/kondisi-alat": ["Ada kendala apa di alur susu?", "F10 kenapa?", "AT-2 kenapa?", "Ringkas halaman ini"],
-  "/rencana": ["Rekomendasi solver apa?", "Constraint apa yang dilanggar?", "Alat apa yang perlu diupgrade?", "Ringkas halaman ini"],
-  "/riwayat-produksi": ["FG-1013-07 berasal dari mana?", "RT-04 masuk ke lot apa?", "Ada kendala apa di alur susu?", "Ringkas halaman ini"],
+  "/receiving": ["RT-04 masuk ke lot apa?", "FG-1013-07 berasal dari mana?", "Status QC FG-1013-07 bagaimana?", "Kenapa FG-1013-07 out-of-spec?"],
+  "/lab": ["Hasil lab FG-1013-07 bagaimana?", "RT-04 masuk ke lot apa?", "FG-1013-07 berasal dari mana?", "Kenapa RT-04 jadi kandidat penyebab utama?"],
+  "/alur": ["Ada kendala apa di alur susu?", "Kenapa FG-1013-07 out-of-spec?", "Perjalanan FG-1013-07 lewat mana saja?", "Apa kandidat penyebab selain RT-04?"],
+  "/kondisi-alat": ["Ada kendala apa di alur susu?", "Status QC FG-1013-07 bagaimana?", "Apa penyebab utama FG-1013-07 bermasalah?", "Kandidat penyebab FG-1013-07 apa saja?"],
+  "/rencana": ["Ada kendala apa di alur susu?", "Kenapa FG-1013-07 out-of-spec?", "Apa penyebab utama FG-1013-07 bermasalah?", "FG-1013-07 berasal dari mana?"],
+  "/riwayat-produksi": ["FG-1013-07 berasal dari mana?", "RT-04 masuk ke lot apa?", "Ada kendala apa di alur susu?", "Perjalanan FG-1013-07 berapa lama?"],
 };
-const DEFAULT_SUGGEST = ["Ada kendala apa di alur susu?", "Kalau UHT-2 berhenti apa yang kena?", "FG-1013-07 berasal dari mana?", "Truk mana yang paling lama menunggu?"];
+const DEFAULT_SUGGEST = ["Ada kendala apa di alur susu?", "Kenapa FG-1013-07 out-of-spec?", "FG-1013-07 berasal dari mana?", "Apa penyebab utama FG-1013-07 bermasalah?"];
 const section = (page: string) => page.startsWith("/rencana") ? "/rencana" : page === "/trace" ? "/riwayat-produksi" : page;
 export const suggestions = (page: string) => SUGGEST[section(page)] ?? DEFAULT_SUGGEST;
 

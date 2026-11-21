@@ -266,7 +266,6 @@ export function AssistantChat() {
           <div className="ai-body">
             <ThoughtLine working={!!m.working} steps={m.steps} label="Menganalisis data pabrik…" doneLabel="Dianalisis dalam" glyph="none" fontSize={13} color="var(--color-on-surface-muted)" />
             {!m.working && (typing === m.id ? <Typed text={m.text} onDone={() => setTyping(null)} /> : <p>{m.text}</p>)}
-            {!m.working && typing !== m.id && m.source && <p className="ai-meta">Sumber: {m.source}</p>}
             {!m.working && typing !== m.id && m.label && <p className="ai-meta">Label data: {m.label}</p>}
             {!m.working && typing !== m.id && m.notice && <p className="ai-meta" role="status">{m.notice}</p>}
             {!m.working && typing !== m.id && !!m.links?.length && <div className="ai-links">{m.links.map(l => <Link key={l.href} href={l.href}>{l.label}<ArrowUpRight size={13} aria-hidden="true" /></Link>)}</div>}

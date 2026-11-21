@@ -17,6 +17,8 @@ const POS = "/pos";
 const LATEST = "/schedules/latest";
 /** Generate dan triggers digerbang permission plan.decide di server: planner dan superadmin. */
 const canPlan = (role: string) => role === "planner" || role === "superadmin";
+/** Import CSV PO digerbang plan.decide ATAU import.csv di server: planner, supervisor, manager, superadmin. Supervisor dan Manager lolos lewat import.csv saja, tanpa memegang plan.decide. */
+const canImportPo = (role: string) => ["planner", "supervisor", "manager", "superadmin"].includes(role);
 const statusOf = (e: Error | null) => (e as ApiError | null)?.status;
 
 interface SkuRow { finished_sku_id: string; sku_name: string }
@@ -106,8 +108,8 @@ export function PenjadwalanApi({ role }: { role: string }) {
         templateName="template-po.csv"
         importPath="/pos/import"
         role={role}
-        canImport={write}
-        gateNote="Import PO hanya untuk Planner dan Superadmin, sesuai permission plan.decide di server. Role lain cukup membaca daftar PO di atas."
+        canImport={canImportPo(role)}
+        gateNote="Import PO untuk Planner, Manager, dan Supervisor lewat permission plan.decide atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca daftar PO di atas."
         invalidate={[POS, LATEST, "/schedules", "/dashboard/executive"]}
         rowKey={r => r.po_id}
         columns={[
