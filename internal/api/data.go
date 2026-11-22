@@ -16,9 +16,10 @@ type SeedData struct {
 	Limits   map[string]any
 	Golden   map[string]any
 	// SkenarioNov adalah skenario demo 1 Nov 2026 dari data historis
-	// Greenfields (snapshot stok tangki Opening Inventory). Ia berdiri di
-	// samping Scenario lama (14 Okt 2026), tidak menggantikannya. Bentuk
-	// bertipe dan aksesnya ada di scenario_nov.go.
+	// Greenfields (snapshot stok tangki Opening Inventory). Sejak migrasi
+	// skenario aktif, dataset November adalah basis operasional Backend;
+	// Scenario lama (14 Okt 2026) tetap termuat sebagai berkas kasus.
+	// Bentuk bertipe dan aksesnya ada di scenario_nov.go.
 	SkenarioNov map[string]any
 	// NeracaHarian adalah agregat neraca volume harian Greenfields
 	// (Langkah 4 pemetaan): satu record per hari produksi Mei s.d. Okt
@@ -32,6 +33,21 @@ type SeedData struct {
 	TraceHistoris map[string]any
 	mu            sync.RWMutex
 }
+
+// skenarioAktif adalah penanda skenario operasional yang sedang aktif.
+// Keputusan Aditya 22 Nov 2026 (dokumen Rencana Migrasi Skenario Aktif
+// Greenfields): dataset November 2026 berlabel historis adalah skenario
+// aktif utama. Skenario lama 14 Okt 2026 tetap termuat utuh sebagai
+// berkas kasus (sumber trace, graph, dan fakta chat FG-1013-07) dan
+// tidak lagi menjadi basis operasional. Mengembalikan nilai ini ke
+// "oktober" adalah jalur rollback migrasi: basis seed lama, tangki
+// scheduler dari ops.json, dan tampilan operasional lama kembali
+// berlaku tanpa perubahan data apa pun.
+const skenarioAktif = "november"
+
+// skenarioNovemberAktif melaporkan apakah dataset November adalah
+// skenario operasional aktif saat ini.
+func skenarioNovemberAktif() bool { return skenarioAktif == "november" }
 
 func loadJSON(filename string) (map[string]any, error) {
 	raw, err := seed.Files.ReadFile(filename)

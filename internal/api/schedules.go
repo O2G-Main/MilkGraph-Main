@@ -25,6 +25,18 @@ import (
 // sebagai satu dokumen, perubahan lewat s.change, dan isi awal diturunkan
 // dari seed supaya demo tidak berubah sebelum ada input baru.
 
+// basisSeedPOs adalah basis daftar PO sebelum state terisi. Pada
+// skenario aktif November basisnya kosong (keputusan D5): daftar aktif
+// murni hasil impor CSV berlabel historis, dan PO kasus coaching
+// PO-2026-1101 tidak lagi menjadi isi bawaan. Pada mode rollback
+// (skenario oktober) basisnya adalah seedPOs seperti sebelum migrasi.
+func (s *Server) basisSeedPOs() []ProductionOrder {
+	if skenarioNovemberAktif() {
+		return []ProductionOrder{}
+	}
+	return s.seedPOs()
+}
+
 // seedPOs adalah PO demo dari kasus coaching Bootcamp 3: satu batch Susu
 // Cikelat dipecah dua run filling, 250 ml lalu 1000 ml. SKU coaching
 // "UHT-CKL-250"/"UHT-CKL-1000" tidak ada di master data repo; padanan
@@ -52,13 +64,13 @@ func (s *Server) productionOrders(ctx context.Context) ([]ProductionOrder, error
 		return nil, e
 	}
 	if len(list) == 0 {
-		list = s.seedPOs()
+		list = s.basisSeedPOs()
 	}
 	return list, nil
 }
 
 func basisPOs(s *Server, raw json.RawMessage) ([]ProductionOrder, error) {
-	list := s.seedPOs()
+	list := s.basisSeedPOs()
 	if len(raw) > 0 {
 		if e := json.Unmarshal(raw, &list); e != nil {
 			return nil, e
@@ -250,6 +262,19 @@ func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]Inf
 		return ParamsJadwal{}, nil, e
 	}
 	params.HoldingLimitH = float64(l.HoldingMin) / 60
+	if skenarioNovemberAktif() {
+		// Tangki scheduler pada skenario aktif November berasal dari
+		// snapshot Opening Inventory 1 Nov 2026 (AT-01 s.d. AT-05,
+		// kapasitas dan batas holding resmi per tangki). Kelimanya
+		// kosong pada 06.00, jadi stok awal scheduler memang 0 L dan
+		// seluruh pasokan datang dari kedatangan dalam jendela.
+		sk, e := s.skenarioNov()
+		if e != nil {
+			return ParamsJadwal{}, nil, e
+		}
+		params.Tanks = sk.TangkiScheduler()
+		return params, info, nil
+	}
 	for _, raw := range arr(s.seeds.Ops["asepticTanks"]) {
 		t := obj(raw)
 		id := str(t["id"])
@@ -323,7 +348,7 @@ func (s *Server) generateSchedule(ctx context.Context, triggeredBy string) (Sche
 	if e != nil {
 		return Schedule{}, e
 	}
-	windowEnd := waktuDemo.Add(3 * 24 * time.Hour)
+	windowEnd := waktuDemo.Add(jendelaJadwal)
 	var susuSiap *time.Time
 	for _, a := range arrivals {
 		if a.Status == "Dibatalkan" {

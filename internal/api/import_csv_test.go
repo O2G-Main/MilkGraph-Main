@@ -61,11 +61,12 @@ func TestImportPOPreviewTanpaDB(t *testing.T) {
 	if obj(rows[1])["priority"] != 1.0 {
 		t.Errorf("priority kosong harus menjadi 1: %v", rows[1])
 	}
-	// Preview tidak menyimpan: GET /pos tetap hanya PO seed.
+	// Preview tidak menyimpan: GET /pos tetap kosong (basis skenario
+	// November memang kosong sebelum impor).
 	w = durableRequest(h, "GET", "/pos", "planner", "")
 	var pos []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 1 {
-		t.Fatalf("setelah preview, GET /pos harus tetap 1 PO seed: %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 0 {
+		t.Fatalf("setelah preview, GET /pos harus tetap kosong: %s", w.Body.String())
 	}
 
 	// Commit tanpa DB ditolak 503 seperti jalur tulis lain.
@@ -83,8 +84,10 @@ func TestImportPOPreviewTanpaDB(t *testing.T) {
 
 func TestImportPOValidasiBaris(t *testing.T) {
 	h := (&Server{Mode: "demo"}).Handler()
+	// Duplikat terhadap data sistem diuji pada jalur DB
+	// (TestImportPODenganDB, commit ulang); tanpa DB basisnya kosong,
+	// jadi di sini yang diuji validasi barisnya.
 	csvCampur := "po_id,priority,due_datetime,sku_id,qty_liter\n" +
-		"PO-2026-1101,1,2026-10-20T08:00:00+07:00,UHT-CH-250-LOCAL,1000\n" + // duplikat sistem (seed)
 		"PO-IMP-9,1,2026-10-20T08:00:00+07:00,SKU-NGIBUL,1000\n" + // SKU asing
 		"PO-IMP-9,1,2026-10-20T08:00:00+07:00,UHT-CH-250-LOCAL,-5\n" + // qty negatif
 		"PO-IMP-9,1,2026-10-20T08:00:00+07:00,UHT-CH-250-LOCAL,1500\n" // satu-satunya valid
@@ -93,18 +96,18 @@ func TestImportPOValidasiBaris(t *testing.T) {
 		t.Fatalf("preview campuran = %d: %s", w.Code, w.Body.String())
 	}
 	rep := decodeMap(t, w)
-	if rep["valid"] != 1.0 || rep["gagal"] != 3.0 {
-		t.Fatalf("campuran harus 1 valid dan 3 gagal: %v", rep)
+	if rep["valid"] != 1.0 || rep["gagal"] != 2.0 {
+		t.Fatalf("campuran harus 1 valid dan 2 gagal: %v", rep)
 	}
 	errs := arr(rep["errors"])
-	if len(errs) != 3 || obj(errs[0])["baris"] != 2.0 || obj(errs[1])["baris"] != 3.0 || obj(errs[2])["baris"] != 4.0 {
+	if len(errs) != 2 || obj(errs[0])["baris"] != 2.0 || obj(errs[1])["baris"] != 3.0 {
 		t.Errorf("nomor baris kesalahan salah: %v", rep["errors"])
 	}
-	if !strings.Contains(str(obj(errs[0])["pesan"]), "sudah ada di sistem") {
-		t.Errorf("baris 2 harus gagal karena duplikat sistem: %v", errs[0])
+	if !strings.Contains(str(obj(errs[0])["pesan"]), "SKU tidak dikenal") {
+		t.Errorf("baris 2 harus gagal karena SKU asing: %v", errs[0])
 	}
-	if !strings.Contains(str(obj(errs[1])["pesan"]), "SKU tidak dikenal") {
-		t.Errorf("baris 3 harus gagal karena SKU asing: %v", errs[1])
+	if !strings.Contains(str(obj(errs[1])["pesan"]), "qty_liter harus angka") {
+		t.Errorf("baris 3 harus gagal karena qty negatif: %v", errs[1])
 	}
 
 	// Header salah total ditolak 422.
@@ -140,8 +143,8 @@ func TestImportPODenganDB(t *testing.T) {
 	}
 	w = durableRequest(h, "GET", "/pos", "planner", "")
 	var pos []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 3 {
-		t.Fatalf("setelah commit, GET /pos harus 3 PO (seed + 2 impor): %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 2 {
+		t.Fatalf("setelah commit, GET /pos harus 2 PO impor: %s", w.Body.String())
 	}
 	for _, po := range pos {
 		if po["po_id"] == "PO-IMP-1" && len(arr(po["lines"])) != 1 {
@@ -172,18 +175,19 @@ func TestImportRTPreviewTanpaDB(t *testing.T) {
 	}
 	rows := arr(rep["rows"])
 	pertama := obj(rows[0])
-	// Jam "HH:MM" diterima dan dinormalisasi ke tanggal demo; telat 10 menit.
-	if pertama["depart_at"] != "2026-10-14T05:30:00+07:00" || pertama["target_arrival"] != "2026-10-14T07:00:00+07:00" || pertama["late_minutes"] != 10.0 {
+	// Jam "HH:MM" diterima dan dinormalisasi ke tanggal jangkar
+	// skenario aktif; telat 10 menit.
+	if pertama["depart_at"] != "2026-11-01T05:30:00+07:00" || pertama["target_arrival"] != "2026-11-01T07:00:00+07:00" || pertama["late_minutes"] != 10.0 {
 		t.Errorf("baris jam saja tidak dinormalisasi dengan benar: %v", pertama)
 	}
 	if pertama["id"] != "ARR-RT-41" || pertama["farm_id"] != "FARM-TUTUR" {
 		t.Errorf("identitas baris pertama salah: %v", pertama)
 	}
-	// Preview tidak menyimpan.
+	// Preview tidak menyimpan; basis November memang kosong.
 	w = durableRequest(h, "GET", "/supply/rt-arrivals", "planner", "")
 	var arrivals []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 8 {
-		t.Fatalf("setelah preview, kedatangan harus tetap 8 seed: %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 0 {
+		t.Fatalf("setelah preview, kedatangan harus tetap kosong: %s", w.Body.String())
 	}
 	// Planner tanpa rt.manage? planner punya rt.manage; qa tidak.
 	w = importRequest(h, "/supply/rt-arrivals/import?commit=false", "qa", csvRTValid)
@@ -195,9 +199,9 @@ func TestImportRTPreviewTanpaDB(t *testing.T) {
 func TestImportRTValidasiBaris(t *testing.T) {
 	h := (&Server{Mode: "demo"}).Handler()
 	csvCampur := "rt_id,farm_name,volume_l,depart_at,target_arrival,estimated_arrival,actual_arrival,status\n" +
-		"RT-26,Farm Tutur,9000,05:30,07:00,07:10,,\n" + // RT-26 sudah ada di seed
-		"RT-43,Farm Tutur,9000,05:30,07:00,07:10,,Terbang\n" + // status tidak valid
-		"RT-43,Farm Tutur,9000,05:30,07:00,07:10,,\n" // sah (yang gagal tidak dihitung duplikat)
+		"RT-43,Farm Tutur,9000,05:30,07:00,07:10,,\n" + // sah
+		"RT-43,Farm Tutur,9000,05:30,07:00,07:10,,\n" + // duplikat di file yang sama
+		"RT-44,Farm Tutur,9000,05:30,07:00,07:10,,Terbang\n" // status tidak valid
 	w := importRequest(h, "/supply/rt-arrivals/import?commit=false", "planner", csvCampur)
 	if w.Code != 200 {
 		t.Fatalf("preview RT campuran = %d: %s", w.Code, w.Body.String())
@@ -207,11 +211,11 @@ func TestImportRTValidasiBaris(t *testing.T) {
 		t.Fatalf("campuran RT harus 1 valid dan 2 gagal: %v", rep)
 	}
 	errs := arr(rep["errors"])
-	if !strings.Contains(str(obj(errs[0])["pesan"]), "sudah ada di sistem") {
-		t.Errorf("baris 2 harus gagal duplikat sistem: %v", errs[0])
+	if !strings.Contains(str(obj(errs[0])["pesan"]), "duplikat di file") {
+		t.Errorf("baris 3 harus gagal duplikat di file: %v", errs[0])
 	}
 	if !strings.Contains(str(obj(errs[1])["pesan"]), "Status kedatangan tidak valid") {
-		t.Errorf("baris 3 harus gagal status: %v", errs[1])
+		t.Errorf("baris 4 harus gagal status: %v", errs[1])
 	}
 }
 
@@ -232,8 +236,8 @@ func TestImportRTDenganDB(t *testing.T) {
 	}
 	w = durableRequest(h, "GET", "/supply/rt-arrivals", "planner", "")
 	var arrivals []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 10 {
-		t.Fatalf("setelah commit, kedatangan harus 10 (8 seed + 2 impor): %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 2 {
+		t.Fatalf("setelah commit, kedatangan harus 2 impor: %s", w.Body.String())
 	}
 	for _, a := range arrivals {
 		if a["rt_id"] == "RT-41" && a["late_minutes"] != 10.0 {

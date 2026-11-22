@@ -176,7 +176,8 @@ func utilisasiFM(sch Schedule, triggers []ScheduleTrigger) []UtilisasiFM {
 	return out
 }
 
-// jadwalHarian merangkum jadwal terbaru per tanggal jendela (3 hari).
+// jadwalHarian merangkum jadwal terbaru per tanggal jendela
+// (panjang jendela mengikuti jendela jadwal, 8 hari sejak migrasi).
 func jadwalHarian(sch Schedule, pos []ProductionOrder) *JadwalHarian {
 	out := &JadwalHarian{
 		ScheduleID: sch.ScheduleID,
@@ -207,7 +208,11 @@ func jadwalHarian(sch Schedule, pos []ProductionOrder) *JadwalHarian {
 		}
 		terjadwalPerTanggal[m.Format("2006-01-02")] += r.QtyLiter
 	}
-	for i := 0; i < 3; i++ {
+	hari := 3
+	if selesai, e := parseWaktu(sch.Window.End); e == nil && selesai.After(mulai) {
+		hari = int(selesai.Sub(mulai).Hours() / 24)
+	}
+	for i := 0; i < hari; i++ {
 		tanggal := mulai.AddDate(0, 0, i).Format("2006-01-02")
 		out.Targets = append(out.Targets, TargetHarian{
 			Date:           tanggal,

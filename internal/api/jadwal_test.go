@@ -153,24 +153,25 @@ func TestSchedulerDowntimeMenggeserRun(t *testing.T) {
 func TestSchedulerIDVersi(t *testing.T) {
 	in := inputUjiJadwal(nil)
 	sch := bangunJadwal(in)
-	if sch.ScheduleID != "SCH-20261014-v1" {
-		t.Errorf("schedule_id = %q, mau SCH-20261014-v1", sch.ScheduleID)
+	mauID := "SCH-" + waktuDemo.Format("20060102") + "-v1"
+	if sch.ScheduleID != mauID {
+		t.Errorf("schedule_id = %q, mau %s", sch.ScheduleID, mauID)
 	}
 	in.Version = 2
 	sch = bangunJadwal(in)
-	if sch.ScheduleID != "SCH-20261014-v2" || sch.Version != 2 {
+	if sch.ScheduleID != "SCH-"+waktuDemo.Format("20060102")+"-v2" || sch.Version != 2 {
 		t.Errorf("versi 2 salah: %q v%d", sch.ScheduleID, sch.Version)
 	}
-	if sch.Window.End != formatWaktu(waktuDemo.Add(3*24*time.Hour)) {
-		t.Errorf("akhir jendela harus start+3 hari: %s", sch.Window.End)
+	if sch.Window.End != formatWaktu(waktuDemo.Add(jendelaJadwal)) {
+		t.Errorf("akhir jendela harus start+8 hari: %s", sch.Window.End)
 	}
 }
 
 func TestSchedulerFulfilmentLate(t *testing.T) {
 	in := inputUjiJadwal([]ProductionOrder{{
 		POID: "PO-1", Priority: 1,
-		Lines:       []POLine{{SKU: "SKU-250", QtyLiter: 12000}}, // 3 jam, selesai 17.42
-		DueDatetime: "2026-10-14T15:42:00+07:00",                 // due 1 jam setelah jendela mulai
+		Lines:       []POLine{{SKU: "SKU-250", QtyLiter: 12000}}, // 3 jam, selesai 09.00
+		DueDatetime: "2026-11-01T07:00:00+07:00",                 // due 1 jam setelah jendela mulai
 	}})
 	sch := bangunJadwal(in)
 	if len(sch.Fulfilment) != 1 {
@@ -190,13 +191,13 @@ func TestSchedulerFulfilledDanOnTrack(t *testing.T) {
 	in := inputUjiJadwal([]ProductionOrder{{
 		POID: "PO-1", Priority: 1,
 		Lines:       []POLine{{SKU: "SKU-250", QtyLiter: 4000}},
-		DueDatetime: "2026-10-15T08:00:00+07:00",
+		DueDatetime: "2026-11-02T08:00:00+07:00",
 	}})
 	sch := bangunJadwal(in)
 	if sch.Fulfilment[0].Status != "FULFILLED" {
 		t.Errorf("status = %q, mau FULFILLED: %+v", sch.Fulfilment[0].Status, sch.Fulfilment[0])
 	}
-	// Due di luar jendela 3 hari: ON_TRACK.
+	// Due di luar jendela 8 hari: ON_TRACK.
 	in = inputUjiJadwal([]ProductionOrder{{
 		POID: "PO-1", Priority: 1,
 		Lines:       []POLine{{SKU: "SKU-250", QtyLiter: 4000}},
@@ -298,10 +299,19 @@ func TestParamsJadwalDariMasterNyata(t *testing.T) {
 			t.Errorf("tangki %s tercakup data harus memakai batas per tangki 8 jam, dapat %v", tk.ID, tk.MaxHoldingHours)
 		}
 	}
-	stok := 0.0
-	for _, tk := range params.Tanks {
-		stok += tk.LevelL
+	// Tangki scheduler kini tangki aseptik snapshot November: lima
+	// tangki AT-01 s.d. AT-05, semuanya kosong pada snapshot 06.00.
+	// Stok scheduler karena itu datang dari kedatangan dalam jendela;
+	// di sini dicerminkan sebagai StokTersediaL sebesar kebutuhan PO.
+	if len(params.Tanks) != 5 {
+		t.Fatalf("tangki scheduler harus 5 tangki November: %+v", params.Tanks)
 	}
+	for _, tk := range params.Tanks {
+		if tk.LevelL != 0 {
+			t.Errorf("tangki %s harus kosong pada snapshot 06.00, dapat %v", tk.ID, tk.LevelL)
+		}
+	}
+	stok := 20000.0
 	sch := bangunJadwal(InputJadwal{
 		POs: s.seedPOs(), Params: params, SKUInfo: info,
 		WindowStart: waktuDemo, Version: 1, TriggeredBy: "manual", StokTersediaL: stok,
@@ -506,17 +516,15 @@ func TestJadwalButuhDB(t *testing.T) {
 	if w.Code != 404 {
 		t.Fatalf("GET /schedules/latest tanpa jadwal harus 404, dapat %d: %s", w.Code, w.Body.String())
 	}
-	// GET /pos tanpa DB tetap melayani seed demo.
+	// GET /pos tanpa DB melayani basis skenario aktif: kosong pada
+	// skenario November sebelum impor (keputusan D5).
 	w = durableRequest(h, "GET", "/pos", "planner", "")
 	if w.Code != 200 {
 		t.Fatalf("GET /pos tanpa DB harus 200, dapat %d: %s", w.Code, w.Body.String())
 	}
 	var pos []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 1 {
-		t.Fatalf("GET /pos awal harus berisi 1 PO seed: %s", w.Body.String())
-	}
-	if pos[0]["po_id"] != "PO-2026-1101" || pos[0]["label_data"] != "simulasi" {
-		t.Errorf("PO seed tidak sesuai: %v", pos[0])
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 0 {
+		t.Fatalf("GET /pos awal harus kosong pada skenario November: %s", w.Body.String())
 	}
 }
 
@@ -527,37 +535,33 @@ func TestJadwalDenganDB(t *testing.T) {
 	}
 	h := (&Server{Mode: "demo", DB: db}).Handler()
 
-	// Seed PO demo tampil lebih dulu.
+	// Basis PO skenario November kosong sebelum ada yang dibuat.
 	w := durableRequest(h, "GET", "/pos", "planner", "")
 	var pos []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 1 {
-		t.Fatalf("GET /pos awal harus 1 PO seed: %s", w.Body.String())
-	}
-	lines := arr(pos[0]["lines"])
-	if len(lines) != 2 || str(obj(lines[0])["sku"]) != "UHT-CH-250-LOCAL" || str(obj(lines[1])["sku"]) != "UHT-CH-1000-LOCAL" {
-		t.Fatalf("baris PO seed harus SKU cokelat master: %v", pos[0]["lines"])
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 0 {
+		t.Fatalf("GET /pos awal harus kosong: %s", w.Body.String())
 	}
 
 	// Buat PO baru; SKU tak dikenal ditolak.
-	w = durableRequest(h, "POST", "/pos", "planner", `{"po_id":"PO-UJI-1","priority":2,"lines":[{"sku":"UHT-CH-250-LOCAL","qty_liter":4000}],"due_datetime":"2026-10-15T08:00:00+07:00"}`)
+	w = durableRequest(h, "POST", "/pos", "planner", `{"po_id":"PO-UJI-1","priority":2,"lines":[{"sku":"UHT-CH-250-LOCAL","qty_liter":4000}],"due_datetime":"2026-11-15T08:00:00+07:00"}`)
 	if w.Code != 200 {
 		t.Fatalf("POST /pos = %d: %s", w.Code, w.Body.String())
 	}
 	if got := obj(decodeMap(t, w)["result"]); got["po_id"] != "PO-UJI-1" {
 		t.Errorf("PO baru tidak sesuai: %v", got)
 	}
-	w = durableRequest(h, "POST", "/pos", "planner", `{"lines":[{"sku":"SKU-NGIBUL","qty_liter":100}],"due_datetime":"2026-10-15T08:00:00+07:00"}`)
+	w = durableRequest(h, "POST", "/pos", "planner", `{"lines":[{"sku":"SKU-NGIBUL","qty_liter":100}],"due_datetime":"2026-11-15T08:00:00+07:00"}`)
 	if w.Code != 422 {
 		t.Fatalf("POST /pos SKU asing harus 422, dapat %d: %s", w.Code, w.Body.String())
 	}
-	w = durableRequest(h, "POST", "/pos", "planner", `{"po_id":"PO-UJI-1","lines":[{"sku":"UHT-CH-250-LOCAL","qty_liter":100}],"due_datetime":"2026-10-15T08:00:00+07:00"}`)
+	w = durableRequest(h, "POST", "/pos", "planner", `{"po_id":"PO-UJI-1","lines":[{"sku":"UHT-CH-250-LOCAL","qty_liter":100}],"due_datetime":"2026-11-15T08:00:00+07:00"}`)
 	if w.Code != 422 {
 		t.Fatalf("POST /pos po_id duplikat harus 422, dapat %d: %s", w.Code, w.Body.String())
 	}
 	w = durableRequest(h, "GET", "/pos", "planner", "")
 	pos = nil
-	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 2 {
-		t.Fatalf("GET /pos akhir harus 2 PO: %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &pos); err != nil || len(pos) != 1 {
+		t.Fatalf("GET /pos akhir harus 1 PO: %s", w.Body.String())
 	}
 
 	// Generate versi 1.
@@ -566,21 +570,24 @@ func TestJadwalDenganDB(t *testing.T) {
 		t.Fatalf("POST /schedules/generate = %d: %s", w.Code, w.Body.String())
 	}
 	sch := obj(decodeMap(t, w)["result"])
-	if sch["schedule_id"] != "SCH-20261014-v1" || sch["version"] != 1.0 {
+	if sch["schedule_id"] != "SCH-20261101-v1" || sch["version"] != 1.0 {
 		t.Fatalf("jadwal versi 1 tidak sesuai: %v", sch["schedule_id"])
 	}
-	if len(arr(sch["runs"])) < 3 {
-		t.Errorf("jadwal harus memuat minimal 3 run (2 seed + 1 uji): %v", sch["runs"])
+	if len(arr(sch["runs"])) < 1 {
+		t.Errorf("jadwal harus memuat run untuk PO uji: %v", sch["runs"])
 	}
+	adaUji := false
 	for _, f := range arr(sch["fulfilment"]) {
-		fm := obj(f)
-		if fm["po_id"] == "PO-2026-1101" && fm["fulfilled_pct"] != 1.0 {
-			t.Errorf("fulfilment PO seed harus 100%%: %v", fm)
+		if obj(f)["po_id"] == "PO-UJI-1" {
+			adaUji = true
 		}
+	}
+	if !adaUji {
+		t.Errorf("fulfilment harus memuat PO-UJI-1: %v", sch["fulfilment"])
 	}
 
 	// Trigger downtime memicu regenerasi ke versi 2.
-	w = durableRequest(h, "POST", "/schedules/triggers", "planner", `{"reason_code":"DOWNTIME","ref_id":"FL-08","detail":"FL-08 berhenti","downtime":{"resource_id":"FL-08","start":"2026-10-14T14:42:00+07:00","end":"2026-10-14T17:42:00+07:00"}}`)
+	w = durableRequest(h, "POST", "/schedules/triggers", "planner", `{"reason_code":"DOWNTIME","ref_id":"FL-08","detail":"FL-08 berhenti","downtime":{"resource_id":"FL-08","start":"2026-11-01T06:00:00+07:00","end":"2026-11-01T09:00:00+07:00"}}`)
 	if w.Code != 200 {
 		t.Fatalf("POST /schedules/triggers = %d: %s", w.Code, w.Body.String())
 	}

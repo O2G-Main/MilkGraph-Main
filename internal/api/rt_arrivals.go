@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 	"sort"
@@ -27,9 +28,19 @@ var statusKedatanganValid = map[string]bool{
 	"Dibatalkan":       true,
 }
 
-// waktuDemo adalah jam skenario demo (Rabu 14 Okt 2026 14.42 WIB), konsisten
-// dengan stempel "14.42" yang dipakai seluruh Backend.
-var waktuDemo = time.Date(2026, 10, 14, 14, 42, 0, 0, time.FixedZone("WIB", 7*60*60))
+// waktuDemo adalah jam jangkar skenario aktif (Minggu 1 Nov 2026
+// 06.00 WIB), yaitu waktu snapshot Opening Inventory Greenfields yang
+// menjadi titik awal dataset November. Seluruh stempel waktu demo
+// Backend (jendela jadwal, waktu tiba bawaan, prediksi downtime,
+// stempel biaya) mengikuti konstanta ini.
+var waktuDemo = time.Date(2026, 11, 1, 6, 0, 0, 0, time.FixedZone("WIB", 7*60*60))
+
+// labelJangkar adalah label tanggal dan jam jangkar skenario aktif
+// untuk tampilan, misalnya "1 Nov 2026 06.00 WIB".
+func labelJangkar() string {
+	bulan := []string{"", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
+	return fmt.Sprintf("%d %s %d %s WIB", waktuDemo.Day(), bulan[int(waktuDemo.Month())], waktuDemo.Year(), waktuDemo.Format("15.04"))
+}
 
 type RTArrival struct {
 	ID               string  `json:"id"`
@@ -109,9 +120,23 @@ func farmID(nama string) string {
 	return "FARM-" + slug
 }
 
+// basisSeedRTArrivals adalah basis daftar kedatangan sebelum state
+// terisi. Pada skenario aktif November basisnya kosong: daftar aktif
+// murni hasil impor CSV berlabel historis, tanpa kedatangan turunan
+// skenario lama. Pada mode rollback (skenario oktober) basisnya adalah
+// seedRTArrivals seperti sebelum migrasi.
+func (s *Server) basisSeedRTArrivals() []RTArrival {
+	if skenarioNovemberAktif() {
+		return []RTArrival{}
+	}
+	return s.seedRTArrivals()
+}
+
 // seedRTArrivals menurunkan jadwal kedatangan awal dari data tanker skenario
-// yang sudah tampil di Penerimaan, supaya isi demo tidak berubah: kedelapan
-// tanker sudah berada di plant (status "Sudah Tiba") dengan waktu tiba
+// lama. Ia hanya menjadi basis pada mode rollback (skenario oktober);
+// pada skenario aktif November ia tidak dipakai sebagai basis daftar,
+// tetapi tetap dipertahankan sebagai turunan berkas kasus lama:
+// kedelapan tanker sudah berada di plant (status "Sudah Tiba") dengan waktu tiba
 // diturunkan dari tahap dan lama tunggunya. RT-26 dan RT-24, dua tanker
 // bertone crit/warn di skenario, tercatat terlambat dari targetnya.
 func (s *Server) seedRTArrivals() []RTArrival {
@@ -171,13 +196,13 @@ func (s *Server) rtArrivals(ctx context.Context) ([]RTArrival, error) {
 		return nil, e
 	}
 	if len(list) == 0 {
-		list = s.seedRTArrivals()
+		list = s.basisSeedRTArrivals()
 	}
 	return list, nil
 }
 
 func basisRTArrivals(s *Server, raw json.RawMessage) ([]RTArrival, error) {
-	list := s.seedRTArrivals()
+	list := s.basisSeedRTArrivals()
 	if len(raw) > 0 {
 		if e := json.Unmarshal(raw, &list); e != nil {
 			return nil, e

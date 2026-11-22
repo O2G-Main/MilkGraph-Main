@@ -160,6 +160,9 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		return map[string]any{"result": map[string]any{"ok": true}, "log": nil}, nil
 	})
 	register("GET /api/v1/notifications", "", func(r *http.Request) (any, error) {
+		if skenarioNovemberAktif() {
+			return s.notifikasiNovember(r.Context())
+		}
 		l, e := s.limits(r.Context())
 		if e != nil {
 			return nil, e
@@ -359,9 +362,9 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	register("GET /api/v1/supply/demand-sends", "", func(r *http.Request) (any, error) {
 		date := r.URL.Query().Get("date")
 		if date == "" {
-			date = "2026-10-14"
+			date = waktuDemo.Format("2006-01-02")
 		}
-		if date != "2026-10-14" {
+		if date != waktuDemo.Format("2006-01-02") {
 			return domain.DemandSendRecord{Sent: false}, nil
 		}
 		var rec domain.DemandSendRecord
@@ -376,8 +379,11 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 			return nil, e
 		}
 		a, _ := s.authenticate(r)
-		detail := s.demandDetail()
-		return s.change(r.Context(), "demand", "2026-10-14", func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {
+		detail, derr := s.detailDemandKirim(r.Context())
+		if derr != nil {
+			return nil, derr
+		}
+		return s.change(r.Context(), "demand", waktuDemo.Format("2006-01-02"), func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {
 			if len(raw) > 0 {
 				return store.Change{}, conflict()
 			}
@@ -476,6 +482,10 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	s.registerNeraca(register)
 	s.registerTraceHistoris(register)
 	s.registerRoles(register)
+	s.registerSkenarioNov(register)
+	register("GET /api/v1/supply/farms", "", func(r *http.Request) (any, error) {
+		return s.farmsDariState(r.Context())
+	})
 	register("GET /api/v1/data-sources", "", func(r *http.Request) (any, error) {
 		out := []any{}
 		for _, v := range arr(s.seeds.Ops["dataSources"]) {
@@ -512,7 +522,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		if e := decodeOptional(r, &struct{}{}); e != nil {
 			return nil, e
 		}
-		m["lastSync"] = "14.42"
+		m["lastSync"] = waktuDemo.Format("15.04")
 		m["simulation"] = true
 		m["status"] = "simulasi"
 		m["syncNote"] = "Snapshot simulasi; tidak ada koneksi langsung."
@@ -524,6 +534,11 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		view, e := s.siteView(r)
 		if e != nil {
 			return nil, e
+		}
+		if skenarioNovemberAktif() {
+			// Keputusan D2: status situs dibangun dari state nyata dan
+			// kedua view mengembalikan isi yang sama (tanpa before/after).
+			return s.siteStatusNovember(r.Context())
 		}
 		labs, err := s.labResults(r.Context())
 		if err != nil {
@@ -589,6 +604,9 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		view, e := s.siteView(r)
 		if e != nil {
 			return nil, e
+		}
+		if skenarioNovemberAktif() {
+			return s.bottlenecksNovember(r.Context())
 		}
 		l, err := s.limits(r.Context())
 		if err != nil {
@@ -724,6 +742,9 @@ func (s *Server) labResults(ctx context.Context) ([]map[string]any, error) {
 	return out, nil
 }
 func (s *Server) receiving(ctx context.Context) (map[string]any, error) {
+	if skenarioNovemberAktif() {
+		return s.receivingNovember(ctx)
+	}
 	l, e := s.limits(ctx)
 	if e != nil {
 		return nil, e

@@ -171,7 +171,7 @@ func (s *Server) Handler() http.Handler {
 		"/sources": seeds.Scenario["sources"], "/assets": seeds.Scenario["assets"],
 		"/assets/cip-log": seeds.Ops["cipLog"], "/assets/cip-policy": map[string]any{"tankIntervalHours": 24}, "/assets/mid-tanks": seeds.Ops["midTanks"],
 		"/production/fillers": seeds.Ops["fillers"], "/production/aseptic-tanks": seeds.Ops["asepticTanks"], "/production/unit-states": seeds.Ops["UNIT_STATE"], "/production/changeover-matrix": seeds.Ops["changeoverMatrix"],
-		"/supply/farms": seeds.Ops["farms"], "/supply/trend": seeds.Ops["trend"], "/quality/active-event": seeds.Scenario["qcEvent"],
+		"/supply/trend": seeds.Ops["trend"], "/quality/active-event": seeds.Scenario["qcEvent"],
 		"/site/layout": seeds.Site["layout"], "/holds/summary": map[string]any{"baseline": seeds.Scenario["holdBaseline"]},
 	}
 	for path, value := range static {
@@ -249,7 +249,11 @@ func (s *Server) Handler() http.Handler {
 		return map[string]any{"user": map[string]any{"name": a.Name, "role": label, "initials": initials, "shift": "Shift Siang"}, "role": a.Role, "permissions": permissions}, nil
 	})
 	register("GET /api/v1/shifts", "", func(r *http.Request) (any, error) {
-		return []any{map[string]any{"id": "2026-10-14-siang", "label": "Shift Siang", "window": "14.00 - 22.00", "date": "Rab 14 Okt", "selected": true, "available": true}}, nil
+		// Shift terpilih mengikuti tanggal jangkar skenario aktif.
+		hari := []string{"Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"}
+		bulan := []string{"", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
+		tanggal := fmt.Sprintf("%s %d %s", hari[int(waktuDemo.Weekday())], waktuDemo.Day(), bulan[int(waktuDemo.Month())])
+		return []any{map[string]any{"id": waktuDemo.Format("2006-01-02") + "-siang", "label": "Shift Siang", "window": "14.00 - 22.00", "date": tanggal, "selected": true, "available": true}}, nil
 	})
 	register("GET /api/v1/sources/{id}", "", func(r *http.Request) (any, error) {
 		v := item(seeds.Scenario["sources"], r.PathValue("id"))
@@ -274,7 +278,7 @@ func (s *Server) Handler() http.Handler {
 	})
 	register("GET /api/v1/limits/schema", "", func(r *http.Request) (any, error) { return s.limitSchema(), nil })
 	register("GET /api/v1/supply/demand-plan", "", func(r *http.Request) (any, error) {
-		return map[string]any{"lines": seeds.Ops["demandPlan"], "processLoss": seeds.Ops["PROCESS_LOSS"], "capacityTonPerDay": 320, "capacityL": 310680, "milkDensity": 1.03}, nil
+		return s.demandPlanData(r.Context())
 	})
 	register("GET /api/v1/assistant/templates", "", func(r *http.Request) (any, error) { return s.trace.Templates(), nil })
 	register("POST /api/v1/assistant/ask", "", func(r *http.Request) (any, error) {
@@ -360,6 +364,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, missing()) })
 	return s.middleware(mux)
 }
+
 // namaHariID dan namaBulanID adalah nama hari dan bulan Bahasa Indonesia
 // untuk format tanggal meta, mengikuti pola tanggal pada seed skenario
 // (misalnya "Rabu, 14 Oktober 2026").
@@ -378,10 +383,16 @@ func zonaAplikasi() *time.Location {
 }
 
 // labelDataTermuat mengumpulkan label data yang benar-benar termuat dari
-// seed: skenario utama berlabel "simulasi" (label bawaan data skenario),
-// sedangkan seed historis membawa label_data-nya sendiri di berkasnya.
+// seed. Sejak migrasi skenario aktif (keputusan D8), label utama adalah
+// label skenario aktif November, yaitu "historis"; label "simulasi"
+// tetap tercatat sebagai label berkas kasus FG-1013-07 yang termuat di
+// sampingnya. Pada mode rollback urutannya kembali seperti sebelum
+// migrasi: "simulasi" lebih dulu.
 func (s *Server) labelDataTermuat() []string {
 	labels := []string{"simulasi"}
+	if skenarioNovemberAktif() {
+		labels = []string{}
+	}
 	tambah := func(seed map[string]any) {
 		l, _ := seed["label_data"].(string)
 		if l == "" {
@@ -396,6 +407,10 @@ func (s *Server) labelDataTermuat() []string {
 	}
 	if s.seeds != nil {
 		tambah(s.seeds.SkenarioNov)
+		if skenarioNovemberAktif() {
+			// Label kasus menyusul label utama skenario aktif.
+			tambah(map[string]any{"label_data": "simulasi"})
+		}
 		tambah(s.seeds.NeracaHarian)
 		tambah(s.seeds.TraceHistoris)
 	}
@@ -425,7 +440,7 @@ func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	labels := s.labelDataTermuat()
 	dataMode := labels[0]
-	if len(labels) > 1 {
+	if len(labels) > 1 && !skenarioNovemberAktif() {
 		dataMode = "campuran"
 	}
 	writeJSON(w, 200, map[string]any{

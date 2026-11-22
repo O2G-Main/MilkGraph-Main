@@ -46,10 +46,13 @@ func TestMetaJujurDanDinamis(t *testing.T) {
 		ada[fmt.Sprint(l)] = true
 	}
 	if !ada["simulasi"] || !ada["historis"] || len(labels) != 2 {
-		t.Errorf("dataLabels harus [simulasi historis], dapat %v", labels)
+		t.Errorf("dataLabels harus [historis simulasi], dapat %v", labels)
 	}
-	if meta["dataMode"] != "campuran" {
-		t.Errorf("dataMode harus campuran, dapat %v", meta["dataMode"])
+	if len(labels) == 2 && labels[0] != "historis" {
+		t.Errorf("label utama harus historis (keputusan D8), dapat %v", labels)
+	}
+	if meta["dataMode"] != "historis" {
+		t.Errorf("dataMode harus historis, dapat %v", meta["dataMode"])
 	}
 
 	// Jam yang sah adalah jam server pada saat permintaan diproses,

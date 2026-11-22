@@ -302,12 +302,19 @@ type keadaanFM struct {
 //     (ref_id = PO, downtime pada FM run-nya, run tergeser downtime), atau
 //     peringatan yang sumber dayanya dipakai run-nya, atau stok global kurang.
 //   - FULFILLED bila lengkap, tepat waktu, tanpa risiko, dan due berada di
-//     dalam jendela 3 hari (selesai pada jendela ini).
+//     dalam jendela 8 hari (selesai pada jendela ini).
 //   - ON_TRACK untuk sisanya: lengkap dan tepat waktu, due masih di luar
 //     jendela sehingga belum jatuh tempo pada jendela ini.
+
+// jendelaJadwal adalah panjang jendela jadwal dari jam jangkar:
+// 8 hari (keputusan D1), supaya due gelombang pertama dataset November
+// (Minggu 8 Nov 23.59) masuk jendela 1 s.d. 8 Nov. PO gelombang kedua
+// (due 15 Nov) memang masih di luar jendela dan belum jatuh tempo.
+const jendelaJadwal = 8 * 24 * time.Hour
+
 func bangunJadwal(in InputJadwal) Schedule {
 	windowStart := in.WindowStart
-	windowEnd := windowStart.Add(3 * 24 * time.Hour)
+	windowEnd := windowStart.Add(jendelaJadwal)
 	sch := Schedule{
 		ScheduleID:  "SCH-" + windowStart.Format("20060102") + "-v" + itoa(in.Version),
 		Version:     in.Version,

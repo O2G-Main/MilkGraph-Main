@@ -193,11 +193,12 @@ func TestFondasiDinamisDenganDB(t *testing.T) {
 		t.Errorf("transfer terbaru harus di depan: %v", semua[0]["batch_id"])
 	}
 
-	// Kedatangan: seed 8 tanker tampil, buat baru, lalu update estimasi.
+	// Kedatangan: basis skenario November kosong, buat baru, lalu
+	// update estimasi.
 	w = durableRequest(h, "GET", "/supply/rt-arrivals", "planner", "")
 	var arrivals []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 8 {
-		t.Fatalf("GET rt-arrivals awal harus berisi 8 seed: %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 0 {
+		t.Fatalf("GET rt-arrivals awal harus kosong pada skenario November: %s", w.Body.String())
 	}
 	w = durableRequest(h, "POST", "/supply/rt-arrivals", "planner", `{"farm_name":"Farm Tutur","rt_id":"RT-99","volume_l":5000,"depart_at":"2026-10-14T13:00:00+07:00","target_arrival":"2026-10-14T15:00:00+07:00","estimated_arrival":"2026-10-14T15:10:00+07:00"}`)
 	if w.Code != 200 {
@@ -217,8 +218,8 @@ func TestFondasiDinamisDenganDB(t *testing.T) {
 	}
 	w = durableRequest(h, "GET", "/supply/rt-arrivals", "planner", "")
 	arrivals = nil
-	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 9 {
-		t.Fatalf("GET rt-arrivals akhir harus 9 baris: %s", w.Body.String())
+	if err := json.Unmarshal(w.Body.Bytes(), &arrivals); err != nil || len(arrivals) != 1 {
+		t.Fatalf("GET rt-arrivals akhir harus 1 baris: %s", w.Body.String())
 	}
 }
 
@@ -231,10 +232,10 @@ func TestParseWaktuKedatanganJamSaja(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseWaktuKedatangan(\"15:04\") error: %v", err)
 	}
-	if got := formatWaktu(t1); got != "2026-10-14T15:04:00+07:00" {
-		t.Errorf("jam saja harus jatuh pada tanggal demo, dapat %s", got)
+	if got := formatWaktu(t1); got != "2026-11-01T15:04:00+07:00" {
+		t.Errorf("jam saja harus jatuh pada tanggal jangkar skenario aktif, dapat %s", got)
 	}
-	if got := normalisasiWaktuKedatangan("09:30"); got != "2026-10-14T09:30:00+07:00" {
+	if got := normalisasiWaktuKedatangan("09:30"); got != "2026-11-01T09:30:00+07:00" {
 		t.Errorf("normalisasi jam saja = %s", got)
 	}
 	// Format lama lolos apa adanya, tidak ditulis ulang.
@@ -265,8 +266,8 @@ func TestRTArrivalsFormatJamSajaDenganDB(t *testing.T) {
 		t.Fatalf("POST rt-arrivals jam saja = %d: %s", w.Code, w.Body.String())
 	}
 	created := obj(decodeMap(t, w)["result"])
-	if created["depart_at"] != "2026-10-14T13:00:00+07:00" || created["target_arrival"] != "2026-10-14T15:00:00+07:00" || created["estimated_arrival"] != "2026-10-14T15:10:00+07:00" {
-		t.Errorf("waktu jam saja tidak tersimpan pada tanggal demo: %v", created)
+	if created["depart_at"] != "2026-11-01T13:00:00+07:00" || created["target_arrival"] != "2026-11-01T15:00:00+07:00" || created["estimated_arrival"] != "2026-11-01T15:10:00+07:00" {
+		t.Errorf("waktu jam saja tidak tersimpan pada tanggal jangkar: %v", created)
 	}
 	if created["late_minutes"] != 10.0 {
 		t.Errorf("late_minutes dari jam saja = %v, mau 10", created["late_minutes"])
@@ -276,7 +277,7 @@ func TestRTArrivalsFormatJamSajaDenganDB(t *testing.T) {
 		t.Fatalf("PUT rt-arrivals jam saja = %d: %s", w.Code, w.Body.String())
 	}
 	updated := obj(decodeMap(t, w)["result"])
-	if updated["estimated_arrival"] != "2026-10-14T15:40:00+07:00" || updated["late_minutes"] != 40.0 {
+	if updated["estimated_arrival"] != "2026-11-01T15:40:00+07:00" || updated["late_minutes"] != 40.0 {
 		t.Errorf("update jam saja tidak sesuai: %v", updated)
 	}
 }

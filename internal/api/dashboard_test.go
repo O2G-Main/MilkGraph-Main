@@ -107,16 +107,15 @@ func TestDashboardTanpaJadwal(t *testing.T) {
 	if got := arr(m["machine_utilization"]); len(got) != 0 {
 		t.Errorf("tanpa jadwal, utilisasi harus kosong: %v", got)
 	}
-	want := 0.0
-	for _, a := range srv.seedRTArrivals() {
-		want += a.VolumeL
-	}
+	// Skenario aktif November: dashboard membaca state kedatangan, dan
+	// tanpa state daftarnya memang kosong (basis seed lama bukan lagi
+	// isi aktif). seedRTArrivals tetap ada sebagai fixture berkas kasus.
 	susu := obj(m["milk_received_l"])
-	if susu["total"] != want {
-		t.Errorf("total susu = %v, mau %v dari seed kedatangan", susu["total"], want)
+	if susu["total"] != 0.0 {
+		t.Errorf("total susu tanpa state harus 0, dapat %v", susu["total"])
 	}
-	if len(arr(susu["by_farm"])) == 0 {
-		t.Errorf("by_farm tidak boleh kosong untuk seed: %v", susu)
+	if len(arr(susu["by_farm"])) != 0 {
+		t.Errorf("by_farm tanpa state harus kosong: %v", susu)
 	}
 }
 
@@ -127,7 +126,22 @@ func TestDashboardDenganDB(t *testing.T) {
 	}
 	h := (&Server{Mode: "demo", DB: db}).Handler()
 
-	w := durableRequest(h, "POST", "/schedules/generate", "planner", `{"triggered_by":"manual"}`)
+	// Skenario November tidak punya basis seed: PO dan kedatangan dibuat
+	// eksplisit lebih dulu, meniru isi impor historis (PO dua baris due
+	// di luar jendela, satu kedatangan besar sudah tiba).
+	w := durableRequest(h, "POST", "/pos", "planner", `{"po_id":"PO-UJI-DASH","priority":1,"lines":[{"sku":"UHT-CH-250-LOCAL","qty_liter":12000},{"sku":"UHT-CH-1000-LOCAL","qty_liter":8000}],"due_datetime":"2026-11-24T08:00:00+07:00"}`)
+	if w.Code != 200 {
+		t.Fatalf("POST /pos = %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "POST", "/supply/rt-arrivals", "planner", `{"farm_name":"Farm Tutur","rt_id":"RT-98","volume_l":25000,"depart_at":"2026-11-01T05:00:00+07:00","target_arrival":"2026-11-01T07:00:00+07:00","estimated_arrival":"2026-11-01T07:00:00+07:00"}`)
+	if w.Code != 200 {
+		t.Fatalf("POST rt-arrivals = %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "PUT", "/supply/rt-arrivals/ARR-RT-98", "planner", `{"status":"Sudah Tiba","actual_arrival":"2026-11-01T07:00:00+07:00"}`)
+	if w.Code != 200 {
+		t.Fatalf("PUT rt-arrivals = %d: %s", w.Code, w.Body.String())
+	}
+	w = durableRequest(h, "POST", "/schedules/generate", "planner", `{"triggered_by":"manual"}`)
 	if w.Code != 200 {
 		t.Fatalf("POST /schedules/generate = %d: %s", w.Code, w.Body.String())
 	}
@@ -137,17 +151,17 @@ func TestDashboardDenganDB(t *testing.T) {
 	}
 	m := decodeMap(t, w)
 	harian := obj(m["daily_schedule"])
-	if harian["schedule_id"] != "SCH-20261014-v1" || harian["runs_count"] != 2.0 {
+	if harian["schedule_id"] != "SCH-20261101-v1" || harian["runs_count"] != 2.0 {
 		t.Errorf("daily_schedule tidak mengikuti jadwal terbaru: %v", harian)
 	}
 	ringkasan := obj(m["po_summary"])
 	if len(arr(ringkasan["fulfilment"])) != 1 || ringkasan["on_track"] != 1.0 {
-		t.Errorf("po_summary harus 1 PO seed ON_TRACK: %v", ringkasan)
+		t.Errorf("po_summary harus 1 PO ON_TRACK: %v", ringkasan)
 	}
 	if len(arr(m["machine_utilization"])) == 0 {
 		t.Errorf("utilisasi tidak boleh kosong bila ada run: %v", m["machine_utilization"])
 	}
-	if got := obj(m["milk_received_l"])["total"]; got == 0.0 {
-		t.Errorf("total susu tidak boleh 0: %v", m["milk_received_l"])
+	if got := obj(m["milk_received_l"])["total"]; got != 25000.0 {
+		t.Errorf("total susu harus 25000 dari kedatangan uji: %v", m["milk_received_l"])
 	}
 }

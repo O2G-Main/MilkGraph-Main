@@ -3,12 +3,15 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sort"
 )
 
 // Skenario demo 1 November 2026 (Langkah 3 pemetaan Greenfields): keadaan
-// awal pabrik dari data historis mitra, berdiri di samping skenario lama
-// 14 Okt 2026 (scenario.json dan ops.json) tanpa mengubahnya. Sumbernya
+// awal pabrik dari data historis mitra. Sejak migrasi skenario aktif,
+// snapshot ini adalah basis operasional (tangki scheduler dan konteks
+// stok), sementara skenario lama 14 Okt 2026 (scenario.json dan
+// ops.json) dipertahankan utuh sebagai berkas kasus. Sumbernya
 // snapshot Opening Inventory pada file 02_Processing_Transactions.xlsx
 // paket "MVP-Greenfields-Historical-PlayIT!": stok 28 tangki pada
 // 1 Nov 2026 06.00 WIB. Seluruh keluaran skenario ini berlabel "historis".
@@ -70,6 +73,33 @@ func (s *Server) skenarioNov() (SkenarioNov, error) {
 		return SkenarioNov{}, fmt.Errorf("seed skenario 1 Nov tidak valid: %w", e)
 	}
 	return sk, nil
+}
+
+// registerSkenarioNov menyajikan snapshot skenario November lewat API.
+// Sebelum migrasi, seed ini hanya termuat tanpa endpoint (celah audit
+// butir 6); sekarang snapshot 28 tangki adalah konteks stok skenario
+// aktif dan kartu volume tangki FE membacanya dari sini. Keluaran
+// selalu bentuk bertipe SkenarioNov apa adanya, berlabel historis.
+func (s *Server) registerSkenarioNov(register func(string, string, endpoint)) {
+	register("GET /api/v1/scenario/november", "", func(r *http.Request) (any, error) {
+		sk, e := s.skenarioNov()
+		if e != nil {
+			return nil, e
+		}
+		return sk, nil
+	})
+	register("GET /api/v1/scenario/november/tanks", "", func(r *http.Request) (any, error) {
+		sk, e := s.skenarioNov()
+		if e != nil {
+			return nil, e
+		}
+		return map[string]any{
+			"label_data":    sk.LabelData,
+			"snapshot_time": sk.SnapshotTime,
+			"jangkar":       sk.Jangkar,
+			"tanks":         sk.Tanks,
+		}, nil
+	})
 }
 
 // TangkiScheduler mengekstrak tangki aseptik snapshot sebagai parameter
