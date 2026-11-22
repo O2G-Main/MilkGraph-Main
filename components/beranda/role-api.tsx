@@ -114,7 +114,10 @@ function PlannerApi({ attention }: { attention: ReactNode }) {
   const WARN_LABEL: Record<string, string> = { HOLDING_TIME: "Holding time", TANK_STOCK_SHORT: "Stok tangki kurang" };
   return <Layout kpis={kpis} attention={attention} label={labelOf(pos.data)}>
     <Panel title="Liter per PO" subtitle="Urut dari jatuh tempo terdekat." href="/penjadwalan" loading={pos.loading && !pos.data} error={pos.error}>
-      {poRows.length ? <Bullets label="Liter per PO" labelWidth={128} max={Math.max(...poRows.map(p => p.liter))} rows={poRows.map(p => ({ key: p.po_id, label: p.po_id, sub: `Jatuh tempo ${fmtWaktu(p.due_datetime)}`, value: p.liter, text: `${fmt(p.liter)} L`, color: p.priority === 1 ? C.ok : C.soft, href: "/penjadwalan" }))} /> : <Empty>Belum ada PO. Tambahkan atau import PO di Penjadwalan.</Empty>}
+      {poRows.length ? <>
+        <Bullets label="Liter per PO" labelWidth={128} max={Math.max(...poRows.map(p => p.liter))} rows={poRows.slice(0, 8).map(p => ({ key: p.po_id, label: p.po_id, sub: `Jatuh tempo ${fmtWaktu(p.due_datetime)}`, value: p.liter, text: `${fmt(p.liter)} L`, color: p.priority === 1 ? C.ok : C.soft, href: "/penjadwalan" }))} />
+        {poRows.length > 8 && <p className="small muted"><Link className="text-link" href="/penjadwalan">+{poRows.length - 8} PO lainnya</Link></p>}
+      </> : <Empty>Belum ada PO. Tambahkan atau import PO di Penjadwalan.</Empty>}
     </Panel>
     <Panel title="Fulfilment PO" subtitle="Status pemenuhan PO pada jadwal terbaru." href="/penjadwalan" loading={sch.loading && !sch.data && !noSchedule} error={noSchedule ? null : sch.error}>
       {schedule && ful.length ? <Donut segs={fulSegs} unit="PO" /> : <Empty>Belum ada jadwal tergenerate, jadi fulfilment PO belum tersedia.</Empty>}
