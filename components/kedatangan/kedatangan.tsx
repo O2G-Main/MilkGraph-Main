@@ -31,6 +31,7 @@ export function Kedatangan() {
   const holding = demo.limits.holdingMin;
   const res = useResource<BeArrival[]>(API_MODE ? PATH : null);
   const [editing, setEditing] = useState<{ item: ArrivalRow; isNew: boolean } | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   if (API_MODE && !res.data) {
     return <div className="page-enter">
@@ -42,6 +43,7 @@ export function Kedatangan() {
   const list: ArrivalRow[] = API_MODE
     ? (res.data ?? []).map(arrivalFromApi)
     : [...demo.receiving.arrivals].sort((a, b) => toMin(a.eta) - toMin(b.eta)).map(a => ({ ...a, target: a.target ?? a.eta, late: toMin(a.eta) - toMin(a.target ?? a.eta) }));
+  const visibleRows = showAll ? list : list.slice(0, 10);
   const active = list.filter(a => a.status === "perjalanan" || a.status === "loading");
   const onRoad = list.filter(a => a.status === "perjalanan");
   const lateRows = active.filter(a => a.late > 0);
@@ -72,7 +74,7 @@ export function Kedatangan() {
           <table className="schedule-table">
             <thead><tr><th>RT / Farm</th><th className="numeric">Volume</th><th>Berangkat</th><th>Target tiba</th><th>Estimasi tiba</th><th>Keterlambatan</th>{showAge && <th>Umur saat tiba</th>}<th>Status</th>{allowed && <th><span className="sr-only">Aksi</span></th>}</tr></thead>
             <tbody>
-              {list.map(a => {
+              {visibleRows.map(a => {
                 const age = arrivalAge(a), tone = a.status === "batal" ? "neutral" : ageTone(age, holding);
                 return (
                   <tr key={a.apiId ?? a.id}>
@@ -97,6 +99,9 @@ export function Kedatangan() {
             </tbody>
           </table>
         </div>
+        {list.length > 10 && (
+          <p className="small"><button type="button" className="text-link" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `Tampilkan semua ${list.length} kedatangan`}</button></p>
+        )}
       </Card>
       {API_MODE && (
         <ImportCsvCard<BeArrival>
