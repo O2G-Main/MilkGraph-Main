@@ -20,7 +20,12 @@ type SeedData struct {
 	// samping Scenario lama (14 Okt 2026), tidak menggantikannya. Bentuk
 	// bertipe dan aksesnya ada di scenario_nov.go.
 	SkenarioNov map[string]any
-	mu          sync.RWMutex
+	// NeracaHarian adalah agregat neraca volume harian Greenfields
+	// (Langkah 4 pemetaan): satu record per hari produksi Mei s.d. Okt
+	// 2026 hasil ETL luring dari file 01, 02, dan 03. Bentuk bertipe dan
+	// endpoint-nya ada di neraca.go. Berlabel "historis".
+	NeracaHarian map[string]any
+	mu           sync.RWMutex
 }
 
 func loadJSON(filename string) (map[string]any, error) {
@@ -64,14 +69,19 @@ func LoadAllSeeds() (*SeedData, error) {
 	if err != nil {
 		return nil, err
 	}
+	neracaHarian, err := loadJSON("neraca-harian.json")
+	if err != nil {
+		return nil, err
+	}
 
 	return &SeedData{
-		Scenario:    scenario,
-		Ops:         ops,
-		Site:        site,
-		Roles:       roles,
-		Limits:      limits,
-		Golden:      golden,
-		SkenarioNov: skenarioNov,
+		Scenario:     scenario,
+		Ops:          ops,
+		Site:         site,
+		Roles:        roles,
+		Limits:       limits,
+		Golden:       golden,
+		SkenarioNov:  skenarioNov,
+		NeracaHarian: neracaHarian,
 	}, nil
 }
