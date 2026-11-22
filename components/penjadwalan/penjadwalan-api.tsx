@@ -254,7 +254,7 @@ function PoForm({ skus, role, onClose }: { skus: SkuRow[]; role: string; onClose
           </div>
         ))}
         <button type="button" className="button secondary" onClick={() => setLines(ls => [...ls, { sku: skus[0]?.finished_sku_id ?? "", qty: "" }])}>Tambah baris SKU</button>
-        <p className="small muted">SKU harus ada di master finished SKU server, kalau tidak PO ditolak 422. PO tersimpan dengan label data simulasi.</p>
+        <p className="small muted">SKU harus ada di master finished SKU server, kalau tidak PO ditolak 422. PO dari form ini tersimpan dengan label data simulasi (bawaan server); PO hasil impor CSV mengikuti label data yang dipilih pada kartu impor.</p>
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button type="button" className="button secondary" onClick={onClose}>Batal</button>

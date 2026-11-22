@@ -52,11 +52,12 @@ type SupplyTrend = {
   capacity: number;
 };
 
+/** Respons GET /supply/demand-sends: satu record status kirim, bukan daftar (lihat docs/04-API-CONTRACT.md). */
 type DemandSend = {
   sent: boolean;
-  at: string;
-  by: string;
-  detail: string;
+  at?: string;
+  by?: string;
+  detail?: string;
 };
 
 export function Pasokan() {
@@ -67,7 +68,7 @@ export function Pasokan() {
   const farmsRes = useResource<Farm[]>(API_MODE ? "/supply/farms" : null);
   const demandPlanRes = useResource<DemandPlanData>(API_MODE ? "/supply/demand-plan" : null);
   const trendRes = useResource<SupplyTrend>(API_MODE ? "/supply/trend" : null);
-  const demandSendsRes = useResource<DemandSend[]>(API_MODE ? "/supply/demand-sends" : null);
+  const demandSendsRes = useResource<DemandSend>(API_MODE ? "/supply/demand-sends" : null);
   const fillersRes = useResource<Filler[]>(API_MODE ? "/production/fillers" : null);
 
   if (API_MODE) {
@@ -104,8 +105,8 @@ export function Pasokan() {
   const running = fillersList.filter(f => f.state === "jalan").length;
 
   const allowed = can(demo.role, "demand.send");
-  const sent = API_MODE
-    ? demandSendsRes.data?.find(s => s.sent) ?? demo.log.find(e => e.title === "Kebutuhan susu dikirim ke farm")
+  const sent = API_MODE && demandSendsRes.data?.sent
+    ? demandSendsRes.data
     : demo.log.find(e => e.title === "Kebutuhan susu dikirim ke farm");
   const gap = supplyTotal - needTotal;
 
@@ -126,7 +127,7 @@ export function Pasokan() {
     <div className="page-enter">
       <PageHeading title="Pasokan & Permintaan" subtitle="Rencana kirim farm, kebutuhan susu dari rencana produksi, dan kapasitas pabrik dalam satu tempat untuk PPIC.">
         {allowed && <button className="button primary" disabled={!!sent || sending} onClick={handleSend}>
-          <Icon icon={Send} size={16} />{sent ? `Terkirim ${sent.at}` : "Kirim kebutuhan ke farm"}
+          <Icon icon={Send} size={16} />{sent ? (sent.at ? `Terkirim ${sent.at}` : "Terkirim") : "Kirim kebutuhan ke farm"}
         </button>}
       </PageHeading>
       {actionError && (

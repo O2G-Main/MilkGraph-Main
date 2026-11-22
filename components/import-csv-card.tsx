@@ -6,6 +6,10 @@ import { apiUpload } from "@/lib/api/client";
 import { invalidateResources } from "@/lib/api/resource";
 import type { BeImportReport } from "@/lib/api/contract";
 import { Card, Icon, SectionTitle } from "@/components/ui";
+import { Select } from "@/components/ui/fields";
+
+/** Label data yang didukung endpoint import BE: simulasi (bawaan) atau historis. */
+export type ImportDataLabel = "simulasi" | "historis";
 
 export interface ImportColumn<Row> { header: string; numeric?: boolean; cell: (row: Row) => ReactNode }
 
@@ -34,6 +38,7 @@ interface Props<Row> {
 export function ImportCsvCard<Row>(props: Props<Row>) {
   const { title, subtitle, canImport, gateNote } = props;
   const [file, setFile] = useState<File | null>(null);
+  const [labelData, setLabelData] = useState<ImportDataLabel>("simulasi");
   const [laporan, setLaporan] = useState<BeImportReport<Row> | null>(null);
   const [busy, setBusy] = useState<"preview" | "commit" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +68,7 @@ export function ImportCsvCard<Row>(props: Props<Row>) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const rep = await apiUpload<BeImportReport<Row>>(`${props.importPath}?commit=${commit}`, form, props.role);
+      const rep = await apiUpload<BeImportReport<Row>>(`${props.importPath}?commit=${commit}&label_data=${labelData}`, form, props.role);
       setLaporan(rep);
       if (commit) invalidateResources(props.invalidate);
     } catch (e) {
@@ -80,6 +85,9 @@ export function ImportCsvCard<Row>(props: Props<Row>) {
       <SectionTitle title={title} subtitle={subtitle}
         action={<button type="button" className="button secondary" onClick={unduhTemplate}><Icon icon={Download} size={15} />Unduh template CSV</button>} />
       <div className="schedule-form">
+        <label><span className="field-label">Label data</span>
+          <Select label="Label data impor" value={labelData} onChange={v => { setLabelData(v); setLaporan(null); }} options={[{ value: "simulasi", label: "Simulasi" }, { value: "historis", label: "Historis" }]} />
+        </label>
         <label><span className="field-label">File CSV</span>
           <input type="file" accept=".csv,text/csv" onChange={e => { setFile(e.target.files?.[0] ?? null); setLaporan(null); setError(null); }} />
         </label>
@@ -97,6 +105,7 @@ export function ImportCsvCard<Row>(props: Props<Row>) {
             <p className="small" role="status">
               Total {laporan.total_baris} baris, {laporan.valid} valid, {laporan.gagal} gagal
               {laporan.commit ? `, ${laporan.dibuat} data dibuat.` : ". Pratinjau belum menyimpan apa pun."}
+              {laporan.label_data ? ` Label data: ${laporan.label_data}.` : ""}
             </p>
             {!!laporan.rows.length && (
               <div className="table-wrap"><table className="schedule-table">

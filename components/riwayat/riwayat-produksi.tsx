@@ -10,7 +10,11 @@ import { assetsOfStep, flowsFor } from "@/lib/volume";
 import { FlowLine } from "@/components/transfer/transfer";
 import { Equipment } from "@/components/trace/equipment";
 import { number } from "@/lib/format";
-import { OUTPUTS } from "@/mock/outputs";
+import { OUTPUTS, type Output } from "@/mock/outputs";
+import { API_MODE } from "@/lib/api/client";
+import { useResource } from "@/lib/api/resource";
+import type { BeTraceBackward, BeTraceHistory } from "@/lib/api/trace-historis";
+import { HistorisDetail } from "./historis-detail";
 import { EMPTY, OutputPicker, matchOutputs, type Filters } from "./output-picker";
 import { ProductionPath, kindOf } from "./production-path";
 import { buildSteps, durationText } from "./timeline";
@@ -23,14 +27,28 @@ const dateText = (iso: string) => { const [y, m, d] = iso.split("-").map(Number)
 /** `lot` dari ?lot=..., misalnya tautan dari QC Barang Jadi. */
 export function RiwayatProduksi({ lot }: { lot?: string }) {
   const [filters, setFilters] = useState<Filters>(EMPTY);
-  const [picked, setPicked] = useState(lot && OUTPUTS.some(o => o.id === lot) ? lot : "FG-1013-07");
+  const [picked, setPicked] = useState(lot ?? "FG-1013-07");
   const [active, setActive] = useState<number | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const demo = useDemo();
   const allFlows = useFlows(demo).flows;
 
-  const list = matchOutputs(OUTPUTS, filters);
+  // Group historis dari GET /trace/history berdampingan dengan lot skenario
+  // lama di pemilih output yang sama. Entri pemilihnya hanya membawa
+  // identitas group; detailnya dirender HistorisDetail dari respons BE.
+  const historyRes = useResource<BeTraceHistory>(API_MODE ? "/trace/history" : null);
+  const groups = historyRes.data?.groups ?? [];
+  const histOutputs: Output[] = groups.map(g => ({
+    id: g.group_id, product: g.product_name, line: g.at_tank_id,
+    date: g.jendela_mulai.slice(0, 10), end: g.jendela_selesai.slice(11, 16).replace(":", "."),
+    packs: 0, farm: "Prepared Product Release", chain: [], qc: null,
+  }));
+  const allOutputs = [...OUTPUTS, ...histOutputs];
+
+  const list = matchOutputs(allOutputs, filters);
   const output = list.find(o => o.id === picked) ?? list[0];
+  const histGroup = output ? groups.find(g => g.group_id === output.id) : undefined;
+  const backwardRes = useResource<BeTraceBackward>(API_MODE && histGroup ? `/trace/history/backward?groupId=${encodeURIComponent(histGroup.group_id)}` : null);
   const select = (id: string) => { setPicked(id); setActive(null); };
   const update = (f: Filters) => { setFilters(f); setActive(null); };
   const steps = output ? buildSteps(output.chain) : [];
@@ -44,10 +62,11 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
     <PageHeading title="Riwayat Produksi" subtitle="Pilih hasil produksi, lalu ikuti jalurnya dari asal susu sampai produk selesai.">
       <Link className="button secondary" href="/graph">Context Graph<Icon icon={ArrowRight} size={16} /></Link>
     </PageHeading>
-    <OutputPicker outputs={OUTPUTS} filters={filters} setFilters={update} selected={output?.id ?? ""} onSelect={select}
+    <OutputPicker outputs={allOutputs} filters={filters} setFilters={update} selected={output?.id ?? ""} onSelect={select}
       onExample={() => { update({ ...EMPTY, product: "UHT Stroberi 200 ml", time: "16:00" }); setPicked("FG-1012-11"); }} />
+    {historyRes.error && <p className="small crit-text" role="alert">Gagal memuat daftar group historis: {historyRes.error.message}</p>}
 
-    {!output ? <Card className="rp-empty"><p>Tidak ada output yang cocok dengan pilihan ini.</p><button type="button" className="button secondary" onClick={() => update(EMPTY)}>Reset pilihan</button></Card> : <>
+    {!output ? <Card className="rp-empty"><p>Tidak ada output yang cocok dengan pilihan ini.</p><button type="button" className="button secondary" onClick={() => update(EMPTY)}>Reset pilihan</button></Card> : histGroup ? <HistorisDetail group={histGroup} detail={backwardRes.data} loading={backwardRes.loading && !backwardRes.data} error={backwardRes.error} /> : <>
       <Card className="rp-summary">
         <Equipment kind="Lot" size={52} />
         <div className="rp-summary-main"><span>Output terpilih</span><h2>{output.product}</h2><span className="mono">{output.id}</span></div>

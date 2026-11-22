@@ -132,6 +132,8 @@ export interface BeExecDashboard {
 export interface BeImportError { baris: number; pesan: string }
 export interface BeImportReport<Row> {
   commit: boolean; total_baris: number; valid: number; gagal: number; dibuat: number;
+  /** Label data yang melekat pada laporan dan record hasil import: "simulasi" atau "historis". */
+  label_data?: string;
   errors: BeImportError[]; rows: Row[];
 }
 /** Ringkasan satu PO hasil grouping baris CSV pada laporan import PO. */
