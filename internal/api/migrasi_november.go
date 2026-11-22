@@ -135,6 +135,11 @@ func (s *Server) demandPlanData(ctx context.Context) (map[string]any, error) {
 				if ml > 0 {
 					nama = fmt.Sprintf("%s %d ml", nama, ml)
 				}
+				// Varian pasar membedakan finished SKU yang berbagi
+				// SKU cair dan ukuran yang sama (LOCAL vs EXP).
+				if v := fin["market_variant"]; v != "" {
+					nama = fmt.Sprintf("%s (%s)", nama, v)
+				}
 				if c["flavour"] == "Full Cream" {
 					fraksi = 1.0
 				}
