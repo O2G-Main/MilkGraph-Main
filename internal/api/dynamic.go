@@ -469,6 +469,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	s.registerDowntime(register)
 	s.registerBiaya(register)
 	s.registerNeraca(register)
+	s.registerTraceHistoris(register)
 	s.registerRoles(register)
 	register("GET /api/v1/data-sources", "", func(r *http.Request) (any, error) {
 		out := []any{}

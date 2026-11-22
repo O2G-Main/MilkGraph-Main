@@ -25,7 +25,12 @@ type SeedData struct {
 	// 2026 hasil ETL luring dari file 01, 02, dan 03. Bentuk bertipe dan
 	// endpoint-nya ada di neraca.go. Berlabel "historis".
 	NeracaHarian map[string]any
-	mu           sync.RWMutex
+	// TraceHistoris adalah genealogy historis Greenfields (Langkah 5
+	// pemetaan): irisan demo 3 production group dari file 01 dan 02
+	// beserta statistik cakupan. Bentuk bertipe dan endpoint-nya ada di
+	// trace_historis.go. Berlabel "historis".
+	TraceHistoris map[string]any
+	mu            sync.RWMutex
 }
 
 func loadJSON(filename string) (map[string]any, error) {
@@ -73,15 +78,20 @@ func LoadAllSeeds() (*SeedData, error) {
 	if err != nil {
 		return nil, err
 	}
+	traceHistoris, err := loadJSON("trace-historis.json")
+	if err != nil {
+		return nil, err
+	}
 
 	return &SeedData{
-		Scenario:     scenario,
-		Ops:          ops,
-		Site:         site,
-		Roles:        roles,
-		Limits:       limits,
-		Golden:       golden,
-		SkenarioNov:  skenarioNov,
-		NeracaHarian: neracaHarian,
+		Scenario:      scenario,
+		Ops:           ops,
+		Site:          site,
+		Roles:         roles,
+		Limits:        limits,
+		Golden:        golden,
+		SkenarioNov:   skenarioNov,
+		NeracaHarian:  neracaHarian,
+		TraceHistoris: traceHistoris,
 	}, nil
 }

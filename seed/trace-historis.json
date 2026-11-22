@@ -1,0 +1,611 @@
+{
+ "id": "trace-historis-greenfields",
+ "label_data": "historis",
+ "sumber": "Data historis Greenfields, paket MVP-Greenfields-Historical-PlayIT!: 02_Processing_Transactions.xlsx dan 01_Filling_Machine_Transactions.xlsx. Yang disimpan hanya irisan demo 3 production group hasil olahan beserta statistik agregat cakupan; transaksi mentah tidak masuk berkas ini.",
+ "metode": "Genealogy direkonstruksi per production group dari baris bervolume: pengisian tangki SFP dari batas hulu \"Prepared Product Release\", peristiwa Sterilizing dari kumpulan tangki SFP ke tangki aseptik melewati sterilizer, dan run Filling Running ke lot production order. Komposisi lot dihitung Backend dengan trace.Propagate (campuran sempurna, sesuai aturan mixing dan splitting PDF briefing): pembagian volume sterilisasi ke tiap tangki sumber sebanding dengan isi tangki saat itu, dan pemisahan di tangki aseptik membagi proporsi yang sama ke semua lot. Transfer pengisian ditempatkan pada end_time run karena run berjalan bersamaan dengan sterilisasi lanjutan. Vektor awal tiap tangki SFP adalah volumenya sendiri dari baris pengisian, karena komposisi per pengiriman untuk produk persiapan tidak tercatat di file 02.",
+ "kriteria_irisan": "Group mulai pada hari produksi terakhir di data (31 Okt 2026, tepat sebelum snapshot skenario demo 1 Nov 06.00), rantai lengkap dan seimbang antar tahap, lolos Propagate tanpa penyesuaian volume, punya 2 production order pada 2 lini filling, minimal 2 tangki SFP, satu group per jenis proses utama (Thermization / Standardization, Chocolate Blending, Strawberry Blending) dengan tangki SFP terbanyak lalu mulai paling akhir.",
+ "statistik_cakupan": {
+  "total_group": 3680,
+  "baris_tanpa_group": 706,
+  "group_lengkap_seimbang": 3680,
+  "deviasi_maks_fill_ke_sterilisasi_l": 0.0132,
+  "deviasi_maks_sterilisasi_ke_pengisian_l": 0.0133,
+  "kedalaman_tahap": {
+   "3": 3680
+  },
+  "tangki_sfp_per_group": {
+   "1": 1137,
+   "2": 1307,
+   "3": 1236
+  },
+  "peristiwa_sterilisasi_per_group": {
+   "2": 1488,
+   "3": 1976,
+   "4": 200,
+   "5": 11,
+   "6": 4,
+   "7": 1
+  },
+  "po_per_group": {
+   "1": 736,
+   "2": 2944
+  },
+  "run_filling_per_group": {
+   "1": 700,
+   "2": 2723,
+   "3": 129,
+   "4": 123,
+   "5": 2,
+   "6": 3
+  },
+  "cek_tepi_topologi": 24302,
+  "tepi_topologi_gagal": 0,
+  "group_overshoot_float": 1848,
+  "overshoot_float_maks_l": 0.0124
+ },
+ "catatan": [
+  "Baris Storage Filled tangki aseptik pada file 02 hanya mencatat batch sterilisasi pertama (5.000 L) pada seluruh 3.680 group; aliran masuk tangki aseptik yang dipakai adalah jumlah seluruh peristiwa Sterilizing, dan angka tercatat disimpan per group sebagai at_terisi_tercatat_l.",
+  "Proporsi campuran adalah hasil perhitungan model campuran sempurna di atas data volume dan waktu historis, bukan pengukuran laboratorium.",
+  "Komposisi hulu produk persiapan (pengiriman atau farm asal) tidak tercatat di file 02, jadi telusur berhenti di batas hulu \"Prepared Product Release\"; sumber komposisi lot adalah tangki persiapan.",
+  "Sebanyak 706 baris file 02 tidak membawa production_group_id (baris downtime). Sebanyak 1.848 dari 3.680 group menunjukkan kelebihan kumulatif sesaat sampai 0,0124 L pada satu titik rantai dan deviasi antar tahap maksimum 0,0133 L; itu debu pembulatan float pada volume sumber, bukan kehilangan material. Irisan demo dipilih dari group tanpa kelebihan itu."
+ ],
+ "groups": [
+  {
+   "group_id": "CAM-003664",
+   "product_name": "ESL Full Cream",
+   "processing_type": "Thermization / Standardization",
+   "sterilizer_id": "ST-01",
+   "at_tank_id": "AT-01",
+   "jendela_mulai": "2026-10-31T18:22:00+07:00",
+   "jendela_selesai": "2026-10-31T22:32:00+07:00",
+   "pengisian_tangki": [
+    {
+     "tank_id": "SFP-02",
+     "transaction_id": "PR-0029997",
+     "waktu": "2026-10-31T18:22:00+07:00",
+     "volume_l": 16529.33365957447,
+     "sumber_label": "Prepared Product Release"
+    },
+    {
+     "tank_id": "SFP-04",
+     "transaction_id": "PR-0040550",
+     "waktu": "2026-10-31T18:22:00+07:00",
+     "volume_l": 16529.33365957447,
+     "sumber_label": "Prepared Product Release"
+    },
+    {
+     "tank_id": "SFP-09",
+     "transaction_id": "PR-0066268",
+     "waktu": "2026-10-31T18:22:00+07:00",
+     "volume_l": 16529.33365957447,
+     "sumber_label": "Prepared Product Release"
+    }
+   ],
+   "sterilisasi": [
+    {
+     "transaction_id": "PR-0101008",
+     "waktu": "2026-10-31T19:43:30+07:00",
+     "selesai": "2026-10-31T19:56:00+07:00",
+     "volume_l": 5000.000000931323,
+     "dari_tangki": [
+      "SFP-02",
+      "SFP-04",
+      "SFP-09"
+     ],
+     "ke_tangki": "AT-01"
+    },
+    {
+     "transaction_id": "PR-0101010",
+     "waktu": "2026-10-31T20:26:18.327+07:00",
+     "selesai": "2026-10-31T22:17:46.527+07:00",
+     "volume_l": 44588.00000092015,
+     "dari_tangki": [
+      "SFP-02",
+      "SFP-04",
+      "SFP-09"
+     ],
+     "ke_tangki": "AT-01"
+    }
+   ],
+   "at_terisi_tercatat_l": 5000.0,
+   "lots": [
+    {
+     "po_id": "HPO-006595",
+     "sku_id": "ESL-FC-1000-LOCAL",
+     "line_id": "FL-01",
+     "transaction_id": "FM-0008096",
+     "mulai": "2026-10-31T20:16:45.600+07:00",
+     "selesai": "2026-10-31T22:32:00+07:00",
+     "volume_bagus_l": 26869,
+     "volume_reject_l": 175,
+     "volume_sampling_l": 4,
+     "volume_total_l": 27048,
+     "pak_bagus": 26869,
+     "campuran_harapan": [
+      {
+       "sumber": "SFP-02",
+       "volume_l": 9016.0,
+       "persen": 33.33333333333333
+      },
+      {
+       "sumber": "SFP-04",
+       "volume_l": 9016.0,
+       "persen": 33.33333333333333
+      },
+      {
+       "sumber": "SFP-09",
+       "volume_l": 9016.0,
+       "persen": 33.33333333333333
+      }
+     ]
+    },
+    {
+     "po_id": "HPO-006596",
+     "sku_id": "ESL-FC-1000-EXP",
+     "line_id": "FL-02",
+     "transaction_id": "FM-0016160",
+     "mulai": "2026-10-31T20:16:45.600+07:00",
+     "selesai": "2026-10-31T22:32:00+07:00",
+     "volume_bagus_l": 22441,
+     "volume_reject_l": 93,
+     "volume_sampling_l": 6,
+     "volume_total_l": 22540,
+     "pak_bagus": 22441,
+     "campuran_harapan": [
+      {
+       "sumber": "SFP-02",
+       "volume_l": 7513.333333333333,
+       "persen": 33.33333333333333
+      },
+      {
+       "sumber": "SFP-04",
+       "volume_l": 7513.333333333333,
+       "persen": 33.33333333333333
+      },
+      {
+       "sumber": "SFP-09",
+       "volume_l": 7513.333333333333,
+       "persen": 33.33333333333333
+      }
+     ]
+    }
+   ],
+   "total": {
+    "persiapan_l": 49588.00097872341,
+    "sterilisasi_l": 49588.00000185147,
+    "pengisian_l": 49588
+   },
+   "transfer": [
+    {
+     "waktu": "2026-10-31T19:43:30+07:00",
+     "dari": "SFP-02",
+     "ke": "AT-01",
+     "volume_l": 1666.6666669771075,
+     "tahap": "sterilisasi",
+     "ref": "PR-0101008",
+     "lewat": "ST-01"
+    },
+    {
+     "waktu": "2026-10-31T19:43:30+07:00",
+     "dari": "SFP-04",
+     "ke": "AT-01",
+     "volume_l": 1666.6666669771075,
+     "tahap": "sterilisasi",
+     "ref": "PR-0101008",
+     "lewat": "ST-01"
+    },
+    {
+     "waktu": "2026-10-31T19:43:30+07:00",
+     "dari": "SFP-09",
+     "ke": "AT-01",
+     "volume_l": 1666.6666669771075,
+     "tahap": "sterilisasi",
+     "ref": "PR-0101008",
+     "lewat": "ST-01"
+    },
+    {
+     "waktu": "2026-10-31T20:26:18.327+07:00",
+     "dari": "SFP-02",
+     "ke": "AT-01",
+     "volume_l": 14862.666992597362,
+     "tahap": "sterilisasi",
+     "ref": "PR-0101010",
+     "lewat": "ST-01"
+    },
+    {
+     "waktu": "2026-10-31T20:26:18.327+07:00",
+     "dari": "SFP-04",
+     "ke": "AT-01",
+     "volume_l": 14862.666992597362,
+     "tahap": "sterilisasi",
+     "ref": "PR-0101010",
+     "lewat": "ST-01"
+    },
+    {
+     "waktu": "2026-10-31T20:26:18.327+07:00",
+     "dari": "SFP-09",
+     "ke": "AT-01",
+     "volume_l": 14862.666992597362,
+     "tahap": "sterilisasi",
+     "ref": "PR-0101010",
+     "lewat": "ST-01"
+    },
+    {
+     "waktu": "2026-10-31T22:32:00+07:00",
+     "dari": "AT-01",
+     "ke": "LOT-HPO-006595",
+     "volume_l": 27048,
+     "tahap": "pengisian",
+     "ref": "FM-0008096"
+    },
+    {
+     "waktu": "2026-10-31T22:32:00+07:00",
+     "dari": "AT-01",
+     "ke": "LOT-HPO-006596",
+     "volume_l": 22540,
+     "tahap": "pengisian",
+     "ref": "FM-0016160"
+    }
+   ]
+  },
+  {
+   "group_id": "CAM-003667",
+   "product_name": "ESL Strawberry",
+   "processing_type": "Strawberry Blending",
+   "sterilizer_id": "ST-02",
+   "at_tank_id": "AT-02",
+   "jendela_mulai": "2026-10-31T13:22:00+07:00",
+   "jendela_selesai": "2026-10-31T17:27:00+07:00",
+   "pengisian_tangki": [
+    {
+     "tank_id": "SFP-07",
+     "transaction_id": "PR-0056162",
+     "waktu": "2026-10-31T13:22:00+07:00",
+     "volume_l": 21150.8,
+     "sumber_label": "Prepared Product Release"
+    },
+    {
+     "tank_id": "SFP-13",
+     "transaction_id": "PR-0085889",
+     "waktu": "2026-10-31T13:22:00+07:00",
+     "volume_l": 21150.8,
+     "sumber_label": "Prepared Product Release"
+    }
+   ],
+   "sterilisasi": [
+    {
+     "transaction_id": "PR-0105970",
+     "waktu": "2026-10-31T14:47:30+07:00",
+     "selesai": "2026-10-31T15:00:00+07:00",
+     "volume_l": 4999.999999534339,
+     "dari_tangki": [
+      "SFP-07",
+      "SFP-13"
+     ],
+     "ke_tangki": "AT-02"
+    },
+    {
+     "transaction_id": "PR-0105972",
+     "waktu": "2026-10-31T15:35:36.471+07:00",
+     "selesai": "2026-10-31T17:08:51.711+07:00",
+     "volume_l": 37301.59999988973,
+     "dari_tangki": [
+      "SFP-07",
+      "SFP-13"
+     ],
+     "ke_tangki": "AT-02"
+    }
+   ],
+   "at_terisi_tercatat_l": 5000.0,
+   "lots": [
+    {
+     "po_id": "HPO-006601",
+     "sku_id": "ESL-ST-950-EXP",
+     "line_id": "FL-03",
+     "transaction_id": "FM-0024105",
+     "mulai": "2026-10-31T15:25:33.600+07:00",
+     "selesai": "2026-10-31T17:27:00+07:00",
+     "volume_bagus_l": 22914.95,
+     "volume_reject_l": 152.95,
+     "volume_sampling_l": 5.7,
+     "volume_total_l": 23073.6,
+     "pak_bagus": 24121,
+     "campuran_harapan": [
+      {
+       "sumber": "SFP-07",
+       "volume_l": 11536.8,
+       "persen": 50.0
+      },
+      {
+       "sumber": "SFP-13",
+       "volume_l": 11536.8,
+       "persen": 50.0
+      }
+     ]
+    },
+    {
+     "po_id": "HPO-006602",
+     "sku_id": "ESL-ST-950-LOCAL",
+     "line_id": "FL-04",
+     "transaction_id": "FM-0032070",
+     "mulai": "2026-10-31T15:25:33.600+07:00",
+     "selesai": "2026-10-31T17:27:00+07:00",
+     "volume_bagus_l": 19099.75,
+     "volume_reject_l": 120.65,
+     "volume_sampling_l": 7.6,
+     "volume_total_l": 19228,
+     "pak_bagus": 20105,
+     "campuran_harapan": [
+      {
+       "sumber": "SFP-07",
+       "volume_l": 9614.0,
+       "persen": 50.0
+      },
+      {
+       "sumber": "SFP-13",
+       "volume_l": 9614.0,
+       "persen": 50.0
+      }
+     ]
+    }
+   ],
+   "total": {
+    "persiapan_l": 42301.6,
+    "sterilisasi_l": 42301.59999942407,
+    "pengisian_l": 42301.6
+   },
+   "transfer": [
+    {
+     "waktu": "2026-10-31T14:47:30+07:00",
+     "dari": "SFP-07",
+     "ke": "AT-02",
+     "volume_l": 2499.9999997671694,
+     "tahap": "sterilisasi",
+     "ref": "PR-0105970",
+     "lewat": "ST-02"
+    },
+    {
+     "waktu": "2026-10-31T14:47:30+07:00",
+     "dari": "SFP-13",
+     "ke": "AT-02",
+     "volume_l": 2499.9999997671694,
+     "tahap": "sterilisasi",
+     "ref": "PR-0105970",
+     "lewat": "ST-02"
+    },
+    {
+     "waktu": "2026-10-31T15:35:36.471+07:00",
+     "dari": "SFP-07",
+     "ke": "AT-02",
+     "volume_l": 18650.80000023283,
+     "tahap": "sterilisasi",
+     "ref": "PR-0105972",
+     "lewat": "ST-02"
+    },
+    {
+     "waktu": "2026-10-31T15:35:36.471+07:00",
+     "dari": "SFP-13",
+     "ke": "AT-02",
+     "volume_l": 18650.80000023283,
+     "tahap": "sterilisasi",
+     "ref": "PR-0105972",
+     "lewat": "ST-02"
+    },
+    {
+     "waktu": "2026-10-31T17:27:00+07:00",
+     "dari": "AT-02",
+     "ke": "LOT-HPO-006601",
+     "volume_l": 23073.6,
+     "tahap": "pengisian",
+     "ref": "FM-0024105"
+    },
+    {
+     "waktu": "2026-10-31T17:27:00+07:00",
+     "dari": "AT-02",
+     "ke": "LOT-HPO-006602",
+     "volume_l": 19228,
+     "tahap": "pengisian",
+     "ref": "FM-0032070"
+    }
+   ]
+  },
+  {
+   "group_id": "CAM-003670",
+   "product_name": "UHT Chocolate",
+   "processing_type": "Chocolate Blending",
+   "sterilizer_id": "ST-03",
+   "at_tank_id": "AT-03",
+   "jendela_mulai": "2026-10-31T06:22:00+07:00",
+   "jendela_selesai": "2026-10-31T10:32:00+07:00",
+   "pengisian_tangki": [
+    {
+     "tank_id": "SFP-01",
+     "transaction_id": "PR-0024671",
+     "waktu": "2026-10-31T06:22:00+07:00",
+     "volume_l": 18175.0,
+     "sumber_label": "Prepared Product Release"
+    },
+    {
+     "tank_id": "SFP-07",
+     "transaction_id": "PR-0056153",
+     "waktu": "2026-10-31T06:22:00+07:00",
+     "volume_l": 18175.0,
+     "sumber_label": "Prepared Product Release"
+    },
+    {
+     "tank_id": "SFP-13",
+     "transaction_id": "PR-0085880",
+     "waktu": "2026-10-31T06:22:00+07:00",
+     "volume_l": 18175.0,
+     "sumber_label": "Prepared Product Release"
+    }
+   ],
+   "sterilisasi": [
+    {
+     "transaction_id": "PR-0111216",
+     "waktu": "2026-10-31T07:41:17.143+07:00",
+     "selesai": "2026-10-31T07:52:00+07:00",
+     "volume_l": 4999.998888699338,
+     "dari_tangki": [
+      "SFP-01",
+      "SFP-07",
+      "SFP-13"
+     ],
+     "ke_tangki": "AT-03"
+    },
+    {
+     "transaction_id": "PR-0111218",
+     "waktu": "2026-10-31T08:31:28.110+07:00",
+     "selesai": "2026-10-31T10:17:35.610+07:00",
+     "volume_l": 49524.99999967404,
+     "dari_tangki": [
+      "SFP-01",
+      "SFP-07",
+      "SFP-13"
+     ],
+     "ke_tangki": "AT-03"
+    }
+   ],
+   "at_terisi_tercatat_l": 5000.0,
+   "lots": [
+    {
+     "po_id": "HPO-006607",
+     "sku_id": "UHT-CH-1000-LOCAL",
+     "line_id": "FL-05",
+     "transaction_id": "FM-0040009",
+     "mulai": "2026-10-31T08:23:12.086+07:00",
+     "selesai": "2026-10-31T10:32:00+07:00",
+     "volume_bagus_l": 29861,
+     "volume_reject_l": 184,
+     "volume_sampling_l": 8,
+     "volume_total_l": 30053,
+     "pak_bagus": 29861,
+     "campuran_harapan": [
+      {
+       "sumber": "SFP-01",
+       "volume_l": 10017.666666666666,
+       "persen": 33.33333333333333
+      },
+      {
+       "sumber": "SFP-07",
+       "volume_l": 10017.666666666666,
+       "persen": 33.33333333333333
+      },
+      {
+       "sumber": "SFP-13",
+       "volume_l": 10017.666666666666,
+       "persen": 33.33333333333333
+      }
+     ]
+    },
+    {
+     "po_id": "HPO-006608",
+     "sku_id": "UHT-CH-950-EXP",
+     "line_id": "FL-06",
+     "transaction_id": "FM-0048032",
+     "mulai": "2026-10-31T08:23:12+07:00",
+     "selesai": "2026-10-31T10:32:00+07:00",
+     "volume_bagus_l": 24257.3,
+     "volume_reject_l": 205.2,
+     "volume_sampling_l": 9.5,
+     "volume_total_l": 24472,
+     "pak_bagus": 25534,
+     "campuran_harapan": [
+      {
+       "sumber": "SFP-01",
+       "volume_l": 8157.333333333334,
+       "persen": 33.333333333333336
+      },
+      {
+       "sumber": "SFP-07",
+       "volume_l": 8157.333333333334,
+       "persen": 33.333333333333336
+      },
+      {
+       "sumber": "SFP-13",
+       "volume_l": 8157.333333333334,
+       "persen": 33.333333333333336
+      }
+     ]
+    }
+   ],
+   "total": {
+    "persiapan_l": 54525.0,
+    "sterilisasi_l": 54524.998888373375,
+    "pengisian_l": 54525
+   },
+   "transfer": [
+    {
+     "waktu": "2026-10-31T07:41:17.143+07:00",
+     "dari": "SFP-01",
+     "ke": "AT-03",
+     "volume_l": 1666.6662962331127,
+     "tahap": "sterilisasi",
+     "ref": "PR-0111216",
+     "lewat": "ST-03"
+    },
+    {
+     "waktu": "2026-10-31T07:41:17.143+07:00",
+     "dari": "SFP-07",
+     "ke": "AT-03",
+     "volume_l": 1666.6662962331127,
+     "tahap": "sterilisasi",
+     "ref": "PR-0111216",
+     "lewat": "ST-03"
+    },
+    {
+     "waktu": "2026-10-31T07:41:17.143+07:00",
+     "dari": "SFP-13",
+     "ke": "AT-03",
+     "volume_l": 1666.6662962331127,
+     "tahap": "sterilisasi",
+     "ref": "PR-0111216",
+     "lewat": "ST-03"
+    },
+    {
+     "waktu": "2026-10-31T08:31:28.110+07:00",
+     "dari": "SFP-01",
+     "ke": "AT-03",
+     "volume_l": 16508.333703766886,
+     "tahap": "sterilisasi",
+     "ref": "PR-0111218",
+     "lewat": "ST-03"
+    },
+    {
+     "waktu": "2026-10-31T08:31:28.110+07:00",
+     "dari": "SFP-07",
+     "ke": "AT-03",
+     "volume_l": 16508.333703766886,
+     "tahap": "sterilisasi",
+     "ref": "PR-0111218",
+     "lewat": "ST-03"
+    },
+    {
+     "waktu": "2026-10-31T08:31:28.110+07:00",
+     "dari": "SFP-13",
+     "ke": "AT-03",
+     "volume_l": 16508.333703766886,
+     "tahap": "sterilisasi",
+     "ref": "PR-0111218",
+     "lewat": "ST-03"
+    },
+    {
+     "waktu": "2026-10-31T10:32:00+07:00",
+     "dari": "AT-03",
+     "ke": "LOT-HPO-006607",
+     "volume_l": 30053,
+     "tahap": "pengisian",
+     "ref": "FM-0040009"
+    },
+    {
+     "waktu": "2026-10-31T10:32:00+07:00",
+     "dari": "AT-03",
+     "ke": "LOT-HPO-006608",
+     "volume_l": 24472,
+     "tahap": "pengisian",
+     "ref": "FM-0048032"
+    }
+   ]
+  }
+ ]
+}
