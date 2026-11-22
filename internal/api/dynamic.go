@@ -142,7 +142,12 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		sort.Slice(perms, func(i, j int) bool { return perms[i] < perms[j] })
 		return map[string]any{"result": domain.Session{User: domain.UserInfo{Name: user, Role: label, Initials: initials, Shift: "Shift Siang"}, Role: domain.RoleId(b.Role), Permissions: perms}, "log": nil}, nil
 	})
-	register("POST /api/v1/demo/reset", "", func(r *http.Request) (any, error) {
+	// Reset demo adalah aksi destruktif tingkat sistem (menghapus seluruh
+	// state demo), jadi gerbangnya permission role.manage: di katalog ia
+	// hanya dipegang Superadmin, role pengelola sistem, dan tidak dibagikan
+	// ke role operasional mana pun. Mode demo tetap dapat dipakai
+	// Superadmin untuk mereset.
+	register("POST /api/v1/demo/reset", "role.manage", func(r *http.Request) (any, error) {
 		if s.Mode != "" && s.Mode != "demo" {
 			return nil, &apiError{403, "FORBIDDEN", "Hanya tersedia dalam mode demo.", ""}
 		}

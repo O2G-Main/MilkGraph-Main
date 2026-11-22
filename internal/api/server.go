@@ -360,12 +360,84 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, missing()) })
 	return s.middleware(mux)
 }
+// namaHariID dan namaBulanID adalah nama hari dan bulan Bahasa Indonesia
+// untuk format tanggal meta, mengikuti pola tanggal pada seed skenario
+// (misalnya "Rabu, 14 Oktober 2026").
+var namaHariID = []string{"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"}
+
+var namaBulanID = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}
+
+// zonaAplikasi adalah zona waktu yang dipakai aplikasi (WIB, UTC+7),
+// konsisten dengan FixedZone WIB di rt_arrivals.go. Asia/Jakarta dipakai
+// bila data zonanya tersedia; selain itu zona tetap +07:00.
+func zonaAplikasi() *time.Location {
+	if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
+		return loc
+	}
+	return time.FixedZone("WIB", 7*60*60)
+}
+
+// labelDataTermuat mengumpulkan label data yang benar-benar termuat dari
+// seed: skenario utama berlabel "simulasi" (label bawaan data skenario),
+// sedangkan seed historis membawa label_data-nya sendiri di berkasnya.
+func (s *Server) labelDataTermuat() []string {
+	labels := []string{"simulasi"}
+	tambah := func(seed map[string]any) {
+		l, _ := seed["label_data"].(string)
+		if l == "" {
+			return
+		}
+		for _, ada := range labels {
+			if ada == l {
+				return
+			}
+		}
+		labels = append(labels, l)
+	}
+	if s.seeds != nil {
+		tambah(s.seeds.SkenarioNov)
+		tambah(s.seeds.NeracaHarian)
+		tambah(s.seeds.TraceHistoris)
+	}
+	return labels
+}
+
 func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 	mode := s.Mode
 	if mode == "" {
 		mode = "demo"
 	}
-	writeJSON(w, 200, map[string]any{"schemaVersion": "1", "mode": mode, "dataMode": "simulation", "date": "Rabu, 14 Oktober 2026", "now": "14.42", "horizon": map[string]any{"start": "13.00", "end": "20.00", "nowOffset": 102}, "snapshotLabel": "Snapshot 14.42 WIB"})
+	// Tanggal dan jam adalah waktu server sebenarnya dalam zona aplikasi,
+	// bukan jam skenario. Meta adalah keterangan keadaan server, jadi
+	// tanggal karangan membuat tampilannya menipu.
+	sekarang := time.Now().In(zonaAplikasi())
+	jam := sekarang.Format("15.04")
+	tanggal := fmt.Sprintf("%s, %d %s %d", namaHariID[int(sekarang.Weekday())], sekarang.Day(), namaBulanID[int(sekarang.Month())], sekarang.Year())
+	// nowOffset adalah posisi jam sekarang di dalam horizon tampil
+	// skenario (13.00 sampai 20.00), dijepit ke rentang horizon supaya
+	// penanda sekarang di FE tidak keluar jalur.
+	offset := sekarang.Hour()*60 + sekarang.Minute() - 13*60
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > 7*60 {
+		offset = 7 * 60
+	}
+	labels := s.labelDataTermuat()
+	dataMode := labels[0]
+	if len(labels) > 1 {
+		dataMode = "campuran"
+	}
+	writeJSON(w, 200, map[string]any{
+		"schemaVersion": "1",
+		"mode":          mode,
+		"dataMode":      dataMode,
+		"dataLabels":    labels,
+		"date":          tanggal,
+		"now":           jam,
+		"horizon":       map[string]any{"start": "13.00", "end": "20.00", "nowOffset": offset},
+		"snapshotLabel": "Snapshot " + jam + " WIB",
+	})
 }
 func (s *Server) plan(id string) map[string]any { return item(s.seeds.Scenario["plans"], id) }
 func (s *Server) planView(p map[string]any) map[string]any {

@@ -104,8 +104,10 @@ func TestSixteenStepDemoScenario(t *testing.T) {
 
 	client := newClient("planner")
 
-	// Step 0: Reset demo state
-	res, _, _ := client.do("POST", "/demo/reset", nil)
+	// Step 0: Reset demo state. Reset digerbang role.manage yang hanya
+	// dipegang Superadmin, jadi langkah ini memakai client superadmin;
+	// langkah berikutnya tetap sebagai planner.
+	res, _, _ := newClient("superadmin").do("POST", "/demo/reset", nil)
 	if res.StatusCode != 200 {
 		t.Fatalf("reset failed: %d", res.StatusCode)
 	}

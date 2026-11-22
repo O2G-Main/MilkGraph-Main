@@ -69,7 +69,10 @@ func TestDurableMutationsRequireDB(t *testing.T) {
 		{"POST", "/lab/results/LAB-9031/decision", "qa", `{"status":"dirilis","note":""}`},
 		{"POST", "/holds", "qa", `{"trigger":"FG-1013-07","rt":"RT-04","lots":[]}`},
 		{"POST", "/data-sources/scada/sync", "planner", `{}`},
-		{"POST", "/demo/reset", "planner", `{}`},
+		// Reset demo digerbang role.manage (hanya Superadmin), jadi di sini
+		// dipanggil sebagai superadmin agar lolos gerbang dan membuktikan
+		// kebutuhan DB-nya, bukan tertahan 403.
+		{"POST", "/demo/reset", "superadmin", `{}`},
 	}
 
 	for _, ep := range endpoints {
