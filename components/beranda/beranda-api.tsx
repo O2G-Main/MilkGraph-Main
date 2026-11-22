@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, CalendarRange, ChevronRight, Droplets, Hourglass, PackageX, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useResource } from "@/lib/api/resource";
@@ -60,6 +61,7 @@ export function BerandaApiHero({ role }: { role: RoleId }) {
  * Kalau sumbernya kosong, daftarnya memang kosong; tidak ada item skenario lokal.
  */
 export function BerandaApiAttention({ role, title, subtitle }: { role: RoleId; title: string; subtitle?: string }) {
+  const [showAll, setShowAll] = useState(false);
   const schRes = useResource<BeSchedule>("/schedules/latest");
   const holdsRes = useResource<Hold[]>("/holds");
   const noSchedule = statusOf(schRes.error) === 404;
@@ -91,6 +93,7 @@ export function BerandaApiAttention({ role, title, subtitle }: { role: RoleId; t
     items.push({ icon: PackageX, title: `${h.id} hold aktif`, meta: `${h.lots.length} lot dari ${h.trigger}`, tone: "neutral", href: "/hold" });
   }
   const shown = items.filter(a => canOpen(role, a.href.split("?")[0], findNav(a.href.split("?")[0]).tab.href));
+  const visible = showAll ? shown : shown.slice(0, 4);
 
   return <Card className="home-attention"><SectionTitle title={title} subtitle={subtitle} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
     {loading
@@ -98,7 +101,8 @@ export function BerandaApiAttention({ role, title, subtitle }: { role: RoleId; t
       : err
       ? <p className="small crit-text">Gagal memuat data perhatian: {err.message}</p>
       : shown.length
-      ? <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
+      ? <><ul className="attention-list">{visible.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
+        {shown.length > 4 && <p className="small"><button type="button" className="text-link" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `+${shown.length - 4} item lainnya`}</button></p>}</>
       : <p className="small muted">Tidak ada hal yang perlu perhatian dari data server saat ini.</p>}
   </Card>;
 }
