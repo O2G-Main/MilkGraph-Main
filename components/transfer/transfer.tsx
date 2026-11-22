@@ -11,6 +11,7 @@ import { applyQueue, clock, toMin } from "@/lib/receiving";
 import { mayHandle } from "@/lib/operation";
 import { saveTransfer, useFlows } from "@/lib/flows";
 import { API_MODE } from "@/lib/api/client";
+import { useNovemberTanks } from "@/lib/api/scenario-nov";
 import { TankVolumeApiCard } from "./tank-volume-api";
 import { NeracaHarianApiCard } from "./neraca-harian-api";
 import { diffTone, levelAfter, type FlowRow } from "@/lib/volume";
@@ -43,6 +44,10 @@ export function Transfer({ alat }: { alat?: string }) {
   const out = flows.reduce((s, f) => s + f.out, 0), inn = flows.reduce((s, f) => s + f.in, 0);
   const flagged = flows.filter(f => diffTone(f.diffPct) !== "ok");
   const tanks = TANKS.filter(t => (alat ? t.id === alat : all.some(f => f.from === t.id || f.to === t.id) || t.id.startsWith("RMT")) && (!assigned || mayHandle(assigned, t.id) || t.id.startsWith("RMT")));
+  // Mode API: kartu volume memakai snapshot 28 tangki skenario November
+  // dari server (konteks stok historis), bukan daftar tangki skenario lokal.
+  const { tanks: novTanks } = useNovemberTanks();
+  const apiTanks = (novTanks ?? []).filter(t => !alat || t.id === alat);
   const after = all.filter(f => !f.counted);
 
   return (
@@ -57,12 +62,12 @@ export function Transfer({ alat }: { alat?: string }) {
         {alat && <Link className="filter-chip" href="/transfer" aria-label={`Hapus filter alat ${alat}`}>Alat {alat}<Icon icon={X} size={14} /></Link>}
       </div>
       <div className="schedule-stats planner-kpis">
-        <Card><span className="small muted">Transfer tercatat</span><strong>{flows.length}</strong><span className="small muted">{fresh.length} setelah snapshot 14.42</span></Card>
+        <Card><span className="small muted">Transfer tercatat</span><strong>{flows.length}</strong><span className="small muted">{fresh.length} setelah snapshot 1 Nov 06.00</span></Card>
         <Card><span className="small muted">Keluar dari alat asal</span><strong>{number(out)} <small>L</small></strong><span className="small muted">Diterima {number(inn)} L</span></Card>
         <Card><span className="small muted">Selisih total</span><strong className={`${diffTone(out ? (out - inn) / out * 100 : 0)}-text`}>{number(out - inn)} <small>L</small></strong><span className="small muted">{out ? `${pct((out - inn) / out * 100)}% dari volume keluar` : "Belum ada transfer"}</span></Card>
         <Card><span className="small muted">Di luar toleransi</span><strong className={flagged.length ? "warn-text" : "ok-text"}>{flagged.length}</strong><span className="small muted">Selisih di atas 0,5% [asumsi]</span></Card>
       </div>
-      {API_MODE ? <TankVolumeApiCard tanks={tanks} alat={alat} /> : <>
+      {API_MODE ? <TankVolumeApiCard tanks={apiTanks} alat={alat} /> : <>
       <Card className="rules-card">
         <SectionTitle title="Volume tangki terkini" subtitle="Level snapshot 14.42 ditambah yang diterima dan dikurangi yang keluar dari transfer setelahnya." />
         <div className="table-wrap"><table className="schedule-table">

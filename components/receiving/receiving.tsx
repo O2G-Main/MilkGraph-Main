@@ -27,7 +27,9 @@ import { queueLayout } from "./queue-layout";
 const stageIcons = [MapPin, Truck, Droplets, FlaskConical, ShieldCheck, PackageOpen, PackageCheck];
 type ReceivingData = Pick<Scenario, "metrics" | "stages" | "tankers" | "assets" | "labHistory"> & {
   labSummary: { avgMinutes: number; deltaMinutes: number };
-  incident: { rt: string; holdingLeftMin: number; summary: string; factors: { label: string; sourceId: string }[] };
+  // Skenario November tidak mempunyai insiden antrean: server mengirim
+  // incident null dan kartu insiden diganti catatan netral.
+  incident: { rt: string; holdingLeftMin: number; summary: string; factors: { label: string; sourceId: string }[] } | null;
 };
 type CheckResult = { violations: { before: number } };
 
@@ -234,7 +236,7 @@ function ReceivingContent({
               : <Link href="/kedatangan" className="text-link">Jadwal kedatangan<Icon icon={ArrowRight} size={14} /></Link>}
           </div>
         </Card>
-        <section className="incident-card" id="peringatan">
+        {scenarioData.incident ? <section className="incident-card" id="peringatan">
           <div className="incident-top">
             <span className="incident-status"><Icon icon={TriangleAlert} size={17} />Rencana shift</span>
             <span className="mono">PLAN-FIFO</span>
@@ -260,7 +262,9 @@ function ReceivingContent({
           <Link href={seePlan ? "/rencana" : seeBay ? "/tangki" : "/lab"} className="button inverse">
             {seePlan ? "Periksa kelayakan rencana" : seeBay ? "Lihat kesiapan bay" : "Buka Tes Lab"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span>
           </Link>
-        </section>
+        </section> : <Card className="rules-card">
+          <SectionTitle title="Insiden antrean" subtitle="Tidak ada insiden antrean pada skenario November. Antrean mengikuti jadwal kedatangan historis, dan panel hasil lab tidak tersedia pada skenario ini." />
+        </Card>}
       </div>
       <SourceModal id={source} onClose={() => setSource(null)} />
       {dialog === "tiba" && <ArriveDialog onClose={() => setDialog(null)} />}

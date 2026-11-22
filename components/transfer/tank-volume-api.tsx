@@ -14,12 +14,14 @@ export interface TankRef { id: string; level: number; capacity: number }
  * Volume tangki mode API: masuk, keluar, dan saldo diambil dari
  * GET /trace/assets/{ref}/volume yang diturunkan server dari seluruh catatan
  * transfer. Halaman ini tidak lagi menambah atau mengurangi level lokal.
- * Level snapshot tetap data skenario pukul 14.42 dan ditampilkan terpisah.
+ * Level snapshot adalah snapshot historis skenario November
+ * (1 Nov 2026 pukul 06.00) dari GET /scenario/november/tanks dan
+ * ditampilkan terpisah.
  */
 export function TankVolumeApiCard({ tanks, alat }: { tanks: TankRef[]; alat?: string }) {
   return (
     <Card className="rules-card">
-      <SectionTitle title="Volume tangki terkini" subtitle="Masuk, keluar, dan saldo dihitung server dari seluruh catatan transfer. Level snapshot adalah data skenario pukul 14.42 dan tidak diubah halaman ini." />
+      <SectionTitle title="Volume tangki terkini" subtitle="Masuk, keluar, dan saldo dihitung server dari seluruh catatan transfer. Level snapshot adalah snapshot historis 1 Nov 2026 pukul 06.00 dan tidak diubah halaman ini." />
       <div className="table-wrap"><table className="schedule-table">
         <thead><tr><th>Tangki</th><th className="numeric">Snapshot skenario</th><th className="numeric">Masuk (server)</th><th className="numeric">Keluar (server)</th><th className="numeric">Saldo transfer (server)</th><th className="numeric">Jumlah transfer</th><th><span className="sr-only">Riwayat</span></th></tr></thead>
         <tbody>{tanks.map(t => <TankVolumeRow key={t.id} tank={t} alat={alat} />)}</tbody>

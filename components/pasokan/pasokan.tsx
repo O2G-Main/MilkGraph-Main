@@ -34,9 +34,12 @@ type Farm = {
   plannedL: number;
   arrived: number;
   onTheWay: number;
-  passRate: number;
-  coolingC: number;
-  finding: string;
+  // Agregat farm_id skenario November tidak membawa hasil lab, suhu,
+  // atau temuan: server mengirim null dan tabel menampilkannya sebagai
+  // tidak tersedia, bukan angka.
+  passRate: number | null;
+  coolingC: number | null;
+  finding: string | null;
   tone: Tone;
 };
 
@@ -152,7 +155,7 @@ export function Pasokan() {
           <tfoot><tr><td colSpan={4}>Total kebutuhan termasuk susut</td><td className="numeric"><strong>{number(needTotal)} L</strong></td></tr><tr><td colSpan={4}>Rencana kirim farm hari ini</td><td className="numeric">{number(supplyTotal)} L</td></tr><tr><td colSpan={4}>Kapasitas olah 320 t/hari</td><td className="numeric">{number(capacityL)} L</td></tr></tfoot></table></div>
       </Card>
       <Card><SectionTitle title="Jadwal kirim dan kesiapan mutu farm" />
-        <div className="table-wrap"><table><thead><tr><th>Farm</th><th className="numeric">Rencana</th><th className="numeric">Tiba</th><th className="numeric">Di jalan</th><th className="numeric">Lolos lab 30 hari</th><th className="numeric">Suhu muat</th><th>Temuan terakhir</th></tr></thead><tbody>{farmsList.map(f => <tr key={f.name}><td><strong>{f.name}</strong></td><td data-label="Rencana" className="numeric">{f.plannedRt} RT · {number(f.plannedL)} L</td><td data-label="Tiba" className="numeric">{f.arrived}</td><td data-label="Di jalan" className="numeric">{f.onTheWay}</td><td data-label="Lolos lab 30 hari" className="numeric"><Badge tone={f.tone}>{number(f.passRate)}%</Badge></td><td data-label="Suhu muat" className="numeric">{number(f.coolingC)} °C</td><td data-label="Temuan terakhir">{f.finding}</td></tr>)}</tbody></table></div>
+        <div className="table-wrap"><table><thead><tr><th>Farm</th><th className="numeric">Rencana</th><th className="numeric">Tiba</th><th className="numeric">Di jalan</th><th className="numeric">Lolos lab 30 hari</th><th className="numeric">Suhu muat</th><th>Temuan terakhir</th></tr></thead><tbody>{farmsList.map(f => <tr key={f.name}><td><strong>{f.name}</strong></td><td data-label="Rencana" className="numeric">{f.plannedRt} RT · {number(f.plannedL)} L</td><td data-label="Tiba" className="numeric">{f.arrived}</td><td data-label="Di jalan" className="numeric">{f.onTheWay}</td><td data-label="Lolos lab 30 hari" className="numeric">{f.passRate == null ? "-" : <Badge tone={f.tone}>{number(f.passRate)}%</Badge>}</td><td data-label="Suhu muat" className="numeric">{f.coolingC == null ? "-" : `${number(f.coolingC)} °C`}</td><td data-label="Temuan terakhir">{f.finding ?? "-"}</td></tr>)}</tbody></table></div>
       </Card>
     </div>
   );
