@@ -79,7 +79,7 @@ export function SupplyCard({ cover, planned, need, farms }: { cover: number; pla
   </Card>;
 }
 
-/* ---------- Mesin: donut status lini + downtime per penyebab ---------- */
+/* ---------- Mesin: donut status lini + downtime ---------- */
 export type StateSlice = { key: string; label: string; count: number; color: string; lines: string[] };
 /** Warna infografis (palet divalidasi): hijau = baik, hijau muda = berjalan, kuning = perlu dicek, abu = netral, merah = kritis. */
 export const C = { ok: "var(--color-primary)", soft: "#6FBF8B", warn: "#B7791F", gray: "#CBD3CD", crit: "var(--color-status-crit)" };
@@ -136,7 +136,7 @@ export function MachineCard({ states, total, running, downtime }: { states: Stat
       <Legend items={shown.map(s => ({ label: s.label, color: s.color, value: String(s.count) }))} />
     </div>
     <div className="exec-plot">
-      <p className="exec-plot-title">Downtime per penyebab (menit)</p>
+      <p className="exec-plot-title">Downtime (menit)</p>
       {downtime.length
         ? <ResponsiveContainer width="100%" height={downtime.length * 34 + 8}>
           <BarChart data={downtime} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 0 }}>

@@ -231,7 +231,7 @@ function OperatorApi({ attention }: { attention: ReactNode }) {
     <Panel title="Utilisasi per mesin filling" subtitle="Persen dari Backend, dari jadwal terbaru dan downtime." href="/kondisi-alat" loading={exec.loading && !exec.data} error={exec.error}>
       {util.length ? <Bullets label="Utilisasi per mesin" labelWidth={72} max={100} rows={util.map(u => ({ key: u.fm_id, label: u.fm_id, sub: `${dec(u.downtime_hours)} jam down`, value: u.pct, text: `${dec(u.pct)}%`, color: u.pct < 50 ? C.warn : C.ok, href: "/kondisi-alat" }))} /> : <Empty>Belum ada jadwal, utilisasi belum bisa dihitung.</Empty>}
     </Panel>
-    <Panel title="Downtime per jenis" subtitle="Kejadian downtime yang tercatat di server." href="/kondisi-alat" loading={down.loading && !down.data} error={down.error}>
+    <Panel title="Downtime" subtitle="Kejadian downtime yang tercatat di server." href="/kondisi-alat" loading={down.loading && !down.data} error={down.error}>
       {events.length ? <Donut segs={Object.keys(DOWNTIME_TYPE_LABEL).map(k => ({ key: k, label: DOWNTIME_TYPE_LABEL[k], count: events.filter(e => e.type === k).length, color: DOWN_COLOR[k] ?? C.gray }))} unit="kejadian" /> : <Empty>Belum ada downtime tercatat. Catat di Kondisi Alat bila mesin berhenti.</Empty>}
     </Panel>
     <Panel title="Jam downtime per mesin" subtitle="Total lama berhenti per alat." href="/kondisi-alat" loading={down.loading && !down.data} error={down.error}>

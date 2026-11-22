@@ -14,6 +14,7 @@ import { API_MODE } from "@/lib/api/client";
 import { useNovemberTanks } from "@/lib/api/scenario-nov";
 import { TankVolumeApiCard } from "./tank-volume-api";
 import { NeracaHarianApiCard } from "./neraca-harian-api";
+import { RadarJadwalCard } from "@/components/radar/radar-jadwal";
 import { diffTone, levelAfter, type FlowRow } from "@/lib/volume";
 import { asepticTanks, midTanks } from "@/mock/ops";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle, Toggle } from "@/components/ui";
@@ -90,6 +91,7 @@ export function Transfer({ alat }: { alat?: string }) {
       </Card>
       </>}
       {API_MODE && <NeracaHarianApiCard />}
+      {API_MODE && <RadarJadwalCard />}
       <Card>
         <SectionTitle title={alat ? `Riwayat transfer ${alat}` : "Riwayat transfer"} subtitle="Selisih = volume keluar dari alat asal dikurangi volume diterima alat tujuan." />
         <div className="table-wrap"><table className="schedule-table flow-table">

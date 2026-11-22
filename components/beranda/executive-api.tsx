@@ -5,10 +5,11 @@ import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ArrowUpRight, CalendarRange, ChevronRight, Droplets, Factory, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useResource } from "@/lib/api/resource";
-import { FULFILMENT_LABEL, FULFILMENT_TONE, fmtWaktu, pctText, type BeExecDashboard } from "@/lib/api/contract";
+import { FULFILMENT_LABEL, FULFILMENT_TONE, fmtWaktu, pctText, type BeDowntimeEvent, type BeExecDashboard, type BeSchedule } from "@/lib/api/contract";
 import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
 import type { Tone } from "@/mock/types";
-import { Bullets, ExecKpis, Legend, Tip, type ExecKpi } from "./executive";
+import { Bullets, C, Donut, ExecKpis, Legend, Tip, type ExecKpi } from "./executive";
+import { RadarJadwalChartCard, RadarJadwalTableCard } from "@/components/radar/radar-jadwal";
 
 const AXIS = { fontSize: 11, fill: "var(--color-on-surface-muted)" };
 
@@ -101,6 +102,57 @@ export function ExecutiveDetails() {
   </>;
 }
 
+/** Status lini dari data server: mesin terjadwal pada jadwal aktif, dibedakan yang punya downtime tercatat. */
+function StatusLiniApi({ d }: { d: BeExecDashboard }) {
+  const sch = useResource<BeSchedule>("/schedules/latest");
+  const util = d.machine_utilization ?? [];
+  const scheduled = new Set((sch.data?.runs ?? []).map(r => r.fm_id));
+  const adaDown = util.filter(u => u.downtime_hours > 0).length;
+  const jalan = util.filter(u => u.downtime_hours <= 0 && scheduled.has(u.fm_id)).length;
+  const segs = [
+    { key: "jalan", label: "Jalan", count: jalan, color: C.ok },
+    { key: "downtime", label: "Ada downtime", count: adaDown, color: C.warn },
+    { key: "siaga", label: "Tidak terjadwal", count: util.length - jalan - adaDown, color: C.gray },
+  ];
+  return <Card className="exec-card">
+    <SectionTitle title="Status Lini" subtitle="Keadaan mesin filling pada jadwal aktif, dari utilisasi dan downtime server." action={<Link className="text-link" href="/kondisi-alat">Detail<Icon icon={ChevronRight} size={14} /></Link>} />
+    {!util.length
+      ? <p className="muted">Belum ada jadwal, status lini belum bisa dihitung.</p>
+      : sch.loading && !sch.data
+        ? <p className="muted" role="status">Memuat status lini…</p>
+        : <Donut segs={segs} unit="mesin" caption="mesin filling" />}
+  </Card>;
+}
+
+/** Downtime: jam berhenti per mesin dari kejadian downtime server; judul polos tanpa narasi per jenis atau per penyebab. */
+function DowntimeApi({ d }: { d: BeExecDashboard }) {
+  const down = useResource<BeDowntimeEvent[]>("/downtime-events");
+  const events = down.data ?? [];
+  const perMachineMap = new Map<string, number>();
+  for (const e of events) {
+    const h = (Date.parse(e.end) - Date.parse(e.start)) / 3600000;
+    if (Number.isFinite(h) && h > 0) perMachineMap.set(e.resource_id, (perMachineMap.get(e.resource_id) ?? 0) + h);
+  }
+  const fromEvents = [...perMachineMap.entries()].sort((a, b) => b[1] - a[1]);
+  const util = d.machine_utilization ?? [];
+  // Bila belum ada kejadian tercatat, pakai jam downtime per mesin dari dashboard eksekutif.
+  const rows: [string, number][] = fromEvents.length ? fromEvents : util.filter(u => u.downtime_hours > 0).map(u => [u.fm_id, u.downtime_hours] as [string, number]).sort((a, b) => b[1] - a[1]);
+  const total = rows.reduce((s, [, h]) => s + h, 0);
+  return <Card className="exec-card">
+    <SectionTitle title="Downtime" subtitle="Waktu berhenti mesin yang tercatat di server pada jadwal aktif." action={<Link className="text-link" href="/kondisi-alat">Detail<Icon icon={ChevronRight} size={14} /></Link>} />
+    {down.loading && !down.data
+      ? <p className="muted" role="status">Memuat downtime…</p>
+      : down.error
+        ? <p className="crit-text" role="alert">Gagal memuat downtime: {down.error.message}</p>
+        : rows.length
+          ? <>
+            <p className="exec-plot-title">Total downtime {jam(total)} jam</p>
+            <Bullets label="Downtime per mesin" labelWidth={72} max={rows[0][1]} rows={rows.slice(0, 6).map(([id, h]) => ({ key: id, label: id, value: h, text: `${jam(h)} jam`, color: C.warn, href: "/kondisi-alat" }))} />
+          </>
+          : <p className="muted">Belum ada downtime tercatat pada jadwal aktif.</p>}
+  </Card>;
+}
+
 /**
  * Executive Dashboard mode API sebagai infografis (masukan dosen: pimpinan membaca grafik, bukan tabel).
  * Semua angka dari GET /dashboard/executive. Bagian yang datanya null di Backend tampil sebagai keadaan kosong, tidak diisi 0.
@@ -140,6 +192,14 @@ export function ExecutiveDashboardApi({ attention }: { attention: ReactNode }) {
   return <>
     {label && <p className="exec-label">Label data <Badge tone="warn">{label}</Badge></p>}
     <ExecKpis items={kpis} />
+    <div className="exec-grid">
+      <StatusLiniApi d={d} />
+      <DowntimeApi d={d} />
+    </div>
+    <div className="exec-grid">
+      <RadarJadwalChartCard />
+      <RadarJadwalTableCard />
+    </div>
     <div className="exec-grid">
       <Card className="exec-card">
         <SectionTitle title="Target dan jadwal harian" subtitle="Liter jatuh tempo dibanding liter yang sudah terjadwal, per tanggal." action={<Link className="text-link" href="/penjadwalan">Detail<Icon icon={ChevronRight} size={14} /></Link>} />
