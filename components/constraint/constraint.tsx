@@ -142,7 +142,8 @@ export function Constraint() {
     let live = true;
     void Promise.all(
       plansResource.data.map(p =>
-        apiSend<PlanCheckResult>("POST", `/plans/${p.id}/check`, limits, demo.role)
+        // Backend menerima batas dalam pembungkus { limits } dengan semua field terisi; objek polos ditolak 400.
+        apiSend<PlanCheckResult>("POST", `/plans/${p.id}/check`, { limits: { ...DEFAULT_LIMITS, ...limits } }, demo.role)
           .then(res => [p.id, res] as const)
       )
     )
