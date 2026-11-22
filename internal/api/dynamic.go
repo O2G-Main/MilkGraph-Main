@@ -484,6 +484,9 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 				return nil, e
 			}
 			m["simulation"] = true
+			// Semua sumber masih simulasi, jadi status koneksi tidak boleh
+			// bergantung pada state lama atau riwayat sinkronisasi.
+			m["status"] = "simulasi"
 			out = append(out, m)
 		}
 		return out, nil
