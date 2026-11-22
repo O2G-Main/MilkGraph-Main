@@ -8,6 +8,7 @@ mengembalikan None supaya pemanggil jatuh ke mode template.
 Desain mengikuti Kontrak API AI MilkGraph v2.
 """
 
+import http.client
 import json
 import logging
 import os
@@ -61,7 +62,17 @@ def panggil(state: str, questions: dict) -> dict | None:
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_DETIK) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ValueError,
+        OSError,
+        http.client.HTTPException,
+    ) as exc:
+        # OSError menampung putus koneksi di tengah respons
+        # (ConnectionResetError dan keluarganya) dan HTTPException
+        # menampung respons HTTP yang terpotong; keduanya mode gagal
+        # jaringan biasa dan wajib jatuh ke fallback, bukan error 500.
         log.warning("Jev tidak terjangkau atau respons tidak valid: %s", exc)
         return None
     if not isinstance(data, dict) or not isinstance(data.get("answers"), dict):

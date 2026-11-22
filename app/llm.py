@@ -10,6 +10,7 @@ asing saja membuang teks LLM. Pemanggilan HTTP memakai pustaka standar,
 mengikuti pola klien Jev. Desain mengikuti Kontrak API AI MilkGraph v3.
 """
 
+import http.client
 import json
 import logging
 import os
@@ -98,7 +99,17 @@ def tulis(teks_acuan: str, instruksi: str) -> tuple[str, dict] | None:
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_DETIK) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ValueError,
+        OSError,
+        http.client.HTTPException,
+    ) as exc:
+        # OSError menampung putus koneksi di tengah respons
+        # (ConnectionResetError dan keluarganya) dan HTTPException
+        # menampung respons HTTP yang terpotong; keduanya mode gagal
+        # jaringan biasa dan wajib jatuh ke fallback, bukan error 500.
         log.warning("LLM tidak terjangkau atau respons tidak valid: %s", exc)
         return None
     try:

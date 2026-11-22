@@ -7,7 +7,10 @@ Lapisan narasi LLM (v3) menuliskan fakta dan penilaian Jev menjadi Bahasa
 Indonesia yang luwes, dengan pagar validasi angka terhadap fakta. Kalau LLM
 nonaktif, gagal, atau keluarannya mengandung angka asing, narasi template
 dipakai apa adanya dengan sumber "template"; sumber "jev+llm" hanya bila
-teks LLM lolos validasi. Desain mengikuti Kontrak API AI MilkGraph v3.
+teks LLM lolos validasi dan penilaian Jev benar-benar ada pada respons.
+Label itu adalah klaim bahwa Jev ikut menilai, jadi tanpa Jev sumber tetap
+"template" walaupun teksnya ditulis LLM. Desain mengikuti Kontrak API AI
+MilkGraph v3.
 """
 
 import logging
@@ -203,6 +206,28 @@ def _teks_keputusan_akar(resp: RootCauseResponse) -> str:
     return " ".join(baris)
 
 
+def _pastikan_catatan_selisih(teks: str, pilihan_jev: str) -> str:
+    """Jamin narasi pada jalur selisih memuat catatan perbedaan wajib.
+
+    Kontrak mewajibkan narasi menyebut adanya perbedaan penilaian Jev
+    terhadap ranking backend untuk ditinjau manusia. Instruksi ke LLM
+    memintanya, tetapi teks LLM mengganti seluruh narasi template sehingga
+    catatan itu bisa hilang; bila penanda perbedaan belum ada pada teks
+    LLM, kode menambahkan kalimat catatan baku yang sama dengan yang
+    disusun jalur template. Catatan ini tidak memuat angka, jadi tidak
+    mengubah hasil validasi angka yang sudah lolos.
+    """
+    bawah = teks.lower()
+    if "berbeda" in bawah or "perbedaan" in bawah:
+        return teks
+    catatan = (
+        f"Catatan: penilaian Jev berbeda dari ranking backend, Jev memilih "
+        f"{_label(pilihan_jev)}; perbedaan ini perlu ditinjau manusia "
+        f"sebelum ditindaklanjuti."
+    )
+    return teks.rstrip() + " " + catatan
+
+
 def narasi_akar_masalah(req: RootCauseRequest) -> RootCauseResponse:
     resp = _narasi_akar_masalah_v2(req)
     acuan = _state_akar_masalah(req)
@@ -219,8 +244,13 @@ def narasi_akar_masalah(req: RootCauseRequest) -> RootCauseResponse:
             "perbedaan itu perlu ditinjau manusia."
         )
     teks, usage, ok = _tulis_ulang_llm(resp.narasi, acuan, instruksi)
-    update: dict = {"llm_usage": usage, "sumber": "jev+llm" if ok else "template"}
+    # Label "jev+llm" hanya bila Jev benar-benar menilai (field jev
+    # terisi); tanpa Jev, sumber "template" walaupun teks ditulis LLM.
+    sumber = "jev+llm" if ok and resp.jev is not None else "template"
+    update: dict = {"llm_usage": usage, "sumber": sumber}
     if ok:
+        if resp.selisih_dengan_be and resp.jev is not None:
+            teks = _pastikan_catatan_selisih(teks, resp.jev.pilihan)
         update["narasi"] = teks
     return resp.model_copy(update=update)
 
@@ -311,7 +341,10 @@ def penjelasan_prioritas(req: RepairPriorityRequest) -> RepairPriorityResponse:
         "dan ringkas."
     )
     teks, usage, ok = _tulis_ulang_llm(resp.penjelasan, acuan, instruksi)
-    update: dict = {"llm_usage": usage, "sumber": "jev+llm" if ok else "template"}
+    # Sama seperti narasi akar masalah: label "jev+llm" hanya bila Jev
+    # benar-benar menilai; tanpa Jev sumber tetap "template".
+    sumber = "jev+llm" if ok and resp.jev is not None else "template"
+    update: dict = {"llm_usage": usage, "sumber": sumber}
     if ok:
         update["penjelasan"] = teks
     return resp.model_copy(update=update)
