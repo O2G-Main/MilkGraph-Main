@@ -1,6 +1,6 @@
 # 🥛 MilkGraph
 
-> **Digital Twin & Context Graph System for Liquid Food & Dairy Processing Operations**  
+> **Context Graph System for Liquid Food & Dairy Processing Operations**  
 > *Dikembangkan untuk PLAY IT PLUS Deeptech Hackathon 2026*
 
 ---
