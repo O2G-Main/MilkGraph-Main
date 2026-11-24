@@ -136,8 +136,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const notifications = API_MODE ? (notificationsRes.data ?? []) : null;
   const { readIds: readNotifs, mark: markRead } = useNotifRead(demo.account ?? "");
-  const notificationList: Notification[] = notifications ?? DEMO_NOTIFICATIONS.map(n =>
-    n.id === "PLAN-FIFO" ? { ...n, subtitle: `${broken} constraint dilanggar, cek rekomendasi solver` } : n);
+  // Backend belum mengirim jam per notifikasi; FE memakai waktu snapshot meta agar baris tetap punya jam.
+  const snapshotNow = metaRes.data?.now;
+  const notificationList: Notification[] = notifications
+    ? notifications.map(n => ({ ...n, at: n.at ?? snapshotNow }))
+    : DEMO_NOTIFICATIONS.map(n => n.id === "PLAN-FIFO" ? { ...n, subtitle: `${broken} constraint dilanggar, cek rekomendasi solver` } : n);
   const unread = notificationList.filter(n => !readNotifs.includes(n.id));
   const notifCount = unread.length;
   const openNotification = (n: Notification) => {
