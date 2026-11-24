@@ -73,7 +73,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (tourOfferChecked.current || pathname !== "/") return;
     tourOfferChecked.current = true;
-    try { if (!localStorage.getItem("milkgraph-tour-seen")) setTourOffer(true); } catch { /* abaikan */ }
+    const t = setTimeout(() => {
+      try { if (!localStorage.getItem("milkgraph-tour-seen")) setTourOffer(true); } catch { /* abaikan */ }
+    }, 400);
+    return () => clearTimeout(t);
   }, [pathname]);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);

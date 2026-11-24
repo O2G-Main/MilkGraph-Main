@@ -57,9 +57,11 @@ export function ProductTour({ runId, role, pathname, onDone, onStart }: {
   const [rect, setRect] = useState<Rect | null>(null);
   const active = steps.length > 0;
   const doneRef = useRef(onDone);
-  doneRef.current = onDone;
   const startRef = useRef(onStart);
-  startRef.current = onStart;
+  useEffect(() => {
+    doneRef.current = onDone;
+    startRef.current = onStart;
+  });
 
   const close = useCallback(() => {
     setSteps([]);
@@ -108,11 +110,10 @@ export function ProductTour({ runId, role, pathname, onDone, onStart }: {
   useEffect(() => {
     if (!step) return;
     const el = document.querySelector<HTMLElement>(`[data-tour="${step.anchor}"]`);
-    if (!el) { setRect(null); return; }
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
-    measure();
-    const t = setTimeout(measure, 380);
-    return () => clearTimeout(t);
+    if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    const t1 = setTimeout(measure, 60);
+    const t2 = setTimeout(measure, 380);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [step, measure]);
 
   // Posisi mengikuti gulir/resize selama tour berjalan.
