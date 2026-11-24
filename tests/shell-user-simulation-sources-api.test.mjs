@@ -4,13 +4,17 @@ import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL(`../components/${path}`, import.meta.url), 'utf8');
 
-test('shell and user resolve backend-only resources in API mode', () => {
+test('shell resolves backend resources in API mode; Manajemen akun memakai akun dan PIC lokal', () => {
   const shell = read('shell/app-shell.tsx'), user = read('pengguna/pengguna.tsx');
   for (const path of ['/meta', '/session', '/shifts', '/notifications'])
     assert.ok(shell.includes(`"${path}"`), `shell missing ${path}`);
   assert.match(shell, /logout\(\)/);
   assert.match(shell, /await resetDemo\(/);
-  assert.match(user, /useResource.*"\/roles"/);
+  // Manajemen akun sengaja memakai akun + PIC dari state aplikasi di kedua mode,
+  // supaya tampilan mode API sama dengan mode lokal sampai backend punya endpoint pengguna.
+  assert.match(user, /<UserList/);
+  assert.match(user, /<PicList/);
+  assert.doesNotMatch(user, /useResource/);
   assert.doesNotMatch(user, /setRole\(/, "ganti akun lewat login, bukan dari halaman Pengguna");
 });
 

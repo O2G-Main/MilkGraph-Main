@@ -54,6 +54,7 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
   const costs = useResource<Costs>("/costs");
   const sources = src.data ?? [];
   const connected = sources.filter(s => s.status === "terhubung").length;
+  const statusCounts = Object.entries(countBy(sources, s => s.status));
   const roleRows = Object.entries(roles.data?.roles ?? {}).map(([id, r]) => ({ id, ...r })).sort((a, b) => b.permissions.length - a.permissions.length);
   const permTotal = Object.keys(roles.data?.permissions ?? {}).length;
   const kinds = Object.entries(countBy(audit.data ?? [], a => a.kind)).sort((a, b) => b[1] - a[1]);
@@ -69,6 +70,7 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
   return <Layout kpis={kpis} attention={attention}>
     <Panel title="Status sumber data" subtitle="Koneksi sistem pabrik yang memasok data MilkGraph." href="/sumber-data" loading={src.loading && !src.data} error={src.error}>
       {sources.length ? <>
+        <p className="small muted exec-source-note">{sources.length} sumber · {statusCounts.map(([k, n]) => `${n} ${k}`).join(" · ")}</p>
         <ul className="exec-source-list">
           {sources.map(s => <li key={s.id}>
             <span className={`status-dot tone-${statusTone(s.status)}`} aria-hidden="true" />
@@ -77,7 +79,6 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
             <Badge tone={statusTone(s.status)}>{s.status}</Badge>
           </li>)}
         </ul>
-        <p className="small muted exec-source-note">{connected} terhubung dari {sources.length} sumber terdaftar.</p>
       </> : <Empty>Belum ada sumber data terdaftar.</Empty>}
     </Panel>
     <Panel title="Hak akses per role" subtitle={`Jumlah hak akses dari ${permTotal} yang tersedia.`} href="/role-akses" loading={roles.loading && !roles.data} error={roles.error}>

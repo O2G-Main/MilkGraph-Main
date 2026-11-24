@@ -127,7 +127,6 @@ export function RadarJadwalCard() {
           <p className="radar-sub">Lima aspek jadwal aktif dinilai dari data server: alokasi PO, ketepatan rencana selesai, utilisasi mesin, efisiensi ganti format, dan kesiapan bahan baku.</p>
         </div>
         <div className="radar-head-right">
-          <span className="radar-badge">DATA LIVE</span>
           {q && (
             <div className="radar-legend">
               <span className="radar-lchip"><i className="radar-dot" style={{ background: PRIMARY }} />Jadwal {q.scheduleId}</span>

@@ -116,6 +116,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!onLogin && account && !allowedPage) router.replace("/");
   }, [onLogin, account, allowedPage, router]);
 
+  // Panduan halaman muncul otomatis sekali di Beranda saat web baru dibuka; setelah ditutup tidak diulang.
+  const markPanduanSeen = () => { try { localStorage.setItem("milkgraph-panduan-seen", "1"); } catch { /* mode privat */ } };
+  useEffect(() => {
+    if (pathname !== "/") return;
+    let seen = "";
+    try { seen = localStorage.getItem("milkgraph-panduan-seen") ?? ""; } catch { /* mode privat */ }
+    if (seen) return;
+    const timer = setTimeout(() => setTourOffer(true), 700);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+
   const broken = violations(scenario.plans[0], "before", demo.limits);
 
   const shifts = API_MODE ? (shiftsRes.data ?? []) : null;
@@ -215,7 +226,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
     <AssistantChat />
     <ProductTour runId={tourRun} role={demo.role} pathname={pathname} onDone={() => {}} />
-    {tourOffer && <TourOffer onAccept={() => { setTourOffer(false); setTourRun(r => r + 1); }} onDecline={() => setTourOffer(false)} />}
+    {tourOffer && <TourOffer onAccept={() => { markPanduanSeen(); setTourOffer(false); setTourRun(r => r + 1); }} onDecline={() => { markPanduanSeen(); setTourOffer(false); }} />}
     {drawer && <dialog ref={drawerRef} id="mobile-navigation" aria-label="Menu navigasi" className="mobile-drawer" onCancel={() => setDrawer(false)} onClick={e => { if (e.target === e.currentTarget) setDrawer(false); }}><div className="drawer-content">{renderNavigation(true)}</div></dialog>}
     {panel && <Modal title={{ shift: "Pilih shift", notifications: "Notifikasi operasional", profile: "Yakin ingin keluar?", help: "Panduan demo" }[panel]} onClose={() => setPanel(null)}>
       {panel === "shift" && (

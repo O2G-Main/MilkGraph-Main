@@ -8,28 +8,14 @@ import { ROLE_IDS, SUPERADMIN, can, roleLabel, type RoleId } from "@/lib/roles";
 import { ASSETS, STAGES } from "@/lib/assets";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
-import { API_MODE } from "@/lib/api/client";
-import { useResource } from "@/lib/api/resource";
-import type { BeRole } from "@/lib/api/contract";
 
 const SUBTITLE = "Kelola akun pengguna dan tetapkan PIC tiap kegiatan. Role dan hak akses tetap diatur di Role & Hak Akses.";
 
 export function Pengguna() {
   const demo = useDemo();
-  const rolesRes = useResource<{ roles: Record<string, BeRole> }>(API_MODE ? "/roles" : null);
-  // Pengelolaan pengguna baru tersedia di mode lokal; mode API menunggu endpoint backend.
-  const manage = !API_MODE && can(demo.role, "users.manage");
-
-  if (API_MODE) {
-    return (
-      <div className="page-enter">
-        <PageHeading title="Manajemen akun" subtitle={SUBTITLE} />
-        {rolesRes.error ? <p className="crit-text" role="alert">Gagal memuat peran: {rolesRes.error.message}</p>
-          : !rolesRes.data ? <p className="muted" role="status">Memuat data peran…</p>
-          : <Card><SectionTitle title="Role terdaftar" subtitle="Persona dan permission dari registri Backend." /><ul className="attention-list">{Object.entries(rolesRes.data.roles).map(([id, r]) => <li key={id} className="attention-item"><span className="attention-copy"><strong>{r.label}</strong><span>{r.user} · {r.permissions?.length ?? 0} permission · {r.builtin ? "role bawaan" : "role kustom"}</span></span></li>)}</ul></Card>}
-      </div>
-    );
-  }
+  // Akun dan PIC disimpan di state aplikasi; mode API tetap memakai data akun ini supaya tampilannya
+  // sama dengan mode lokal sampai backend menyediakan endpoint pengguna.
+  const manage = can(demo.role, "users.manage");
 
   return (
     <div className="page-enter">
