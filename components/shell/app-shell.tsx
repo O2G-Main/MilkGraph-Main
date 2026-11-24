@@ -16,7 +16,7 @@ import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { Tone } from "@/mock/types";
 import { AssistantChat } from "@/components/assistant/assistant-chat";
-import { ProductTour, TourOffer } from "@/components/tour/product-tour";
+import { ProductTour } from "@/components/tour/product-tour";
 
 interface Meta {
   schemaVersion: "1";
@@ -79,21 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);
   const [panel, setPanel] = useState<"shift" | "notifications" | "profile" | "help" | null>(null);
   const [source, setSource] = useState<string | null>(null);
-  // Product tour: runId dinaikkan untuk memulai; tawaran sekali tampil di Beranda
-  // untuk akun yang belum pernah ikut/menolak (penanda localStorage).
+  // Panduan halaman: hanya berjalan saat tombol "Panduan halaman" diklik.
   const [tourRun, setTourRun] = useState(0);
-  const [tourActive, setTourActive] = useState(false);
-  const [tourOffer, setTourOffer] = useState(false);
-  const tourOfferChecked = useRef(false);
-  const markTourSeen = () => { try { localStorage.setItem("milkgraph-tour-seen", "1"); } catch { /* abaikan */ } };
-  useEffect(() => {
-    if (tourOfferChecked.current || pathname !== "/") return;
-    tourOfferChecked.current = true;
-    const t = setTimeout(() => {
-      try { if (!localStorage.getItem("milkgraph-tour-seen")) setTourOffer(true); } catch { /* abaikan */ }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [pathname]);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
 
@@ -207,8 +194,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="topbar-actions">
           
-          <button className="shift-button" data-tour="tour-button" onClick={() => { setTourOffer(false); setTourRun(r => r + 1); }} aria-label="Mulai tur halaman ini">
-            <Icon icon={Compass} size={16} /><span>Tur</span>
+          <button className="shift-button" data-tour="tour-button" onClick={() => setTourRun(r => r + 1)} aria-label="Buka panduan halaman">
+            <Icon icon={Compass} size={16} /><span>Panduan halaman</span>
           </button>
           <button className="shift-button" data-tour="topbar" onClick={() => setPanel("shift")}>
             <Icon icon={Clock3} size={16} /><span>{shiftButtonLabel}<span className="shift-date">{shiftButtonDate}</span></span>
@@ -226,8 +213,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="workspace-footer"><span>MilkGraph <span className="footer-divider">/</span> Context graph operasional pabrik susu</span><span>{snapshotFooter} <span className="status-dot" /></span></footer>
     </div>
     <AssistantChat />
-    <ProductTour runId={tourRun} role={demo.role} pathname={pathname} onStart={() => setTourActive(true)} onDone={() => { setTourActive(false); markTourSeen(); }} />
-    {tourOffer && !tourActive && <TourOffer onAccept={() => { setTourOffer(false); markTourSeen(); setTourRun(r => r + 1); }} onDecline={() => { setTourOffer(false); markTourSeen(); }} />}
+    <ProductTour runId={tourRun} role={demo.role} pathname={pathname} onDone={() => {}} />
     {drawer && <dialog ref={drawerRef} id="mobile-navigation" aria-label="Menu navigasi" className="mobile-drawer" onCancel={() => setDrawer(false)} onClick={e => { if (e.target === e.currentTarget) setDrawer(false); }}><div className="drawer-content">{renderNavigation(true)}</div></dialog>}
     {panel && <Modal title={{ shift: "Pilih shift", notifications: "Notifikasi operasional", profile: "Yakin ingin keluar?", help: "Panduan demo" }[panel]} onClose={() => setPanel(null)}>
       {panel === "shift" && (

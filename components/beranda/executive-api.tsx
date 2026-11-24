@@ -163,7 +163,6 @@ export function ExecutiveDashboardApi({ attention }: { attention: ReactNode }) {
     return <Card className="exec-card"><p className="muted" role={res.error ? "alert" : "status"}>{res.error ? `Gagal memuat dashboard eksekutif: ${res.error.message}` : "Memuat dashboard eksekutif…"}</p></Card>;
   }
   const d = res.data;
-  const label = (d as { label_data?: string }).label_data;
   const util = d.machine_utilization ?? [];
   const avgPct = util.length ? util.reduce((s, u) => s + u.pct, 0) / util.length : null;
   const downTotal = util.reduce((s, u) => s + u.downtime_hours, 0);
@@ -190,7 +189,6 @@ export function ExecutiveDashboardApi({ attention }: { attention: ReactNode }) {
   const poShown = poSegs.filter(s => s.count);
 
   return <>
-    {label && <p className="exec-label">Label data <Badge tone="warn">{label}</Badge></p>}
     <ExecKpis items={kpis} />
     <div className="exec-grid" data-tour="exec-status">
       <StatusLiniApi d={d} />

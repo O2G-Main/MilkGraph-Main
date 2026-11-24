@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Compass, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import { Icon } from "@/components/ui";
 import { filterStepsWithAnchors, tourStepsFor, type TourStepDef } from "@/lib/tour-steps";
 
@@ -70,7 +70,7 @@ export function ProductTour({ runId, role, pathname, onDone, onStart }: {
     doneRef.current();
   }, []);
 
-  // Mulai tour setiap kali runId naik (tombol Tur atau tawaran diterima).
+  // Panduan dimulai setiap kali runId naik (tombol Panduan halaman diklik).
   // Jangkar ditunggu sebentar: sebagian kartu halaman baru muncul setelah
   // data server tiba, jadi himpunan langkah diambil yang paling lengkap
   // selama jendela tunggu singkat ini.
@@ -143,12 +143,12 @@ export function ProductTour({ runId, role, pathname, onDone, onStart }: {
   const last = idx === steps.length - 1;
   const tip = rect ? tipPosition(rect) : { top: Math.max(12, window.innerHeight / 2 - TIP_H / 2), left: Math.max(12, window.innerWidth / 2 - TIP_W / 2) };
 
-  return <div className="tour-root" role="dialog" aria-modal="true" aria-label={`Tur halaman, langkah ${idx + 1} dari ${steps.length}`}>
+  return <div className="tour-root" role="dialog" aria-modal="true" aria-label={`Panduan halaman, langkah ${idx + 1} dari ${steps.length}`}>
     <div className="tour-catcher" onClick={close} />
     {rect && <div className="tour-spot" style={{ top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }} />}
     <div className="tour-tip" style={{ top: tip.top, left: tip.left }}>
       <div className="tour-progress"><span style={{ width: `${(idx + 1) / steps.length * 100}%` }} /></div>
-      <button type="button" className="tour-close" aria-label="Tutup tur" onClick={close}><Icon icon={X} size={16} /></button>
+      <button type="button" className="tour-close" aria-label="Tutup panduan" onClick={close}><Icon icon={X} size={16} /></button>
       <p className="tour-count">Langkah {idx + 1} dari {steps.length}</p>
       <h3 className="tour-title">{step.title}</h3>
       <p className="tour-body">{step.body}</p>
@@ -156,21 +156,6 @@ export function ProductTour({ runId, role, pathname, onDone, onStart }: {
         <button type="button" className="button secondary" onClick={prev} disabled={idx === 0}><Icon icon={ArrowLeft} size={15} />Kembali</button>
         <button type="button" className="button primary" onClick={next}>{last ? <><Icon icon={Check} size={15} />Selesai</> : <>Lanjut<Icon icon={ArrowRight} size={15} /></>}</button>
       </div>
-    </div>
-  </div>;
-}
-
-/** Tawaran sekali ikut tour, tampil di Beranda untuk akun yang belum pernah ikut/ditolak. */
-export function TourOffer({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
-  return <div className="tour-offer" role="dialog" aria-label="Tawaran tur singkat">
-    <span className="tour-offer-icon"><Icon icon={Compass} size={22} /></span>
-    <div className="tour-offer-copy">
-      <strong>Mau tur singkat?</strong>
-      <span>Kenalan sama halaman ini lewat panduan langkah per langkah, isinya mengikuti halaman yang dibuka.</span>
-    </div>
-    <div className="tour-offer-actions">
-      <button type="button" className="button primary" onClick={onAccept}>Mulai tur</button>
-      <button type="button" className="button secondary" onClick={onDecline}>Nanti saja</button>
     </div>
   </div>;
 }

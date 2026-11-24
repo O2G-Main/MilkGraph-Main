@@ -18,7 +18,7 @@ export const GLOBAL_STEPS: TourStepDef[] = [
   { anchor: "nav", title: "Menu utama", body: "Semua area ada di menu ini: Penerimaan, Operasional, Rencana, Traceability. Menu yang tampil mengikuti role akun." },
   { anchor: "topbar", title: "Shift dan notifikasi", body: "Ganti shift dan cek notifikasi operasional dari sini." },
   { anchor: "assistant", title: "Tanya MilkGraph", body: "Asisten AI. Tanya soal jadwal, PO, atau batch, jawabannya ditulis dari fakta backend." },
-  { anchor: "tour-button", title: "Tombol Tur", body: "Tour bisa diulang kapan saja dari tombol ini, isinya mengikuti halaman yang dibuka." },
+  { anchor: "tour-button", title: "Tombol panduan halaman", body: "Panduan bisa diulang kapan saja dari tombol ini, isinya mengikuti halaman yang dibuka." },
 ];
 
 const BERANDA_EXECUTIVE: TourStepDef[] = [

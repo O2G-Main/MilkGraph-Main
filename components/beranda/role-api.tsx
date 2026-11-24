@@ -24,8 +24,6 @@ const dec = (n: number, d = 1) => new Intl.NumberFormat("id-ID", { maximumFracti
 const status = (e: Error | null) => (e as ApiError | null)?.status;
 const hoursBetween = (a: string, b: string) => Math.max(0, (new Date(b).getTime() - new Date(a).getTime()) / 3_600_000);
 const countBy = <T,>(rows: T[], key: (r: T) => string) => rows.reduce<Record<string, number>>((m, r) => { const k = key(r); m[k] = (m[k] ?? 0) + 1; return m; }, {});
-/** Label data dari record pertama yang membawanya (mis. "simulasi"); dirender apa adanya. */
-const labelOf = (...lists: (unknown[] | null | undefined)[]) => lists.flatMap(l => l ?? []).map(x => (x as { label_data?: string })?.label_data).find(Boolean);
 
 /** Satu panel infografis: judul, subjudul satu kalimat, tautan ke halaman detail, lalu isi atau keadaan muat/gagal. */
 function Panel({ title, subtitle, href, loading, error, children }: { title: string; subtitle: string; href: string; loading?: boolean; error?: Error | null; children: ReactNode }) {
@@ -36,9 +34,8 @@ function Panel({ title, subtitle, href, loading, error, children }: { title: str
 }
 const Empty = ({ children }: { children: ReactNode }) => <p className="muted">{children}</p>;
 
-function Layout({ label, kpis, children, attention }: { label?: string; kpis: ExecKpi[]; children: ReactNode; attention: ReactNode }) {
+function Layout({ kpis, children, attention }: { kpis: ExecKpi[]; children: ReactNode; attention: ReactNode }) {
   return <>
-    {label && <p className="exec-label">Label data <Badge tone="warn">{label}</Badge></p>}
     <ExecKpis items={kpis} />
     <div className="exec-grid">{children}</div>
     {attention}
@@ -61,18 +58,27 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
   const permTotal = Object.keys(roles.data?.permissions ?? {}).length;
   const kinds = Object.entries(countBy(audit.data ?? [], a => a.kind)).sort((a, b) => b[1] - a[1]);
   const llm = costs.data?.llm;
-  const statusColor = (s: string) => s === "terhubung" ? C.ok : s.includes("putus") || s.includes("gagal") ? C.crit : C.warn;
-  const srcSegs = Object.entries(countBy(sources, s => s.status)).map(([k, n]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), count: n, color: statusColor(k) }));
+  const statusTone = (s: string) => s === "terhubung" ? "ok" as const : s.includes("putus") || s.includes("gagal") ? "crit" as const : "warn" as const;
 
   const kpis: ExecKpi[] = [
     { icon: Database, label: "Sumber data terhubung", value: src.data ? connected : null, of: src.data ? `dari ${sources.length}` : undefined, progress: sources.length ? connected / sources.length * 100 : undefined, note: src.data ? `${sources.length - connected} belum terhubung` : "Memuat dari server", tone: src.data && connected < sources.length ? "warn" : "ok", href: "/sumber-data" },
     { icon: Users, label: "Role terdaftar", value: roles.data ? roleRows.length : null, of: "role", note: roles.data ? `${roleRows.filter(r => !r.builtin).length} role buatan, ${permTotal} hak akses` : "Memuat dari server", tone: "neutral", href: "/role-akses" },
     { icon: Activity, label: "Aktivitas tercatat", value: audit.data ? audit.data.length : null, of: "kejadian", note: kinds.length ? `Terbanyak: ${AUDIT_LABEL[kinds[0][0]] ?? kinds[0][0]}` : "Belum ada aktivitas", tone: "neutral", href: "/persetujuan" },
-    { icon: Coins, label: "Biaya LLM", value: llm ? llm.est_cost_usd : null, decimals: 4, suffix: " USD", note: llm ? `${llm.calls} panggilan, ${llm.label ?? "estimasi"}` : "Belum ada data biaya", tone: "neutral", href: "/sumber-data" },
+    { icon: Coins, label: "Biaya LLM", value: llm ? llm.est_cost_usd : null, decimals: 4, suffix: " USD", note: llm ? `${llm.calls} panggilan` : "Belum ada data biaya", tone: "neutral", href: "/sumber-data" },
   ];
-  return <Layout kpis={kpis} attention={attention} label={sources.some(s => (s as { simulation?: boolean }).simulation) ? "simulasi" : undefined}>
+  return <Layout kpis={kpis} attention={attention}>
     <Panel title="Status sumber data" subtitle="Koneksi sistem pabrik yang memasok data MilkGraph." href="/sumber-data" loading={src.loading && !src.data} error={src.error}>
-      {sources.length ? <Donut segs={srcSegs} unit="sumber" caption="sumber data" /> : <Empty>Belum ada sumber data terdaftar.</Empty>}
+      {sources.length ? <>
+        <ul className="exec-source-list">
+          {sources.map(s => <li key={s.id}>
+            <span className={`status-dot tone-${statusTone(s.status)}`} aria-hidden="true" />
+            <span className="exec-source-copy"><strong>{s.name}</strong><small>{s.system}</small></span>
+            <span className="exec-source-meta">{s.lastSync ? `Sync ${s.lastSync}` : s.interval}</span>
+            <Badge tone={statusTone(s.status)}>{s.status}</Badge>
+          </li>)}
+        </ul>
+        <p className="small muted exec-source-note">{connected} terhubung dari {sources.length} sumber terdaftar.</p>
+      </> : <Empty>Belum ada sumber data terdaftar.</Empty>}
     </Panel>
     <Panel title="Hak akses per role" subtitle={`Jumlah hak akses dari ${permTotal} yang tersedia.`} href="/role-akses" loading={roles.loading && !roles.data} error={roles.error}>
       {roleRows.length ? <Bullets label="Hak akses per role" labelWidth={150} max={permTotal || 1} rows={roleRows.map(r => ({ key: r.id, label: r.label, sub: r.builtin ? undefined : "Role buatan", value: r.permissions.length, text: `${r.permissions.length} akses`, color: r.builtin ? C.ok : C.soft, href: "/role-akses" }))} /> : <Empty>Belum ada role.</Empty>}
@@ -82,7 +88,7 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
     </Panel>
     <Panel title="Biaya layanan" subtitle="Biaya AI dan item operasional dari Backend." href="/sumber-data" loading={costs.loading && !costs.data} error={costs.error}>
       {costs.data ? <ul className="exec-figures exec-figures-2">
-        <li><i style={{ background: C.ok }} aria-hidden="true" /><strong>{llm ? `${dec(llm.est_cost_usd, 4)} USD` : "-"}</strong><span>Biaya LLM <Badge tone="warn">{llm?.label ?? "estimasi"}</Badge></span></li>
+        <li><i style={{ background: C.ok }} aria-hidden="true" /><strong>{llm ? `${dec(llm.est_cost_usd, 4)} USD` : "-"}</strong><span>Biaya LLM</span></li>
         <li><i style={{ background: C.soft }} aria-hidden="true" /><strong>{llm?.calls ?? 0}</strong><span>Panggilan AI tercatat</span></li>
         <li><i style={{ background: C.gray }} aria-hidden="true" /><strong>{costs.data.llm_aktual?.calls ?? 0}</strong><span>Panggilan dengan biaya aktual</span></li>
         <li><i style={{ background: C.warn }} aria-hidden="true" /><strong>{costs.data.items?.length ?? 0}</strong><span>Item biaya operasional</span></li>
@@ -115,7 +121,7 @@ function PlannerApi({ attention }: { attention: ReactNode }) {
   const fulSegs = ["FULFILLED", "ON_TRACK", "AT_RISK", "LATE"].map((k, i) => ({ key: k, label: FULFILMENT_LABEL[k], count: ful.filter(f => f.status === k).length, color: [C.ok, C.soft, C.warn, C.crit][i] }));
   const warnTypes = Object.entries(countBy(schedule?.warnings ?? [], w => w.type));
   const WARN_LABEL: Record<string, string> = { HOLDING_TIME: "Holding time", TANK_STOCK_SHORT: "Stok tangki kurang" };
-  return <Layout kpis={kpis} attention={attention} label={labelOf(pos.data)}>
+  return <Layout kpis={kpis} attention={attention}>
     <Panel title="Liter per PO" subtitle="Urut dari jatuh tempo terdekat." href="/penjadwalan" loading={pos.loading && !pos.data} error={pos.error}>
       {poRows.length ? <>
         <Bullets label="Liter per PO" labelWidth={128} max={Math.max(...poRows.map(p => p.liter))} rows={poRows.slice(0, 8).map(p => ({ key: p.po_id, label: p.po_id, sub: `Jatuh tempo ${fmtWaktu(p.due_datetime)}`, value: p.liter, text: `${fmt(p.liter)} L`, color: p.priority === 1 ? C.ok : C.soft, href: "/penjadwalan" }))} />
@@ -155,7 +161,7 @@ function ReceivingApi({ attention }: { attention: ReactNode }) {
     { icon: Droplets, label: "Susu sudah tiba", value: arr.data ? arrivedL : null, of: "liter", note: `${rows.filter(a => a.status === "Sudah Tiba").length} RT berstatus Sudah Tiba`, tone: "neutral", href: "/kedatangan" },
     { icon: Timer, label: "Selisih transfer", value: trf.data ? selisih : null, of: "liter", note: trf.data ? `${transfers.length} transfer tercatat` : "Memuat dari server", tone: "neutral", href: "/transfer" },
   ];
-  return <Layout kpis={kpis} attention={attention} label={labelOf(arr.data)}>
+  return <Layout kpis={kpis} attention={attention}>
     <Panel title="Status kedatangan RT" subtitle="Semua RT di jadwal kedatangan." href="/kedatangan" loading={arr.loading && !arr.data} error={arr.error}>
       {rows.length ? <Donut segs={ARR_STATUS.map(s => ({ key: s.key, label: s.key, count: rows.filter(a => a.status === s.key).length, color: s.color }))} unit="RT" /> : <Empty>Belum ada jadwal kedatangan RT.</Empty>}
     </Panel>
@@ -193,7 +199,7 @@ function LabApi({ attention }: { attention: ReactNode }) {
     { icon: ShieldAlert, label: "Out-of-spec", value: lab.data ? out.length : null, of: "sampel", note: out.length ? "Teruskan ke QA" : "Belum ada hasil di luar batas", tone: out.length ? "crit" : "ok", href: "/lab" },
     { icon: ShieldCheck, label: "Lulus", value: lab.data ? rows.filter(s => s.status === "lulus").length : null, of: `dari ${rows.length}`, progress: rows.length ? rows.filter(s => s.status === "lulus").length / rows.length * 100 : undefined, note: "Semua parameter dalam batas", tone: "ok", href: "/lab" },
   ];
-  return <Layout kpis={kpis} attention={attention} label={labelOf(lab.data)}>
+  return <Layout kpis={kpis} attention={attention}>
     <Panel title="Status sampel" subtitle="Semua sampel di Tes Lab." href="/lab" loading={lab.loading && !lab.data} error={lab.error}>
       {rows.length ? <Donut segs={LAB_STATUS.map(s => ({ key: s.key, label: s.label, count: rows.filter(r => r.status === s.key).length, color: s.color }))} unit="sampel" /> : <Empty>Belum ada sampel.</Empty>}
     </Panel>
@@ -267,7 +273,7 @@ function QaApi({ attention }: { attention: ReactNode }) {
     { icon: PackageX, label: "Lot barang jadi gagal", value: lab.data ? fgFail.length : null, of: `dari ${fg.length} lot diuji`, progress: fg.length ? fgFail.length / fg.length * 100 : undefined, note: fgFail.map(s => s.subject).join(", ") || "Semua lot lulus", tone: fgFail.length ? "crit" : "ok", href: "/qc-produk" },
     { icon: Hourglass, label: "Hold menunggu", value: holds.data ? hs.filter(h => h.status === "diajukan").length : null, of: "hold", note: `${hs.filter(h => h.status === "aktif").length} hold aktif`, tone: hs.some(h => h.status === "diajukan") ? "warn" : "ok", href: "/hold" },
   ];
-  return <Layout kpis={kpis} attention={attention} label={labelOf(lab.data, holds.data)}>
+  return <Layout kpis={kpis} attention={attention}>
     <Panel title="Keputusan rilis susu masuk" subtitle="Status hasil lab RT yang menunggu keputusan QA." href="/lab" loading={lab.loading && !lab.data} error={lab.error}>
       {rt.length ? <Donut segs={LAB_STATUS.map(s => ({ key: s.key, label: s.key === "hasil-siap" ? "Siap dirilis" : s.label, count: rt.filter(r => r.status === s.key).length, color: s.color }))} unit="RT" /> : <Empty>Belum ada hasil lab susu masuk.</Empty>}
     </Panel>

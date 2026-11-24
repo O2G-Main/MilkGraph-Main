@@ -218,7 +218,6 @@ function TriggerCard({ role, busy, onAct }: { role: string; busy: string | null;
 }
 
 function PoForm({ skus, role, onClose }: { skus: SkuRow[]; role: string; onClose: () => void }) {
-  const [poId, setPoId] = useState("");
   const [priority, setPriority] = useState(1);
   const [due, setDue] = useState("");
   const [lines, setLines] = useState<{ sku: string; qty: string }[]>([{ sku: skus[0]?.finished_sku_id ?? "", qty: "" }]);
@@ -233,7 +232,7 @@ function PoForm({ skus, role, onClose }: { skus: SkuRow[]; role: string; onClose
     if (!due) return setError("Isi batas waktu PO.");
     setSaving(true); setError(null);
     try {
-      await apiSend("POST", POS, { ...(poId.trim() ? { po_id: poId.trim() } : {}), priority, lines: parsed, due_datetime: `${due}:00+07:00` }, role);
+      await apiSend("POST", POS, { priority, lines: parsed, due_datetime: `${due}:00+07:00` }, role);
       invalidateResources([POS, LATEST, "/dashboard/executive"]);
       onClose();
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); setSaving(false); }
@@ -243,7 +242,6 @@ function PoForm({ skus, role, onClose }: { skus: SkuRow[]; role: string; onClose
     <Modal title="Tambah PO" onClose={onClose}>
       <form className="schedule-form" onSubmit={submit} noValidate>
         <div className="schedule-form-row">
-          <label><span className="field-label">ID PO (opsional)</span><input value={poId} onChange={e => setPoId(e.target.value)} placeholder="Dibuat server bila kosong" maxLength={40} /></label>
           <label><span className="field-label">Prioritas</span><input type="number" min={1} step={1} value={priority} onChange={e => setPriority(Number(e.target.value))} /></label>
         </div>
         <label><span className="field-label">Batas waktu (WIB)</span><input type="datetime-local" value={due} onChange={e => setDue(e.target.value)} /></label>
