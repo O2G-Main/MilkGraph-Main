@@ -56,8 +56,8 @@ function RadarSvg({ quality, onActive }: { quality: ScheduleQuality; active: str
     <svg viewBox="0 0 640 560" width="100%" role="img" aria-label={`Radar kualitas jadwal ${quality.scheduleId}: ${axes.map(a => `${a.label} ${pct(a.value)}`).join(", ")}`} fontFamily="var(--font-onest), ui-sans-serif, system-ui, sans-serif">
       <defs>
         <linearGradient id={`rg${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#22C55E" stopOpacity="0.28" />
-          <stop offset="1" stopColor={PRIMARY} stopOpacity="0.08" />
+          <stop offset="0" stopColor="#22C55E" stopOpacity="0.15" />
+          <stop offset="1" stopColor={PRIMARY} stopOpacity="0.05" />
         </linearGradient>
       </defs>
       {[100, 75, 50, 25].map((v, i) => (
@@ -79,11 +79,9 @@ function RadarSvg({ quality, onActive }: { quality: ScheduleQuality; active: str
         return (
           <g key={a.key}>
             {lines.map((ln, j) => (
-              <text key={j} x={lx} y={ly + j * 14} textAnchor={anchor} fontSize="12" fontWeight="600" fill={INK}>{ln}</text>
+              <text key={j} x={lx} y={ly + j * 13} textAnchor={anchor} fontSize="11.5" fontWeight="600" fill={INK} stroke="var(--color-surface)" strokeWidth="3" paintOrder="stroke" strokeLinejoin="round">{ln}</text>
             ))}
-            <text x={lx} y={ly + lines.length * 14 + 2} textAnchor={anchor} fontSize="10" fill="var(--color-on-surface-muted)">{a.sub}</text>
-            {v !== null && v > 0 && (() => { const [tx, ty] = pt(i, v - (i === 4 ? 20 : 16)); return <text x={tx} y={ty + 4} textAnchor="middle" fontSize="10.5" fontWeight="600" fill={PRIMARY}>{pct(v)}</text>; })()}
-            {v === null && (() => { const [tx, ty] = pt(i, 20); return <text x={tx} y={ty + 4} textAnchor="middle" fontSize="10" fill="var(--color-on-surface-muted)">belum ada</text>; })()}
+            <text x={lx} y={ly + lines.length * 13 + 2} textAnchor={anchor} fontSize="9.5" fill="var(--color-on-surface-muted)" stroke="var(--color-surface)" strokeWidth="3" paintOrder="stroke" strokeLinejoin="round">{a.sub}</text>
             {isWeak
               ? <><circle cx={vx} cy={vy} r="6.5" fill="none" stroke={CRIT} strokeWidth="1.5" /><circle cx={vx} cy={vy} r="4.2" fill={CRIT} stroke="#fff" strokeWidth="2" /></>
               : <circle cx={vx} cy={vy} r="4.4" fill={v === null ? "var(--color-on-surface-muted)" : PRIMARY} stroke="#fff" strokeWidth="2" />}
@@ -101,7 +99,7 @@ function TipBox({ quality, axis }: { quality: ScheduleQuality; axis: RadarAxis }
   return (
     <div className="radar-tip" role="status">
       <p className="radar-tip-title">{axis.label}{hot && <span className="radar-chip-hot">terlemah</span>}</p>
-      <p className="radar-tip-row"><i style={{ background: hot ? "#F87171" : "#4ADE80" }} aria-hidden="true" />Jadwal {quality.scheduleId}<strong>{pct(axis.value)}</strong></p>
+      <p className="radar-tip-row"><i style={{ background: hot ? "var(--color-status-crit)" : "var(--color-status-ok)" }} aria-hidden="true" />Jadwal {quality.scheduleId}<strong>{pct(axis.value)}</strong></p>
       <p className="radar-tip-detail">{axis.detail}</p>
     </div>
   );

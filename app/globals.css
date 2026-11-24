@@ -1795,8 +1795,24 @@ html:has(.login-page) { background: var(--color-canvas); }
 .exec-bullet-link:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .exec-bullets li:has(> .exec-bullet-link) { display: block; }
 .exec-bullets strong small { display: block; font-weight: 400; }
-/* Ringkasan jumlah sumber di atas donut. */
-.exec-source-note { margin: 0 0 6px; }
+/* Status sumber data: donut + daftar sumber di samping, ringkasan angka di bawahnya. */
+.exec-sources { display: block; }
+.exec-source-main { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; align-items: center; margin-bottom: 12px; }
+.exec-sources .exec-machine { display: block; margin: 0; }
+.exec-sources .exec-legend { display: none; }
+.exec-source-names { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 16px; font-size: 11.5px; }
+.exec-source-names li { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.exec-source-names i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.exec-source-names span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exec-source-names small { margin-left: auto; color: var(--color-on-surface-muted); font-size: 10.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.exec-source-stats { list-style: none; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--color-border); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.exec-source-stats strong { display: block; font-size: 16px; font-weight: 600; color: var(--color-on-surface); font-variant-numeric: tabular-nums; }
+.exec-source-stats span { font-size: 11px; color: var(--color-on-surface-muted); }
+@media (max-width: 640px) {
+  .exec-source-main { grid-template-columns: minmax(0, 1fr); }
+  .exec-source-names { grid-template-columns: minmax(0, 1fr); }
+  .exec-source-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+}
 .exec-figures-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
 
 /* ---------- Radar kualitas jadwal: kartu tegas ala bento, token MilkGraph ---------- */
@@ -1813,18 +1829,18 @@ html:has(.login-page) { background: var(--color-canvas); }
 .radar-dot-dash { background: transparent; border: 1.5px dashed var(--color-on-surface-muted); border-radius: 2px; }
 .radar-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; margin-top: 14px; }
 .radar-chart-wrap { position: relative; min-width: 0; max-width: 700px; width: 100%; margin-inline: auto; }
-.radar-tip { position: absolute; left: 0; bottom: 0; width: min(300px, 84%); background: var(--color-surface-inverse); border-radius: var(--radius-md); padding: 13px 16px; color: #E7F0E7; box-shadow: var(--shadow-soft); }
+.radar-tip { position: absolute; left: 0; bottom: 0; width: min(300px, 84%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 14px; color: var(--color-on-surface); box-shadow: var(--shadow-overlay); }
 .radar-strong .radar-tip { position: static; width: 100%; margin-top: 8px; box-shadow: none; }
-.radar-tip-title { font-size: 13.5px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px; margin: 0; }
-.radar-tip-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #DCE9DC; margin: 7px 0 0; }
-.radar-tip-row i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.radar-tip-row strong { margin-left: auto; color: #fff; font-size: 12px; }
-.radar-tip-detail { font-size: 11px; color: #9DB4A2; line-height: 1.5; margin: 6px 0 0; }
+.radar-tip-title { font-size: 12px; font-weight: 600; color: var(--color-on-surface); display: flex; align-items: center; gap: 8px; margin: 0; }
+.radar-tip-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--color-on-surface-muted); margin: 7px 0 0; }
+.radar-tip-row i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.radar-tip-row strong { margin-left: auto; color: var(--color-on-surface); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.radar-tip-detail { font-size: 10.5px; color: var(--color-on-surface-muted); line-height: 1.5; margin: 6px 0 0; }
 .radar-rail { border-left: 1px solid var(--color-border); padding-left: 20px; display: flex; flex-direction: column; min-width: 0; }
 .radar-avg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
 .radar-avg-box { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-canvas); padding: 10px 12px; }
 .radar-avg-box span { display: block; font-size: 11px; font-weight: 600; color: var(--color-on-surface-muted); text-transform: uppercase; letter-spacing: .04em; }
-.radar-avg-box strong { display: block; font-size: 22px; font-weight: 600; color: var(--color-on-surface); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.radar-avg-box strong { display: block; font-size: 20px; font-weight: 600; color: var(--color-on-surface); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .radar-avg-box strong small { font-size: 12px; color: var(--color-on-surface-muted); font-weight: 500; }
 .radar-avg-box strong.radar-crit { color: var(--color-status-crit); }
 .radar-rail-title { font-size: 11px; font-weight: 600; color: var(--color-on-surface-muted); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 4px; }
@@ -1832,15 +1848,15 @@ html:has(.login-page) { background: var(--color-canvas); }
 .radar-srow.hot { border-left: 2px solid var(--color-status-crit); padding-left: 9px; margin-left: -11px; }
 .radar-srow.on { background: color-mix(in oklab, var(--color-accent-soft) 55%, transparent); }
 .radar-srow:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
-.radar-srow-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-.radar-chip-hot { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--color-status-crit); background: var(--color-status-crit-soft); border-radius: 999px; padding: 2.5px 8px; white-space: nowrap; }
-.radar-sformula { display: block; font-size: 11px; color: var(--color-on-surface-muted); margin-top: 2px; line-height: 1.45; }
+.radar-srow-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+.radar-chip-hot { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--color-status-crit); background: transparent; border: 1px solid color-mix(in oklab, var(--color-status-crit) 45%, transparent); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.radar-sformula { display: block; font-size: 10.5px; color: var(--color-on-surface-muted); margin-top: 2px; line-height: 1.45; }
 .radar-sbar { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .radar-strack { flex: 1; height: 6px; background: var(--color-surface-muted); border-radius: 99px; overflow: hidden; display: block; }
 .radar-strack i { display: block; height: 100%; border-radius: 99px; transition: width 700ms var(--ease); }
 .radar-sval { font-size: 11.5px; font-weight: 600; color: var(--color-on-surface); width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
 .radar-insight { margin-top: auto; background: var(--color-surface-inverse); border-radius: var(--radius-md); padding: 14px 16px; color: #E7F0E7; }
-.radar-insight-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #4ADE80; margin: 0 0 5px; }
+.radar-insight-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #8FE0A6; margin: 0 0 5px; }
 .radar-insight p { font-size: 12.5px; line-height: 1.6; margin: 0; }
 .radar-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border); font-size: 11.5px; color: var(--color-on-surface-muted); line-height: 1.6; }
 .schedule-table .radar-chip-hot { margin-left: 8px; }

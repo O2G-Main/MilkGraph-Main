@@ -54,13 +54,16 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
   const costs = useResource<Costs>("/costs");
   const sources = src.data ?? [];
   const connected = sources.filter(s => s.status === "terhubung").length;
-  const statusCounts = Object.entries(countBy(sources, s => s.status));
   const roleRows = Object.entries(roles.data?.roles ?? {}).map(([id, r]) => ({ id, ...r })).sort((a, b) => b.permissions.length - a.permissions.length);
   const permTotal = Object.keys(roles.data?.permissions ?? {}).length;
   const kinds = Object.entries(countBy(audit.data ?? [], a => a.kind)).sort((a, b) => b[1] - a[1]);
   const llm = costs.data?.llm;
   const statusColor = (s: string) => s === "terhubung" ? C.ok : s.includes("putus") || s.includes("gagal") ? C.crit : C.warn;
   const srcSegs = Object.entries(countBy(sources, s => s.status)).map(([k, n]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), count: n, color: statusColor(k) }));
+  const sourceConnected = sources.filter(s => s.status === "terhubung").length;
+  const latency = sources.filter(s => s.latencyMs > 0);
+  const avgLatency = latency.length ? Math.round(latency.reduce((sum, s) => sum + s.latencyMs, 0) / latency.length) : null;
+  const latestSync = sources.map(s => s.lastSync).sort().at(-1) ?? "—";
 
   const kpis: ExecKpi[] = [
     { icon: Database, label: "Sumber data terhubung", value: src.data ? connected : null, of: src.data ? `dari ${sources.length}` : undefined, progress: sources.length ? connected / sources.length * 100 : undefined, note: src.data ? `${sources.length - connected} belum terhubung` : "Memuat dari server", tone: src.data && connected < sources.length ? "warn" : "ok", href: "/sumber-data" },
@@ -70,10 +73,24 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
   ];
   return <Layout kpis={kpis} attention={attention}>
     <Panel title="Status sumber data" subtitle="Koneksi sistem pabrik yang memasok data MilkGraph." href="/sumber-data" loading={src.loading && !src.data} error={src.error}>
-      {sources.length ? <>
-        <p className="small muted exec-source-note">{sources.length} sumber · {statusCounts.map(([k, n]) => `${n} ${k}`).join(" · ")}</p>
-        <Donut segs={srcSegs} unit="sumber" caption="sumber data" />
-      </> : <Empty>Belum ada sumber data terdaftar.</Empty>}
+      {sources.length ? <div className="exec-sources">
+        <div className="exec-source-main">
+          <Donut segs={srcSegs} unit="sumber" caption="sumber data" />
+          <ul className="exec-source-names">
+            {sources.map(s => <li key={s.id}>
+              <i style={{ background: statusColor(s.status) }} aria-hidden="true" />
+              <span>{s.name}</span>
+              <small>{s.latencyMs > 0 ? `${s.latencyMs} ms` : s.interval}</small>
+            </li>)}
+          </ul>
+        </div>
+        <ul className="exec-source-stats">
+          <li><strong>{sources.length}</strong><span>sumber terdaftar</span></li>
+          <li><strong>{sourceConnected}</strong><span>terhubung langsung</span></li>
+          <li><strong>{avgLatency !== null ? `${avgLatency} ms` : "—"}</strong><span>latensi rata-rata</span></li>
+          <li><strong>{latestSync}</strong><span>sinkron terakhir</span></li>
+        </ul>
+      </div> : <Empty>Belum ada sumber data terdaftar.</Empty>}
     </Panel>
     <Panel title="Hak akses per role" subtitle={`Jumlah hak akses dari ${permTotal} yang tersedia.`} href="/role-akses" loading={roles.loading && !roles.data} error={roles.error}>
       {roleRows.length ? <Bullets label="Hak akses per role" labelWidth={150} max={permTotal || 1} rows={roleRows.map(r => ({ key: r.id, label: r.label, sub: r.builtin ? undefined : "Role buatan", value: r.permissions.length, text: `${r.permissions.length} akses`, color: r.builtin ? C.ok : C.soft, href: "/role-akses" }))} /> : <Empty>Belum ada role.</Empty>}
