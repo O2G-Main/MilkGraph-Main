@@ -160,33 +160,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		return map[string]any{"result": map[string]any{"ok": true}, "log": nil}, nil
 	})
 	register("GET /api/v1/notifications", "", func(r *http.Request) (any, error) {
-		if skenarioNovemberAktif() {
-			return s.notifikasiNovember(r.Context())
-		}
-		l, e := s.limits(r.Context())
-		if e != nil {
-			return nil, e
-		}
-		p, e := s.rulePlan("current")
-		if e != nil {
-			return nil, e
-		}
-		c := rules.EvaluateResult(p, l)
-		var d domain.PlanDecision
-		if e = s.state(r.Context(), "decision", "current", &d); e != nil {
-			return nil, e
-		}
-		sub := fmt.Sprintf("%d constraint dilanggar · starvation %d menit", c.Violations.Before, c.Starvation.Before)
-		tone := "crit"
-		if d.Status == "approved" {
-			sub = "Rekomendasi disetujui · RT-26 dialihkan ke Bay 1"
-			tone = "ok"
-		}
-		return []map[string]any{
-			{"id": "PLAN-FIFO", "title": "Rencana shift tidak layak", "subtitle": sub, "sourceId": "PLAN-FIFO", "tone": tone},
-			{"id": "HOLD-RT26", "title": "RT-26 mendekati batas holding time", "subtitle": fmt.Sprintf("Tersisa %dj %02dm · menunggu bay", c.HoldingLeft/60, c.HoldingLeft%60), "sourceId": "HOLD-RT26", "tone": "crit"},
-			{"id": "LAB-8812", "title": "QC FG out-of-spec FG-1013-07", "subtitle": "Residu antibiotik · jalankan trace", "sourceId": "LAB-8812", "tone": "crit"},
-		}, nil
+		return s.daftarNotifikasi(r)
 	})
 	register("GET /api/v1/receiving", "", func(r *http.Request) (any, error) { return s.receiving(r.Context()) })
 	register("POST /api/v1/plans/{id}/check", "", func(r *http.Request) (any, error) {
@@ -469,6 +443,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		})
 	})
 	s.registerHolds(register)
+	s.registerNotifikasi(register)
 	s.registerRTArrivals(register)
 	s.registerTransfers(register)
 	s.registerRantaiVolume(register)

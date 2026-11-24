@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Migrasi skenario aktif Greenfields (keputusan Aditya 22 Nov 2026,
@@ -379,11 +380,13 @@ func (s *Server) bottlenecksNovember(ctx context.Context) (any, error) {
 // notifikasiNovember menyusun notifikasi dari state skenario November.
 // Item kasus LAB-8812 dipertahankan karena berkas kasus FG-1013-07
 // memang tetap hidup; item rencana FIFO dan HOLD-RT26 skenario lama
-// diganti ringkasan jadwal dan kedatangan yang nyata.
-func (s *Server) notifikasiNovember(ctx context.Context) (any, error) {
+// diganti ringkasan jadwal dan kedatangan yang nyata. Waktu kejadian:
+// SCH-NOV mengikuti generated_at jadwal aktif; RT-NOV dan LAB-8812
+// mengikuti jam jangkar skenario karena keduanya ringkasan potret itu.
+func (s *Server) notifikasiNovember(ctx context.Context) ([]map[string]any, map[string]time.Time, error) {
 	arrivals, e := s.rtArrivals(ctx)
 	if e != nil {
-		return nil, e
+		return nil, nil, e
 	}
 	tiba, jalan := 0, 0
 	for _, a := range arrivals {
@@ -397,7 +400,13 @@ func (s *Server) notifikasiNovember(ctx context.Context) (any, error) {
 	items := []map[string]any{}
 	var sch Schedule
 	if e := s.state(ctx, "schedule", "current", &sch); e != nil {
-		return nil, e
+		return nil, nil, e
+	}
+	waktuSCH := waktuDemo
+	if sch.ScheduleID != "" {
+		if gt, e := time.Parse(time.RFC3339, sch.GeneratedAt); e == nil {
+			waktuSCH = gt
+		}
 	}
 	if sch.ScheduleID == "" {
 		items = append(items, map[string]any{"id": "SCH-NOV", "title": "Jadwal produksi belum digenerate", "subtitle": "Jendela 1 s.d. 8 Nov menunggu generate sebagai Planner", "sourceId": "SCH-NOV", "tone": "warn"})
@@ -418,5 +427,6 @@ func (s *Server) notifikasiNovember(ctx context.Context) (any, error) {
 		map[string]any{"id": "RT-NOV", "title": "Kedatangan RT skenario November", "subtitle": fmt.Sprintf("%d kedatangan terjadwal · %d sudah tiba · %d dalam perjalanan", len(arrivals), tiba, jalan), "sourceId": "RT-NOV", "tone": "neutral"},
 		map[string]any{"id": "LAB-8812", "title": "QC FG out-of-spec FG-1013-07", "subtitle": "Residu antibiotik · jalankan trace", "sourceId": "LAB-8812", "tone": "crit"},
 	)
-	return items, nil
+	times := map[string]time.Time{"SCH-NOV": waktuSCH, "RT-NOV": waktuDemo, "LAB-8812": waktuDemo}
+	return items, times, nil
 }
