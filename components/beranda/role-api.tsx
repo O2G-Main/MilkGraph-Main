@@ -9,7 +9,7 @@ import { DOWNTIME_TYPE_LABEL, FULFILMENT_LABEL, fmtWaktu, type BeArrival, type B
 import type { Hold } from "@/lib/demo";
 import type { RoleId } from "@/lib/roles";
 import type { DataSource, LabResult } from "@/mock/ops";
-import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
+import { Card, Icon, SectionTitle } from "@/components/ui";
 import { RadarJadwalChartCard, RadarJadwalTableCard } from "@/components/radar/radar-jadwal";
 import { Bullets, C, Donut, ExecKpis, type ExecKpi } from "./executive";
 
@@ -59,7 +59,8 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
   const permTotal = Object.keys(roles.data?.permissions ?? {}).length;
   const kinds = Object.entries(countBy(audit.data ?? [], a => a.kind)).sort((a, b) => b[1] - a[1]);
   const llm = costs.data?.llm;
-  const statusTone = (s: string) => s === "terhubung" ? "ok" as const : s.includes("putus") || s.includes("gagal") ? "crit" as const : "warn" as const;
+  const statusColor = (s: string) => s === "terhubung" ? C.ok : s.includes("putus") || s.includes("gagal") ? C.crit : C.warn;
+  const srcSegs = Object.entries(countBy(sources, s => s.status)).map(([k, n]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), count: n, color: statusColor(k) }));
 
   const kpis: ExecKpi[] = [
     { icon: Database, label: "Sumber data terhubung", value: src.data ? connected : null, of: src.data ? `dari ${sources.length}` : undefined, progress: sources.length ? connected / sources.length * 100 : undefined, note: src.data ? `${sources.length - connected} belum terhubung` : "Memuat dari server", tone: src.data && connected < sources.length ? "warn" : "ok", href: "/sumber-data" },
@@ -71,14 +72,7 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
     <Panel title="Status sumber data" subtitle="Koneksi sistem pabrik yang memasok data MilkGraph." href="/sumber-data" loading={src.loading && !src.data} error={src.error}>
       {sources.length ? <>
         <p className="small muted exec-source-note">{sources.length} sumber · {statusCounts.map(([k, n]) => `${n} ${k}`).join(" · ")}</p>
-        <ul className="exec-source-list">
-          {sources.map(s => <li key={s.id}>
-            <span className={`status-dot tone-${statusTone(s.status)}`} aria-hidden="true" />
-            <span className="exec-source-copy"><strong>{s.name}</strong><small>{s.system}</small></span>
-            <span className="exec-source-meta">{s.lastSync ? `Sync ${s.lastSync}` : s.interval}</span>
-            <Badge tone={statusTone(s.status)}>{s.status}</Badge>
-          </li>)}
-        </ul>
+        <Donut segs={srcSegs} unit="sumber" caption="sumber data" />
       </> : <Empty>Belum ada sumber data terdaftar.</Empty>}
     </Panel>
     <Panel title="Hak akses per role" subtitle={`Jumlah hak akses dari ${permTotal} yang tersedia.`} href="/role-akses" loading={roles.loading && !roles.data} error={roles.error}>

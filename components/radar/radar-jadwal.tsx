@@ -41,7 +41,7 @@ function State({ hook }: { hook: ReturnType<typeof useScheduleQuality> }) {
 }
 
 /* ---------- SVG radar: skala absolut, poligon lurus, ring target 100% ---------- */
-function RadarSvg({ quality, active, onActive }: { quality: ScheduleQuality; active: string; onActive: (key: string) => void }) {
+function RadarSvg({ quality, onActive }: { quality: ScheduleQuality; active: string; onActive: (key: string) => void }) {
   const gid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const cx = 320, cy = 262, R = 172;
   const axes = quality.axes;
@@ -53,20 +53,20 @@ function RadarSvg({ quality, active, onActive }: { quality: ScheduleQuality; act
   const poly = (vals: number[]) => vals.map((v, i) => pt(i, v).join(",")).join(" ");
   const weak = quality.weakest;
   return (
-    <svg viewBox="0 0 640 560" width="100%" role="img" aria-label={`Radar kualitas jadwal ${quality.scheduleId}: ${axes.map(a => `${a.label} ${pct(a.value)}`).join(", ")}`}>
+    <svg viewBox="0 0 640 560" width="100%" role="img" aria-label={`Radar kualitas jadwal ${quality.scheduleId}: ${axes.map(a => `${a.label} ${pct(a.value)}`).join(", ")}`} fontFamily="var(--font-onest), ui-sans-serif, system-ui, sans-serif">
       <defs>
         <linearGradient id={`rg${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#22C55E" stopOpacity="0.34" />
-          <stop offset="1" stopColor={PRIMARY} stopOpacity="0.10" />
+          <stop offset="0" stopColor="#22C55E" stopOpacity="0.28" />
+          <stop offset="1" stopColor={PRIMARY} stopOpacity="0.08" />
         </linearGradient>
       </defs>
       {[100, 75, 50, 25].map((v, i) => (
-        <polygon key={v} points={poly([v, v, v, v, v])} fill={i % 2 ? "#E9F1E9" : "#F4F8F4"} stroke="#C9D4C9" strokeWidth="1" />
+        <polygon key={v} points={poly([v, v, v, v, v])} fill={i % 2 ? "var(--color-canvas)" : "var(--color-surface)"} stroke="var(--color-border)" strokeWidth="1" />
       ))}
-      {axes.map((_, i) => { const [x, y] = pt(i, 100); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#C9D4C9" strokeWidth="1" />; })}
-      <polygon points={poly([100, 100, 100, 100, 100])} fill="none" stroke="#7C8F80" strokeWidth="1.8" strokeDasharray="6 4" />
-      <text x={pt(0, 50)[0] + 6} y={pt(0, 50)[1] + 3} fontSize="10.5" fill="#84937F" fontWeight="600">50%</text>
-      <polygon points={poly(axes.map(a => a.value ?? 0))} fill={`url(#rg${gid})`} stroke={PRIMARY} strokeWidth="2.6" strokeLinejoin="round" />
+      {axes.map((_, i) => { const [x, y] = pt(i, 100); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--color-border)" strokeWidth="1" />; })}
+      <polygon points={poly([100, 100, 100, 100, 100])} fill="none" stroke="var(--color-on-surface-muted)" strokeOpacity="0.65" strokeWidth="1.4" strokeDasharray="5 4" />
+      <text x={pt(0, 50)[0] + 6} y={pt(0, 50)[1] + 3} fontSize="9.5" fill="var(--color-on-surface-muted)" fontWeight="500">50%</text>
+      <polygon points={poly(axes.map(a => a.value ?? 0))} fill={`url(#rg${gid})`} stroke={PRIMARY} strokeWidth="2.4" strokeLinejoin="round" />
       {axes.map((a, i) => {
         const v = a.value;
         const isWeak = weak?.key === a.key && v !== null && v < 50;
@@ -79,14 +79,14 @@ function RadarSvg({ quality, active, onActive }: { quality: ScheduleQuality; act
         return (
           <g key={a.key}>
             {lines.map((ln, j) => (
-              <text key={j} x={lx} y={ly + j * 15} textAnchor={anchor} fontSize="13.5" fontWeight="700" fill={INK}>{ln}</text>
+              <text key={j} x={lx} y={ly + j * 14} textAnchor={anchor} fontSize="12" fontWeight="600" fill={INK}>{ln}</text>
             ))}
-            <text x={lx} y={ly + lines.length * 15 + 2} textAnchor={anchor} fontSize="10.5" fill="#84937F">{a.sub}</text>
-            {v !== null && v > 0 && (() => { const [tx, ty] = pt(i, v - (i === 4 ? 20 : 16)); return <text x={tx} y={ty + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill={PRIMARY}>{pct(v)}</text>; })()}
-            {v === null && (() => { const [tx, ty] = pt(i, 20); return <text x={tx} y={ty + 4} textAnchor="middle" fontSize="10.5" fill="#84937F">belum ada</text>; })()}
+            <text x={lx} y={ly + lines.length * 14 + 2} textAnchor={anchor} fontSize="10" fill="var(--color-on-surface-muted)">{a.sub}</text>
+            {v !== null && v > 0 && (() => { const [tx, ty] = pt(i, v - (i === 4 ? 20 : 16)); return <text x={tx} y={ty + 4} textAnchor="middle" fontSize="10.5" fontWeight="600" fill={PRIMARY}>{pct(v)}</text>; })()}
+            {v === null && (() => { const [tx, ty] = pt(i, 20); return <text x={tx} y={ty + 4} textAnchor="middle" fontSize="10" fill="var(--color-on-surface-muted)">belum ada</text>; })()}
             {isWeak
-              ? <><circle cx={vx} cy={vy} r="8" fill="none" stroke={CRIT} strokeWidth="1.8" /><circle cx={vx} cy={vy} r="5.2" fill={CRIT} stroke="#fff" strokeWidth="2" /></>
-              : <circle cx={vx} cy={vy} r="5.2" fill={v === null ? "#CBD3CD" : PRIMARY} stroke="#fff" strokeWidth="2" />}
+              ? <><circle cx={vx} cy={vy} r="6.5" fill="none" stroke={CRIT} strokeWidth="1.5" /><circle cx={vx} cy={vy} r="4.2" fill={CRIT} stroke="#fff" strokeWidth="2" /></>
+              : <circle cx={vx} cy={vy} r="4.4" fill={v === null ? "var(--color-on-surface-muted)" : PRIMARY} stroke="#fff" strokeWidth="2" />}
             <circle cx={hx} cy={hy} r="26" fill="transparent" tabIndex={0} role="button" aria-label={`${a.label}: ${pct(v)}. ${a.formula}.`}
               onMouseEnter={() => onActive(a.key)} onFocus={() => onActive(a.key)} style={{ cursor: "pointer", outline: "none" }} />
           </g>
