@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, Menu, X, CircleHelp, ArrowUpRight, Clock3, RotateCcw, ArrowLeft, LogOut, Compass } from "lucide-react";
+import { Bell, ChevronDown, Menu, X, CircleHelp, ArrowRight, Clock3, RotateCcw, ArrowLeft, LogOut, Compass } from "lucide-react";
 import { findNav, isDetail, pageTitle, visibleNav } from "@/lib/nav";
 import { BranchedNav } from "@/components/shell/branched-nav";
 import { scenario } from "@/lib/data";
@@ -11,6 +11,7 @@ import { Badge, Icon, Modal, SourceModal } from "@/components/ui";
 import { initialsOf, isSignedIn, logout, resetDemo, useDemo } from "@/lib/demo";
 import { ROLES, canOpen, roleLabel, type RoleId } from "@/lib/roles";
 import { violations } from "@/lib/rules";
+import { useNotifRead } from "@/lib/notif-read";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { Tone } from "@/mock/types";
@@ -47,7 +48,22 @@ interface Notification {
   subtitle: string;
   sourceId: string;
   tone: Tone;
+  /** Jam notifikasi (HH.MM). Backend belum mengirim, jadi opsional. */
+  at?: string;
+  /** Halaman tujuan saat notifikasi diklik. Bila kosong, diturunkan dari sourceId. */
+  href?: string;
 }
+
+/** Tujuan notifikasi: halaman tempat masalahnya bisa ditindaklanjuti, bukan modal bukti. */
+const hrefForSource = (id: string) =>
+  id.startsWith("PLAN") ? "/rencana" : id.startsWith("HOLD") ? "/receiving" : id.startsWith("LAB") ? "/qc-produk" : null;
+
+/** Notifikasi demo; isi mengikuti skenario yang sama dengan data di halaman. `at` diurutkan terbaru. */
+const DEMO_NOTIFICATIONS: Notification[] = [
+  { id: "PLAN-FIFO", title: "Rencana shift tidak layak", subtitle: "Constraint dilanggar, cek rekomendasi solver", at: "14.38", tone: "crit", href: "/rencana", sourceId: "PLAN-FIFO" },
+  { id: "HOLD-RT26", title: "RT-26 mendekati batas holding time", subtitle: "Sisa 1 jam 10 menit dan masih menunggu bay", at: "14.31", tone: "warn", href: "/receiving", sourceId: "HOLD-RT26" },
+  { id: "LAB-8812", title: "QC FG out-of-spec FG-1013-07", subtitle: "Residu antibiotik terdeteksi, jalankan trace", at: "14.05", tone: "crit", href: "/qc-produk", sourceId: "LAB-8812" },
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -120,7 +136,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const shiftButtonDate = selectedShift ? `, ${selectedShift.date}` : ", Rab 14 Okt";
 
   const notifications = API_MODE ? (notificationsRes.data ?? []) : null;
-  const notifCount = API_MODE ? (notifications ? notifications.length : 0) : 3;
+  const { readIds: readNotifs, mark: markRead } = useNotifRead(demo.account ?? "");
+  const notificationList: Notification[] = notifications ?? DEMO_NOTIFICATIONS.map(n =>
+    n.id === "PLAN-FIFO" ? { ...n, subtitle: `${broken} constraint dilanggar, cek rekomendasi solver` } : n);
+  const unread = notificationList.filter(n => !readNotifs.includes(n.id));
+  const notifCount = unread.length;
+  const openNotification = (n: Notification) => {
+    markRead([n.id]);
+    setPanel(null);
+    const href = n.href ?? hrefForSource(n.sourceId);
+    if (href) router.push(href); else setSource(n.sourceId);
+  };
 
   const snapshotFooter = API_MODE && metaRes.data ? metaRes.data.snapshotLabel : "Snapshot 14.42 WIB";
   const scenarioDate = API_MODE && metaRes.data ? metaRes.data.date : scenario.date;
@@ -188,7 +214,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Icon icon={Clock3} size={16} /><span>{shiftButtonLabel}<span className="shift-date">{shiftButtonDate}</span></span>
             <Icon icon={ChevronDown} size={14} />
           </button>
-          <button className="icon-button notification" aria-label={`Lihat ${notifCount} notifikasi`} onClick={() => setPanel("notifications")}><Icon icon={Bell} /><span>{notifCount}</span></button>
+          <button className="icon-button notification" aria-label={`Notifikasi, ${notifCount} belum dibaca`} onClick={() => setPanel("notifications")}><Icon icon={Bell} />{notifCount > 0 && <span>{notifCount}</span>}</button>
           <button className="avatar top-avatar" aria-label={`Keluar dari akun ${me.user}`} onClick={() => setPanel("profile")}>{me.initials}</button>
         </div>
       </header>
@@ -242,31 +268,33 @@ export function AppShell({ children }: { children: ReactNode }) {
           {API_MODE && notificationsRes.error && (
             <p className="crit-text" role="alert">Gagal memuat notifikasi: {notificationsRes.error.message}</p>
           )}
-          {API_MODE && notifications && notifications.length === 0 && (
-            <p className="muted">Tidak ada notifikasi aktif.</p>
-          )}
-          {notifications ? (
-            <div className="notification-list">
-              {notifications.map(n => (
-                <button key={n.id} onClick={() => { setPanel(null); setSource(n.sourceId); }}>
-                  <span><strong>{n.title}</strong><span>{n.subtitle}</span></span>
-                  <Icon icon={ArrowUpRight} />
+          {notificationList.length ? (
+            <>
+              <div className="notification-list">
+                {notificationList.map(n => {
+                  const isUnread = !readNotifs.includes(n.id);
+                  return <button key={n.id} className={`notification-row ${isUnread ? "is-unread" : "is-read"}`} onClick={() => openNotification(n)}>
+                    <span className="notification-main">
+                      <strong>{n.title}</strong>
+                      <span>{n.subtitle}</span>
+                      <span className="notification-meta">
+                        <span className={`status-dot tone-${n.tone}`} aria-hidden="true" />
+                        {n.at && <><Icon icon={Clock3} size={12} />{n.at} WIB</>}
+                        {isUnread && <Badge tone="warn">Baru</Badge>}
+                      </span>
+                    </span>
+                    <Icon icon={ArrowRight} size={16} />
+                  </button>;
+                })}
+              </div>
+              <div className="notification-actions">
+                <button type="button" className="text-link" onClick={() => markRead(notificationList.map(n => n.id))} disabled={!notifCount}>
+                  {notifCount ? "Tandai semua dibaca" : "Semua sudah dibaca"}
                 </button>
-              ))}
-            </div>
+              </div>
+            </>
           ) : (
-            <div className="notification-list">
-              {[
-                { title: "Rencana shift tidak layak", subtitle: `${broken} constraint dilanggar, cek rekomendasi solver`, id: "PLAN-FIFO" },
-                { title: "RT-26 mendekati batas holding time", subtitle: "Sisa 1 jam 10 menit dan masih menunggu bay", id: "HOLD-RT26" },
-                { title: "QC FG out-of-spec FG-1013-07", subtitle: "Residu antibiotik terdeteksi, jalankan trace", id: "LAB-8812" },
-              ].map(n => (
-                <button key={n.id} onClick={() => { setPanel(null); setSource(n.id); }}>
-                  <span><strong>{n.title}</strong><span>{n.subtitle}</span></span>
-                  <Icon icon={ArrowUpRight} />
-                </button>
-              ))}
-            </div>
+            <p className="muted">Tidak ada notifikasi aktif.</p>
           )}
         </>
       )}

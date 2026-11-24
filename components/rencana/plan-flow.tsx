@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { Clock3, RotateCcw, Trash2, TriangleAlert, Wrench, X, Zap } from "lucide-react";
-import { Badge, Icon } from "@/components/ui";
+import { Badge, Icon, Modal } from "@/components/ui";
 import { can } from "@/lib/roles";
 import { Select } from "@/components/ui/fields";
 import { Equipment, KIND_LABEL } from "@/components/trace/equipment";
@@ -36,6 +36,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
   // Poin 16: planner mengisi kapasitas baru sendiri; angka awal dan batas yang terpakai dihitung dari data jalur.
   const room = capacityRoom(asepticTanks, fillers, asset.id);
   const [draft, setDraft] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const cap = room ? a.upgradeTo ?? room.from : 0;
   const extra = room ? Math.max(0, cap - room.from) : 0, used = room ? Math.min(extra, room.room) : 0;
   const pctText = room ? new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(extra / room.from * 100) : "0";
@@ -81,7 +82,14 @@ function PlanEditor({ asset, onClose }: AsideProps) {
     </fieldset>
 
     </>}
-    {allowed && (a.upgrade || a.maintenance) && <button type="button" className="button secondary wide" onClick={() => set(asset.id, {})}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</button>}
+    {allowed && (a.upgrade || a.maintenance) && <button type="button" className="button secondary wide" onClick={() => setConfirmClear(true)}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</button>}
+    {confirmClear && <Modal title={`Hapus pengaturan ${asset.id}?`} onClose={() => setConfirmClear(false)}>
+      <p className="dialog-summary">Kapasitas dan jadwal maintenance yang sudah diatur untuk {asset.id} akan dihapus. Alur kembali memakai kondisi alat sekarang.</p>
+      <div className="dialog-actions">
+        <button type="button" className="button secondary" onClick={() => setConfirmClear(false)}>Batal</button>
+        <button type="button" className="button primary" onClick={() => { set(asset.id, {}); setConfirmClear(false); }}><Icon icon={Trash2} size={16} />Hapus pengaturan</button>
+      </div>
+    </Modal>}
   </aside>;
 }
 

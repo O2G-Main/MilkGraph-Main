@@ -165,7 +165,7 @@ function ArrivalForm({ value, isNew, taken, farmOptions, onClose }: { value: Arr
     <Modal title={isNew ? "Tambah jadwal kedatangan RT" : `Ubah jadwal ${value.id}`} onClose={onClose}>
       <form className="schedule-form" onSubmit={submit} noValidate>
         <div className="schedule-form-row">
-          <label><span className="field-label">Nomor RT</span><input value={form.id} onChange={e => set("id", e.target.value)} readOnly={!isNew} placeholder="RT-38" /></label>
+          <label><span className="field-label">Nomor RT</span><span className="field-static mono">{form.id}</span><span className="small muted">Dibuat otomatis dari jadwal terakhir</span></label>
           <label><span className="field-label">Volume rencana (L)</span><input type="number" inputMode="numeric" min={1} step={100} value={form.volume || ""} readOnly={locked} onChange={e => set("volume", Number(e.target.value))} placeholder="Contoh: 9800" /></label>
         </div>
         <label><span className="field-label">Farm asal</span><Select label="Farm asal" value={API_MODE ? form.farmId ?? "" : form.farm} disabled={locked} onChange={v => { const f = farmOptions.find(o => o.value === v); setForm(x => ({ ...x, farm: f?.label ?? v, farmId: API_MODE ? v : x.farmId })); }} options={farmOptions} /></label>

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ROLE_IDS, can, canSee, hiddenFor, roleLabel, setAccess, setMenus, setRoles } from "../lib/roles.ts";
+import { BUILTIN_ROLES, ROLE_IDS, can, canSee, hiddenFor, roleLabel, setAccess, setMenus, setRoles } from "../lib/roles.ts";
 
 test("role baru terdaftar dan bisa diubah namanya, peran bawaan tetap ada", () => {
   setRoles([{ id: "gudang", label: "Admin Gudang", focus: "Stok barang jadi" }, { id: "planner", label: "Planner Produksi", focus: "" }]);
@@ -9,7 +9,7 @@ test("role baru terdaftar dan bisa diubah namanya, peran bawaan tetap ada", () =
   assert.equal(roleLabel("planner"), "Planner Produksi");
   setRoles([]);
   assert.ok(!ROLE_IDS.includes("gudang"));
-  assert.equal(roleLabel("planner"), "Planner PPIC");
+  assert.equal(roleLabel("planner"), BUILTIN_ROLES.planner.label);
 });
 
 test("menu yang diatur Superadmin menimpa pengaturan awal", () => {

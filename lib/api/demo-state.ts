@@ -16,6 +16,6 @@ export function mapApiState(parts: {
     decisions: parts.decisions, holds: parts.holds,
     labs: Object.fromEntries(parts.labs.filter(item => item.decision).map(item => [item.id, item.decision!])),
     acks: parts.instructions.filter(item => item.ackedBy).map(item => item.id),
-    limits: parts.limits, log: parts.audit,
+    limits: parts.limits, log: parts.audit, pics: {},
   };
 }

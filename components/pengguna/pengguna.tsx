@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { ArrowRight, Pencil, UserPlus } from "lucide-react";
-import { addUser, updateUser, useDemo, type DemoUser } from "@/lib/demo";
+import { addUser, setPic, updateUser, useDemo, type DemoUser, PIC_AREAS, type PicArea } from "@/lib/demo";
 import { ROLE_IDS, SUPERADMIN, can, roleLabel, type RoleId } from "@/lib/roles";
 import { ASSETS, STAGES } from "@/lib/assets";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
@@ -12,7 +12,7 @@ import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { BeRole } from "@/lib/api/contract";
 
-const SUBTITLE = "Tetapkan role dan alat/lini yang ditugaskan untuk setiap pengguna. Menu dan tindakan tiap role diatur di Role & Hak Akses.";
+const SUBTITLE = "Kelola akun pengguna dan tetapkan PIC tiap kegiatan. Role dan hak akses tetap diatur di Role & Hak Akses.";
 
 export function Pengguna() {
   const demo = useDemo();
@@ -23,7 +23,7 @@ export function Pengguna() {
   if (API_MODE) {
     return (
       <div className="page-enter">
-        <PageHeading title="Pengguna" subtitle={SUBTITLE} />
+        <PageHeading title="Manajemen akun" subtitle={SUBTITLE} />
         {rolesRes.error ? <p className="crit-text" role="alert">Gagal memuat peran: {rolesRes.error.message}</p>
           : !rolesRes.data ? <p className="muted" role="status">Memuat data peran…</p>
           : <Card><SectionTitle title="Role terdaftar" subtitle="Persona dan permission dari registri Backend." /><ul className="attention-list">{Object.entries(rolesRes.data.roles).map(([id, r]) => <li key={id} className="attention-item"><span className="attention-copy"><strong>{r.label}</strong><span>{r.user} · {r.permissions?.length ?? 0} permission · {r.builtin ? "role bawaan" : "role kustom"}</span></span></li>)}</ul></Card>}
@@ -33,10 +33,11 @@ export function Pengguna() {
 
   return (
     <div className="page-enter">
-      <PageHeading title="Pengguna" subtitle={SUBTITLE}>
+      <PageHeading title="Manajemen akun" subtitle={SUBTITLE}>
         {can(demo.role, "users.manage") && <Link className="button secondary" href="/role-akses">Atur role & hak akses<Icon icon={ArrowRight} size={16} /></Link>}
       </PageHeading>
       <UserList manage={manage} />
+      <PicList manage={manage} />
     </div>
   );
 }
@@ -49,6 +50,8 @@ function UserList({ manage }: { manage: boolean }) {
   const [name, setName] = useState("");
   const [role, setNewRole] = useState<RoleId>("planner");
   const [assigning, setAssigning] = useState<DemoUser | null>(null);
+  const [toggling, setToggling] = useState<DemoUser | null>(null);
+  const [roleEdit, setRoleEdit] = useState<DemoUser | null>(null);
   const roleOptions = ROLE_IDS.map(id => ({ value: id, label: roleLabel(id) }));
   const activeAdmins = users.filter(u => u.role === SUPERADMIN && u.active).length;
   const isLastAdmin = (u: DemoUser) => u.role === SUPERADMIN && u.active && activeAdmins === 1;
@@ -75,7 +78,7 @@ function UserList({ manage }: { manage: boolean }) {
                 <td data-label="Nama"><strong>{u.name}</strong></td>
                 <td data-label="Role">
                   {manage && !isLastAdmin(u)
-                    ? <Select compact label={`Role ${u.name}`} value={u.role} onChange={next => next !== u.role && updateUser(u.id, { role: next })} options={roleOptions} />
+                    ? <span className="user-role"><span>{roleLabel(u.role)}</span><button className="icon-button" aria-label={`Ubah role ${u.name}`} onClick={() => setRoleEdit(u)}><Icon icon={Pencil} size={15} /></button></span>
                     : roleLabel(u.role)}
                 </td>
                 <td data-label="Alat/lini">
@@ -91,7 +94,7 @@ function UserList({ manage }: { manage: boolean }) {
                       className="button secondary"
                       disabled={isLastAdmin(u)}
                       title={isLastAdmin(u) ? "Minimal satu Superadmin harus tetap aktif." : undefined}
-                      onClick={() => updateUser(u.id, { active: !u.active })}
+                      onClick={() => setToggling(u)}
                     >
                       {u.active ? "Nonaktifkan" : "Aktifkan"}
                     </button>
@@ -119,8 +122,85 @@ function UserList({ manage }: { manage: boolean }) {
         </form>
       )}
       {assigning && <AssetDialog user={assigning} onClose={() => setAssigning(null)} />}
+      {toggling && <Modal title={toggling.active ? `Nonaktifkan ${toggling.name}?` : `Aktifkan ${toggling.name}?`} onClose={() => setToggling(null)}>
+        <p className="dialog-summary">
+          {toggling.active
+            ? `${toggling.name} tidak bisa masuk dan tidak bisa dipilih sebagai PIC lagi. Riwayat pekerjaannya tetap tersimpan.`
+            : `${toggling.name} bisa masuk lagi dengan role ${roleLabel(toggling.role)}.`}
+        </p>
+        <div className="dialog-actions">
+          <button type="button" className="button secondary" onClick={() => setToggling(null)}>Batal</button>
+          <button type="button" className="button primary" onClick={() => { updateUser(toggling.id, { active: !toggling.active }); setToggling(null); }}>
+            {toggling.active ? "Ya, nonaktifkan" : "Ya, aktifkan"}
+          </button>
+        </div>
+      </Modal>}
+      {roleEdit && <RoleDialog user={roleEdit} onClose={() => setRoleEdit(null)} />}
     </Card>
   );
+}
+
+/** Ubah role akun lewat modal + konfirmasi, bukan pilihan langsung di tabel. */
+function RoleDialog({ user, onClose }: { user: DemoUser; onClose: () => void }) {
+  const [role, setRole] = useState<RoleId>(user.role);
+  const [confirm, setConfirm] = useState(false);
+  const options = ROLE_IDS.map(id => ({ value: id, label: roleLabel(id) }));
+  return <Modal title={confirm ? "Konfirmasi ubah role" : `Ubah role ${user.name}`} onClose={onClose}>
+    {confirm ? <>
+      <p className="dialog-summary">Role {user.name} akan diubah dari <strong>{roleLabel(user.role)}</strong> menjadi <strong>{roleLabel(role)}</strong>. Menu dan tindakan yang bisa diakses ikut berubah.</p>
+      <div className="dialog-actions">
+        <button type="button" className="button secondary" onClick={() => setConfirm(false)}>Periksa lagi</button>
+        <button type="button" className="button primary" onClick={() => { updateUser(user.id, { role }); onClose(); }}>Ya, ubah role</button>
+      </div>
+    </> : <>
+      <div className="schedule-form">
+        <label><span className="field-label">Role</span><Select label={`Role ${user.name}`} value={role} onChange={setRole} options={options} /></label>
+      </div>
+      <div className="dialog-actions">
+        <button type="button" className="button secondary" onClick={onClose}>Batal</button>
+        <button type="button" className="button primary" disabled={role === user.role} onClick={() => setConfirm(true)}>Simpan</button>
+      </div>
+    </>}
+  </Modal>;
+}
+
+/** PIC per kegiatan: akun yang bertanggung jawab, terpisah dari role yang mengatur hak akses. */
+function PicList({ manage }: { manage: boolean }) {
+  const { users, pics } = useDemo();
+  const [area, setArea] = useState<PicArea | null>(null);
+  return <Card className="pic-list">
+    <SectionTitle title="PIC per kegiatan" subtitle="Akun yang bertanggung jawab pada tiap kegiatan. Boleh lebih dari satu orang per kegiatan." />
+    <ul className="pic-rows">
+      {PIC_AREAS.map(a => {
+        const names = (pics[a.id] ?? []).map(id => users.find(u => u.id === id)?.name).filter((n): n is string => !!n);
+        return <li key={a.id} className="pic-row">
+          <span className="pic-copy"><strong>{a.label}</strong><span>{a.hint}</span></span>
+          <span className="pic-names">{names.length ? names.map(n => <span key={n} className="pic-name">{n}</span>) : <span className="small muted">Belum ditetapkan</span>}</span>
+          {manage && <button type="button" className="button secondary" onClick={() => setArea(a.id)}><Icon icon={Pencil} size={15} />Atur</button>}
+        </li>;
+      })}
+    </ul>
+    {area && <PicDialog area={area} current={pics[area] ?? []} users={users.filter(u => u.active)} onClose={() => setArea(null)} />}
+  </Card>;
+}
+
+function PicDialog({ area, current, users, onClose }: { area: PicArea; current: string[]; users: DemoUser[]; onClose: () => void }) {
+  const [picked, setPicked] = useState(current);
+  const label = PIC_AREAS.find(a => a.id === area)?.label ?? area;
+  const toggle = (id: string) => setPicked(p => (p.includes(id) ? p.filter(x => x !== id) : [...p, id]));
+  return <Modal title={`PIC ${label}`} onClose={onClose} className="lab-entry-modal">
+    <form className="schedule-form" onSubmit={e => { e.preventDefault(); setPic(area, picked); onClose(); }}>
+      <p className="muted">Pilih akun aktif yang menjadi PIC {label}. Akun nonaktif tidak bisa dipilih.</p>
+      <div className="asset-pick">{users.map(u => (
+        <label key={u.id} className="check-row"><input type="checkbox" checked={picked.includes(u.id)} onChange={() => toggle(u.id)} /><span>{u.name} <span className="small muted">· {roleLabel(u.role)}</span></span></label>
+      ))}</div>
+      <div className="dialog-actions">
+        <span className="small muted">{picked.length ? `${picked.length} akun dipilih` : "Belum ada akun dipilih"}</span>
+        <button type="button" className="button secondary" onClick={() => setPicked([])}>Kosongkan</button>
+        <button type="submit" className="button primary">Simpan PIC</button>
+      </div>
+    </form>
+  </Modal>;
 }
 
 /** Penugasan alat/lini: membatasi order, mesin, downtime, dan transfer bahan yang bisa dicatat pengguna. */

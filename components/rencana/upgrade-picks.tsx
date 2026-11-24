@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CircleMinus, FlaskConical, Plus, TrendingUp, X } from "lucide-react";
 import { useState } from "react";
-import { Icon, Toggle } from "@/components/ui";
+import { Icon, Badge, Toggle } from "@/components/ui";
 import { Equipment } from "@/components/trace/equipment";
 import { ASSETS } from "@/lib/assets";
 import { useDemo } from "@/lib/demo";
@@ -67,10 +67,23 @@ export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: n
         </li>;
       })}
     </ol> : <p className="card upgrade-empty">Tidak ada upgrade lain yang menambah produksi dengan pengaturan sekarang.</p>
-      : skips.length ? <div className="card upgrade-skips">
-        <p><Icon icon={CircleMinus} size={16} />Upgrade alat ini tidak menambah produksi pada pasokan sekarang, jadi sebaiknya tidak dilakukan.</p>
-        <ul>{skips.map(s => <li key={s.id}><strong className="mono">{s.id}</strong><span>{s.reason}</span></li>)}</ul>
-      </div> : <p className="card upgrade-empty">Tidak ada alat yang dikecualikan dengan pengaturan sekarang.</p>}
+      : skips.length ? <>
+        <p className="small muted upgrade-note"><Icon icon={CircleMinus} size={14} />Upgrade alat ini tidak menambah produksi pada pasokan sekarang, jadi sebaiknya tidak dilakukan.</p>
+        <ol className="upgrade-list">
+          {skips.map((s, i) => <li key={s.id} className="card upgrade-item skip">
+            <span className="upgrade-rank" aria-label={`Peringkat ${i + 1}`}>{i + 1}</span>
+            <Equipment kind={kind(s.id)} size={40} />
+            <div className="upgrade-body">
+              <h3><span className="mono">{s.id}</span> <Badge tone="neutral">Tidak disarankan</Badge></h3>
+              <p>{s.reason}</p>
+            </div>
+            <div className="upgrade-gain">
+              <strong><Icon icon={CircleMinus} size={16} />0 L/jam</strong>
+              <span>Produksi tidak bertambah</span>
+            </div>
+          </li>)}
+        </ol>
+      </> : <p className="card upgrade-empty">Tidak ada alat yang dikecualikan dengan pengaturan sekarang.</p>}
 
     <p className="small muted">Dihitung dari pasokan aseptic tank dan kebutuhan mesin filling yang jalan pada snapshot 14.42, ditambah upgrade yang sudah diterapkan ke rencana. Batas kapasitas mesin dari pabrikan belum ada di data, jadi kelayakan teknis upgrade-nya perlu dicek terpisah [asumsi]. Jalur yang sedang CIP atau siaga tidak dihitung.</p>
   </section>;

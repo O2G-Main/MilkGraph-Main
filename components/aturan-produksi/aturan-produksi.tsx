@@ -1,30 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { setChangeoverRule, setCipRule, setPaperRule, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { SOP_CHANGEOVER } from "@/lib/rules";
-import { CIP_STANDARD, PAPER_STANDARD, belowStandard, type CipGroup } from "@/lib/production";
+import { CIP_STANDARD, PAPER_STANDARD, type CipGroup } from "@/lib/production";
 import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle } from "@/components/ui";
 import { QualityRules } from "./quality-rules";
-
-/** Isian menit per aturan: tidak boleh di bawah standar yang disepakati, disimpan per baris. */
-function RuleInput({ label, value, standard, onSave, allowed }: { label: string; value: number; standard: number; onSave: (minutes: number) => void; allowed: boolean }) {
-  const [draft, setDraft] = useState(String(value));
-  const minutes = Number(draft);
-  const dirty = minutes !== value;
-  const invalid = belowStandard(minutes, standard);
-  if (!allowed) return <span className="numeric">{value} menit</span>;
-  return (
-    <form className="rule-input" onSubmit={e => { e.preventDefault(); if (dirty && !invalid) onSave(minutes); }}>
-      <input type="number" inputMode="numeric" min={standard} step={5} value={draft} onChange={e => setDraft(e.target.value)} aria-label={`${label}, menit`} aria-invalid={invalid} />
-      <span className="small muted">menit</span>
-      <button type="submit" className="button secondary" disabled={!dirty || invalid}><Icon icon={Check} size={14} />Simpan</button>
-      {invalid && <span className="small crit-text rule-error" role="alert">Minimal {standard} menit sesuai standar.</span>}
-    </form>
-  );
-}
+import { RuleValue } from "./rule-dialog";
 
 const statusOf = (value: number, standard: number) => value === standard ? <Badge tone="ok">Sesuai standar</Badge> : <Badge tone="warn">+{value - standard} menit dari standar</Badge>;
 
@@ -53,7 +36,7 @@ export function AturanProduksi() {
                     <td data-label="Dari">{from}</td>
                     <td data-label="Ke">{to}</td>
                     <td data-label="Standar SOP" className="numeric">{standard} menit</td>
-                    <td data-label="Durasi dipakai"><RuleInput key={value} label={`Changeover ${from} ke ${to}`} value={value} standard={standard} allowed={allowed} onSave={m => setChangeoverRule(key, m)} /></td>
+                    <td data-label="Durasi dipakai"><RuleValue title={`Ubah changeover ${from} ke ${to}`} label={`Changeover ${from} ke ${to}`} value={value} unit="menit" min={standard} max={standard + 120} step={5} note={`Standar SOP ${standard} menit. Changeover boleh lebih lama, tidak boleh lebih singkat.`} allowed={allowed} onSave={m => setChangeoverRule(key, m)} /></td>
                     <td data-label="Status">{statusOf(value, standard)}</td>
                   </tr>
                 );
@@ -61,7 +44,7 @@ export function AturanProduksi() {
               <tr>
                 <td data-label="Dari" colSpan={2}>Ganti roll kemasan (paper), semua produk</td>
                 <td data-label="Standar SOP" className="numeric">{PAPER_STANDARD} menit</td>
-                <td data-label="Durasi dipakai"><RuleInput key={rules.paper} label="Ganti roll kemasan" value={rules.paper} standard={PAPER_STANDARD} allowed={allowed} onSave={setPaperRule} /></td>
+                <td data-label="Durasi dipakai"><RuleValue title="Ubah durasi ganti roll kemasan" label="Ganti roll kemasan" value={rules.paper} unit="menit" min={PAPER_STANDARD} max={PAPER_STANDARD + 120} step={5} note={`Standar SOP ${PAPER_STANDARD} menit untuk semua produk.`} allowed={allowed} onSave={setPaperRule} /></td>
                 <td data-label="Status">{statusOf(rules.paper, PAPER_STANDARD)}</td>
               </tr>
             </tbody>
@@ -82,7 +65,7 @@ export function AturanProduksi() {
                   <tr key={group}>
                     <td data-label="Kelompok alat">{std.label}</td>
                     <td data-label="Standar" className="numeric">{std.minutes} menit</td>
-                    <td data-label="Durasi dipakai"><RuleInput key={value} label={`CIP ${std.label}`} value={value} standard={std.minutes} allowed={allowed} onSave={m => setCipRule(group, m)} /></td>
+                    <td data-label="Durasi dipakai"><RuleValue title={`Ubah durasi CIP ${std.label}`} label={`CIP ${std.label}`} value={value} unit="menit" min={std.minutes} max={std.minutes + 240} step={5} note={`Standar CIP ${std.minutes} menit. Durasi boleh lebih lama, tidak boleh lebih singkat.`} allowed={allowed} onSave={m => setCipRule(group, m)} /></td>
                     <td data-label="Status">{statusOf(value, std.minutes)}</td>
                     <td data-label="Dipakai di cek kelayakan">{std.usedInPlan ? <Badge tone="ok">Ya, CIP bay</Badge> : <span className="small muted">Belum, dicatat untuk jadwal berikutnya</span>}</td>
                   </tr>

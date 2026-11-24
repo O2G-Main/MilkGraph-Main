@@ -1,31 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
 import { setLimits, setQuality, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { DEFAULT_LIMITS, type Limits } from "@/lib/rules";
 import { DEFAULT_QUALITY, type QualitySpec } from "@/lib/lab";
-import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
+import { Badge, Card, SectionTitle } from "@/components/ui";
+import { RuleValue } from "./rule-dialog";
 
 const hm = (m: number) => (m % 60 ? `${Math.floor(m / 60)} jam ${m % 60} menit` : `${m / 60} jam`);
 const fmt = (n: number, digits: number) => n.toLocaleString("id-ID", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-
-/** Satu isian angka dengan batas wajar, disimpan per baris. */
-function SpecInput({ label, value, unit, min, max, step, digits = 0, onSave, allowed }: { label: string; value: number; unit: string; min: number; max: number; step: number; digits?: number; onSave: (v: number) => void; allowed: boolean }) {
-  const [draft, setDraft] = useState(String(value));
-  const v = Number(draft.replace(",", "."));
-  const invalid = !Number.isFinite(v) || v < min || v > max;
-  if (!allowed) return <span className="numeric">{fmt(value, digits)} {unit}</span>;
-  return (
-    <form className="rule-input quality-input" onSubmit={e => { e.preventDefault(); if (!invalid && v !== value) onSave(v); }}>
-      <input type="number" inputMode="decimal" min={min} max={max} step={step} value={draft} onChange={e => setDraft(e.target.value)} aria-label={`${label}, ${unit}`} aria-invalid={invalid} />
-      <span className="small muted">{unit}</span>
-      <button type="submit" className="button secondary" disabled={invalid || v === value}><Icon icon={Check} size={14} />Simpan</button>
-      {invalid && <span className="small crit-text rule-error" role="alert">Isi antara {fmt(min, digits)} dan {fmt(max, digits)} {unit}.</span>}
-    </form>
-  );
-}
 
 const status = (value: number, def: number) => value === def ? <Badge tone="ok">Standar awal</Badge> : <Badge tone="warn">Diubah dari {fmt(def, Number.isInteger(def) ? 0 : 1)}</Badge>;
 
@@ -55,7 +38,7 @@ export function QualityRules() {
         <thead><tr><th>Tahap</th><th>Batas</th><th>Status</th></tr></thead>
         <tbody>{holding.map(h => <tr key={h.key}>
           <td>{h.label}<span className="table-sub">{hm(limits[h.key])} [asumsi]</span></td>
-          <td data-label="Batas"><SpecInput key={limits[h.key]} label={h.label} value={limits[h.key]} unit="menit" min={h.min} max={h.max} step={h.step} allowed={allowed} onSave={saveLimit(h.key, h.label)} /></td>
+          <td data-label="Batas"><RuleValue title={`Ubah batas ${h.label}`} label={h.label} value={limits[h.key]} unit="menit" min={h.min} max={h.max} step={h.step} note="Batas wajar mengikuti asumsi skenario." allowed={allowed} onSave={saveLimit(h.key, h.label)} /></td>
           <td data-label="Status">{status(limits[h.key], DEFAULT_LIMITS[h.key])}</td>
         </tr>)}</tbody>
       </table></div>
@@ -66,7 +49,7 @@ export function QualityRules() {
         <thead><tr><th>Parameter</th><th>Batas</th><th>Status</th></tr></thead>
         <tbody>{specs.map(s => <tr key={s.key}>
           <td>{s.label}</td>
-          <td data-label="Batas"><SpecInput key={quality[s.key]} label={s.label} value={quality[s.key]} unit={s.unit} min={s.min} max={s.max} step={s.step} digits={s.digits} allowed={allowed} onSave={saveSpec(s.key, s.label, s.unit, s.digits)} /></td>
+          <td data-label="Batas"><RuleValue title={`Ubah ${s.label}`} label={s.label} value={quality[s.key]} unit={s.unit} min={s.min} max={s.max} step={s.step} allowed={allowed} onSave={saveSpec(s.key, s.label, s.unit, s.digits)} /></td>
           <td data-label="Status">{status(quality[s.key], DEFAULT_QUALITY[s.key])}</td>
         </tr>)}</tbody>
       </table></div>

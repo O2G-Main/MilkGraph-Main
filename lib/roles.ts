@@ -14,12 +14,12 @@ export interface CustomRole { id: string; label: string; focus: string }
 
 export const BUILTIN_ROLES: Record<BuiltinRoleId, RoleInfo> = {
   superadmin: { label: "Superadmin", user: "Bagas Wicaksono", initials: "BW", focus: "Mengelola pengguna, peran, master data, dan konfigurasi integrasi. Semua menu dan tindakan terbuka, termasuk riwayat seluruh perubahan dan persetujuan." },
-  planner: { label: "Planner PPIC", user: "Rino Akbar Hanif", initials: "RA", focus: "Rencana shift yang layak dan keputusan saat gangguan." },
-  receiving: { label: "Koordinator receiving", user: "Dimas Prasetyo", initials: "DP", focus: "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time." },
-  operator: { label: "Operator produksi", user: "Hendra Kusuma", initials: "HK", focus: "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime." },
-  qa: { label: "QA/QC", user: "Ratna Maharani", initials: "RM", focus: "Rilis atau tolak susu dari hasil lab, mutu barang jadi, penelusuran batch, dan hold produk." },
+  planner: { label: "PPIC", user: "Rino Akbar Hanif", initials: "RA", focus: "Rencana shift yang layak dan keputusan saat gangguan." },
+  receiving: { label: "Receiving Coordinator", user: "Dimas Prasetyo", initials: "DP", focus: "Urutan RT, bay yang siap, dan RT yang mendekati batas holding time." },
+  operator: { label: "Production Operator", user: "Hendra Kusuma", initials: "HK", focus: "Target dan realisasi produksi di lini yang ditugaskan, kondisi mesin, dan downtime." },
+  qa: { label: "Quality Control", user: "Ratna Maharani", initials: "RM", focus: "Rilis atau tolak susu dari hasil lab, mutu barang jadi, penelusuran batch, dan hold produk." },
   manager: { label: "Supervisor/Manager", user: "Wahyu Pratama", initials: "WP", focus: "Ringkasan pasokan, penggunaan mesin, jadwal, dan pencapaian target, serta simulasi alternatif rencana." },
-  lab: { label: "Lab", user: "Sri Lestari", initials: "SL", focus: "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab." },
+  lab: { label: "Laboratory", user: "Sri Lestari", initials: "SL", focus: "Sampel RT dan batch proses yang perlu diperiksa, lalu hasil ujinya dimasukkan ke Tes Lab." },
 };
 export const BUILTIN_IDS = Object.keys(BUILTIN_ROLES) as BuiltinRoleId[];
 export const isBuiltin = (id: RoleId): id is BuiltinRoleId => id in BUILTIN_ROLES;

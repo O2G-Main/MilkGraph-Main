@@ -32,7 +32,25 @@ export interface Proposal {
   by: string; at: string; status: "diajukan" | "diterapkan" | "ditolak";
   review?: { note: string; by: string; at: string };
 }
-export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState; quality: QualitySpec; proposals: Proposal[]; roles: CustomRole[]; menus: MenuMap }
+export interface DemoState { v: 1; started: number; role: RoleId; decisions: PlanDecision[]; holds: Hold[]; labs: Record<string, LabDecision>; acks: string[]; limits: Limits; log: LogEntry[]; users: DemoUser[]; access: AccessMap; account: string | null; schedule: ScheduleItem[]; rules: ProductionRules; receiving: ReceivingState; lab: LabState; operation: OperationState; quality: QualitySpec; proposals: Proposal[]; roles: CustomRole[]; menus: MenuMap; pics: Record<string, string[]> }
+
+/** Kegiatan yang punya PIC. Role tetap mengatur hak akses; PIC menunjuk siapa yang bertanggung jawab per kegiatan. */
+export const PIC_AREAS = [
+  { id: "rencana", label: "Rencana & jadwal", hint: "Menyusun jadwal produksi dan mengajukan keputusan rencana." },
+  { id: "penerimaan", label: "Penerimaan RT", hint: "Jadwal kedatangan, antrean truk, dan bongkar." },
+  { id: "lab", label: "Tes lab", hint: "Pemeriksaan sampel susu segar." },
+  { id: "qc", label: "QC barang jadi", hint: "Hasil mutu produk jadi dan rilis." },
+  { id: "produksi", label: "Produksi & alat", hint: "Realisasi produksi, kondisi mesin, dan downtime." },
+  { id: "transfer", label: "Transfer & volume", hint: "Perpindahan susu antartangki dan alat." },
+  { id: "hold", label: "Hold & recall", hint: "Pengajuan dan keputusan hold produk." },
+] as const;
+export type PicArea = typeof PIC_AREAS[number]["id"];
+
+
+/** ID internal acak (UUID) untuk record baru. Kode bisnis seperti RT-38 atau HOLD-001 tetap dipakai untuk tampilan. */
+const uid = () => {
+  try { return crypto.randomUUID(); } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`; }
+};
 
 const KEY = "milkgraph-demo-v1";
 const ROLE_KEY = "milkgraph-api-role";
@@ -88,7 +106,7 @@ const OPERATION: OperationState = {
   ],
 };
 const applyRules = (rules: ProductionRules) => setProductionRules({ changeover: rules.changeover, bayCip: rules.cip.bay });
-const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION, quality: DEFAULT_QUALITY, proposals: [], roles: [], menus: {} });
+const initial = (started = 0): DemoState => ({ v: 1, started, role: "planner", decisions: [], holds: [], labs: {}, acks: [], limits: DEFAULT_LIMITS, log: [], users: USERS, access: {}, account: null, schedule: SCHEDULE, rules: DEFAULT_RULES, receiving: RECEIVING, lab: { entries: {}, samples: BATCH_SAMPLES }, operation: OPERATION, quality: DEFAULT_QUALITY, proposals: [], roles: [], menus: {}, pics: {} });
 const SERVER = initial();
 let state = SERVER;
 let loaded = false;
@@ -108,7 +126,7 @@ function load() {
   }
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as DemoState | null;
-    state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits } } : initial(Date.now());
+    state = saved?.v === 1 ? { ...initial(saved.started), ...saved, limits: { ...DEFAULT_LIMITS, ...saved.limits }, pics: saved.pics ?? {} } : initial(Date.now());
     // Peran buatan Superadmin harus terdaftar dulu supaya tidak dianggap peran lama yang tidak dikenal.
     setRoles(state.roles);
     // Peran "supervisor" lama sekarang "operator"; peran lain yang tidak dikenal jatuh ke Planner. Id "qa" kini milik QA/QC.
@@ -317,7 +335,7 @@ export const sendDemand = async (detail: string) => {
 
 /** Pengelolaan pengguna dan hak akses (Superadmin). Mode API belum punya endpoint-nya, jadi hanya tersimpan di browser. */
 export const addUser = (name: string, role: RoleId) => act(
-  s => ({ users: [...s.users, { id: `USR-${Date.now()}`, name, role, active: true }] }),
+  s => ({ users: [...s.users, { id: `USR-${uid()}`, name, role, active: true }] }),
   { kind: "akses", title: "Pengguna ditambahkan", detail: `${name} sebagai ${roleLabel(role)}`, note: "", tone: "ok" },
 );
 export const updateUser = (id: string, change: Partial<Pick<DemoUser, "role" | "active" | "assets">>) => {
@@ -325,8 +343,23 @@ export const updateUser = (id: string, change: Partial<Pick<DemoUser, "role" | "
   if (!user) return;
   const detail = change.assets ? `${user.name}: alat/lini ${change.assets.join(", ") || "tidak ada"}` : change.role ? `${user.name}: ${roleLabel(user.role)} jadi ${roleLabel(change.role)}` : `${user.name} ${change.active ? "diaktifkan kembali" : "dinonaktifkan"}`;
   act(
-    s => ({ users: s.users.map(u => u.id === id ? { ...u, ...change } : u) }),
+    s => ({
+      users: s.users.map(u => u.id === id ? { ...u, ...change } : u),
+      // Akun yang dinonaktifkan tidak boleh tetap tercatat sebagai PIC.
+      pics: change.active === false
+        ? Object.fromEntries(Object.entries(s.pics).map(([area, ids]) => [area, ids.filter(x => x !== id)]))
+        : s.pics,
+    }),
     { kind: "akses", title: change.assets ? "Penugasan alat diubah" : change.role ? "Peran pengguna diubah" : change.active ? "Pengguna diaktifkan" : "Pengguna dinonaktifkan", detail, note: "", tone: change.active === false ? "warn" : "neutral" },
+  );
+};
+/** PIC satu kegiatan. Boleh lebih dari satu akun; akun nonaktif tidak bisa dipilih. */
+export const setPic = (area: PicArea, userIds: string[]) => {
+  const areaLabel = PIC_AREAS.find(a => a.id === area)?.label ?? area;
+  const names = userIds.map(id => load().users.find(u => u.id === id)?.name).filter(Boolean).join(", ");
+  act(
+    s => ({ pics: { ...s.pics, [area]: userIds } }),
+    { kind: "akses", title: "PIC kegiatan diperbarui", detail: `${areaLabel}: ${names || "belum ditetapkan"}`, note: "", tone: "neutral" },
   );
 };
 export const togglePermission = (permission: Permission, role: RoleId) => {
@@ -357,7 +390,7 @@ export const logout = () => save({ ...load(), account: null });
 const shiftText = (i: Pick<ScheduleItem, "line" | "sku" | "packs" | "start" | "end">) => `${i.line}, ${i.sku}, ${new Intl.NumberFormat("id-ID").format(i.packs)} pak, ${i.start.replace(":", ".")}-${i.end.replace(":", ".")}`;
 export const saveScheduleItem = (item: Omit<ScheduleItem, "id"> & { id?: string }) => {
   const isNew = !item.id;
-  const id = item.id ?? `JDW-${String(Date.now()).slice(-5)}`;
+  const id = item.id ?? `JDW-${uid()}`;
   act(
     s => ({ schedule: isNew ? [...s.schedule, { ...item, id }] : s.schedule.map(x => x.id === id ? { ...item, id } : x) }),
     { kind: "jadwal", title: isNew ? "Jadwal produksi ditambahkan" : "Jadwal produksi diubah", detail: shiftText(item), note: "", tone: "neutral" },

@@ -7,7 +7,7 @@ import type { Output } from "@/mock/outputs";
 import { buildSteps, durationText } from "./timeline";
 
 const KIND: Record<string, string> = {
-  "Farm ke RT": "Farm", Receiving: "Buffer", "Pre-processing": "Thermal", "Storage / transfer tank": "Storage",
+  "Farm ke RT": "RT", Receiving: "Bay", "Pre-processing": "Thermal", "Storage / transfer tank": "Storage",
   Mixing: "Mixing", "Sterilisasi dan aseptic": "Sterilisasi", Filling: "Filling",
 };
 export const kindOf = (step: string) => KIND[step] ?? "Storage";

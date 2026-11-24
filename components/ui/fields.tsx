@@ -10,7 +10,7 @@ import { Icon } from "./index";
  * bawaan browser supaya tampilan dan popup-nya sama di semua OS. Popup dirender lewat portal agar tidak terpotong card.
  */
 
-type Placement = { top: number; left: number; width: number; maxHeight: number; up: boolean; host: HTMLElement };
+type Placement = { top: number; bottom: number; left: number; width: number; maxHeight: number; up: boolean; host: HTMLElement };
 
 function usePopover(open: boolean, close: () => void, minWidth = 220) {
   const trigger = useRef<HTMLButtonElement>(null);
@@ -23,13 +23,22 @@ function usePopover(open: boolean, close: () => void, minWidth = 220) {
       const el = trigger.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+      // Di dalam <dialog> modal, popup harus ikut top layer dialog itu. Dialog memakai
+      // backdrop-filter, jadi <dialog> menjadi containing block untuk position:fixed:
+      // koordinat panel harus relatif ke kotak dialog, bukan ke viewport.
+      const host = el.closest("dialog") ?? document.body;
+      const box = host === document.body
+        ? { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight }
+        : host.getBoundingClientRect();
+      const top = r.top - box.top, left0 = r.left - box.left;
+      const below = box.height - top - r.height - 12, above = top - 12;
       const up = below < 240 && above > below;
       const width = Math.max(r.width, minWidth);
-      const left = Math.min(Math.max(8, r.left), window.innerWidth - width - 8);
-      // Di dalam <dialog> modal, popup harus ikut top layer dialog itu.
-      const host = el.closest("dialog") ?? document.body;
-      setPlace({ top: up ? r.top - 6 : r.bottom + 6, left, width, maxHeight: Math.min(340, Math.max(160, (up ? above : below) - 8)), up, host });
+      const left = Math.min(Math.max(8, left0), Math.max(8, box.width - width - 8));
+      setPlace({
+        top: top + r.height + 6, bottom: box.height - top + 6, left, width, up, host,
+        maxHeight: Math.min(340, Math.max(120, (up ? above : below) - 8)),
+      });
     };
     update();
     window.addEventListener("resize", update);
@@ -54,7 +63,7 @@ function Popover({ place, panelRef, children, className = "", label }: { place: 
   if (!place) return null;
   return createPortal(
     <div ref={panelRef} className={`field-popover ${place.up ? "up" : ""} ${className}`} aria-label={label}
-      style={{ left: place.left, width: place.width, maxHeight: place.maxHeight, ...(place.up ? { bottom: window.innerHeight - place.top } : { top: place.top }) }}>
+      style={{ left: place.left, width: place.width, maxHeight: place.maxHeight, ...(place.up ? { bottom: place.bottom } : { top: place.top }) }}>
       {children}
     </div>, place.host);
 }
