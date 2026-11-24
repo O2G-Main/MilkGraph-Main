@@ -15,7 +15,7 @@ const GAP = { stroke: "var(--color-surface)", strokeWidth: 2 };
 /** `value` null = data belum ada di sumbernya; tampil "Belum ada", bukan 0. `progress` kosong = tanpa bar. */
 export type ExecKpi = { icon: LucideIcon; label: string; value: number | null; suffix?: string; of?: string; decimals?: number; progress?: number; note: string; tone: Tone; href: string };
 export function ExecKpis({ items }: { items: ExecKpi[] }) {
-  return <div className="schedule-stats planner-kpis exec-kpis">{items.map(k => (
+  return <div className="schedule-stats planner-kpis exec-kpis" data-tour="kpis">{items.map(k => (
     <Link key={k.label} href={k.href} className={`card planner-kpi exec-kpi ${k.tone}`}>
       <span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span>
       {k.value === null

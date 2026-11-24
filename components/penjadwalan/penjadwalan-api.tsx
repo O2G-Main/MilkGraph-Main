@@ -78,7 +78,7 @@ export function PenjadwalanApi({ role }: { role: string }) {
       </PageHeading>
       {error && <p className="crit-text" role="alert">{error}</p>}
       {notice && <p className="small muted" role="status">{notice}</p>}
-      <div className="schedule-stats">
+      <div className="schedule-stats" data-tour="sched-kpis">
         <Card><span className="small muted">PO aktif</span><strong>{pos.length}</strong><span className="small muted">Total {number(totalLiter)} L</span></Card>
         <Card><span className="small muted">Jadwal aktif</span><strong>{schedule ? `Versi ${schedule.version}` : "Belum ada"}</strong><span className="small muted">{schedule ? `${schedule.schedule_id}, dipicu ${schedule.triggered_by}` : "Generate untuk membuat jadwal pertama"}</span></Card>
         <Card><span className="small muted">PO berisiko atau terlambat</span><strong className={risk ? "warn-text" : "ok-text"}>{schedule ? risk : "-"}</strong><span className="small muted">{schedule ? "Dari status fulfilment Backend" : "Belum ada jadwal"}</span></Card>
@@ -121,7 +121,7 @@ export function PenjadwalanApi({ role }: { role: string }) {
         ]}
       />
 
-      <Card>
+      <Card data-tour="sched-table">
         <SectionTitle title="Jadwal produksi" subtitle={schedule ? `Jendela ${fmtWaktu(schedule.window.start)} sampai ${fmtWaktu(schedule.window.end)}, digenerate ${fmtWaktu(schedule.generated_at)}.` : "Belum ada jadwal tergenerate."}
           action={write ? <button className="button primary" disabled={busy !== null} onClick={generate}><Icon icon={Play} size={15} />{busy === "generate" ? "Menggenerate…" : "Generate jadwal"}</button> : undefined} />
         {!schedule && <p className="muted">{noSchedule ? "Server belum punya jadwal. " : ""}{write ? "Pakai tombol Generate jadwal untuk membuat versi pertama dari daftar PO." : "Jadwal dibuat oleh Planner atau Superadmin."}</p>}

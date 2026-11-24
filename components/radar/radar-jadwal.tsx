@@ -119,7 +119,7 @@ export function RadarJadwalCard() {
   const { active, setPicked } = useActiveAxis(hook.quality);
   const q = hook.quality;
   return (
-    <section className="radar-card" aria-label="Kualitas jadwal produksi">
+    <section className="radar-card" data-tour="transfer-radar" aria-label="Kualitas jadwal produksi">
       <div className="radar-head">
         <span className="radar-icon"><Icon icon={Radar} size={24} /></span>
         <div>

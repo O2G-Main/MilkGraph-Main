@@ -26,7 +26,7 @@ type Kpi = { icon: LucideIcon; label: string; value: string; unit: string; note:
 export function ExecutiveKpis() {
   const res = useResource<BeExecDashboard>("/dashboard/executive");
   if (!res.data) {
-    return <div className="schedule-stats planner-kpis">
+    return <div className="schedule-stats planner-kpis" data-tour="kpis">
       <Card><span className="small muted">{res.error ? `Gagal memuat dashboard eksekutif: ${res.error.message}` : "Memuat dashboard eksekutif…"}</span></Card>
     </div>;
   }
@@ -41,7 +41,7 @@ export function ExecutiveKpis() {
     { icon: CalendarRange, label: "Jadwal harian", value: d.daily_schedule ? `Versi ${d.daily_schedule.version}` : "Belum ada", unit: d.daily_schedule ? d.daily_schedule.schedule_id : "", note: d.daily_schedule ? `${d.daily_schedule.runs_count} run, jendela ${fmtWaktu(d.daily_schedule.window.start)} sampai ${fmtWaktu(d.daily_schedule.window.end)}` : "Generate jadwal dulu di Penjadwalan", tone: d.daily_schedule ? "neutral" : "warn", href: "/penjadwalan" },
     { icon: TriangleAlert, label: "Status PO", value: po ? String(po.fulfilled + po.at_risk + po.late + po.on_track) : "-", unit: po ? "PO" : "", note: po ? `${po.fulfilled} terpenuhi, ${po.on_track} sesuai rencana, ${po.at_risk} berisiko, ${po.late} terlambat` : "Belum ada jadwal tergenerate", tone: po && po.late ? "crit" : po && po.at_risk ? "warn" : "neutral", href: "/penjadwalan" },
   ];
-  return <div className="schedule-stats planner-kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>;
+  return <div className="schedule-stats planner-kpis" data-tour="kpis">{kpis.map(k => <Link key={k.label} href={k.href} className={`card planner-kpi ${k.tone}`}><span className="planner-kpi-label"><Icon icon={k.icon} size={16} />{k.label}<Icon icon={ArrowUpRight} size={15} className="planner-kpi-go" /></span><strong>{k.value}{k.unit && <small> {k.unit}</small>}</strong><span className="small muted">{k.note}</span></Link>)}</div>;
 }
 
 /** Rincian di bawah KPI: target harian, pasokan per farm, utilisasi per mesin, dan fulfilment PO. */
@@ -192,11 +192,11 @@ export function ExecutiveDashboardApi({ attention }: { attention: ReactNode }) {
   return <>
     {label && <p className="exec-label">Label data <Badge tone="warn">{label}</Badge></p>}
     <ExecKpis items={kpis} />
-    <div className="exec-grid">
+    <div className="exec-grid" data-tour="exec-status">
       <StatusLiniApi d={d} />
       <DowntimeApi d={d} />
     </div>
-    <div className="exec-grid">
+    <div className="exec-grid" data-tour="exec-radar">
       <RadarJadwalChartCard />
       <RadarJadwalTableCard />
     </div>

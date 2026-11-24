@@ -221,9 +221,9 @@ export function AssistantChat() {
     advance(1);
   }
 
-  if (hidden) return <button ref={tab} type="button" className="ai-tab" aria-label="Munculkan Tanya MilkGraph" title="Munculkan Tanya MilkGraph" onClick={show}><ChevronLeft size={14} aria-hidden="true" /><Bot size={18} aria-hidden="true" /></button>;
+  if (hidden) return <button ref={tab} type="button" className="ai-tab" data-tour="assistant" aria-label="Munculkan Tanya MilkGraph" title="Munculkan Tanya MilkGraph" onClick={show}><ChevronLeft size={14} aria-hidden="true" /><Bot size={18} aria-hidden="true" /></button>;
   if (!open) return <div className="ai-dock">
-    <button ref={fab} type="button" className="ai-fab" aria-label="Buka Tanya MilkGraph, asisten. Tekan panah kanan untuk menyembunyikan" title="Klik untuk bertanya, geser ke kanan untuk menyembunyikan"
+    <button ref={fab} type="button" className="ai-fab" data-tour="assistant" aria-label="Buka Tanya MilkGraph, asisten. Tekan panah kanan untuk menyembunyikan" title="Klik untuk bertanya, geser ke kanan untuk menyembunyikan"
       onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, moved: false }; }}
       onPointerMove={e => {
         if (!drag.current) return;

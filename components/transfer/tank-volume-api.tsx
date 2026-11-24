@@ -20,7 +20,7 @@ export interface TankRef { id: string; level: number; capacity: number }
  */
 export function TankVolumeApiCard({ tanks, alat }: { tanks: TankRef[]; alat?: string }) {
   return (
-    <Card className="rules-card">
+    <Card className="rules-card" data-tour="transfer-tank">
       <SectionTitle title="Volume tangki terkini" subtitle="Masuk, keluar, dan saldo dihitung server dari seluruh catatan transfer. Level snapshot adalah snapshot historis 1 Nov 2026 pukul 06.00 dan tidak diubah halaman ini." />
       <div className="table-wrap"><table className="schedule-table">
         <thead><tr><th>Tangki</th><th className="numeric">Snapshot skenario</th><th className="numeric">Masuk (server)</th><th className="numeric">Keluar (server)</th><th className="numeric">Saldo transfer (server)</th><th className="numeric">Jumlah transfer</th><th><span className="sr-only">Riwayat</span></th></tr></thead>

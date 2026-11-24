@@ -92,7 +92,7 @@ export function Transfer({ alat }: { alat?: string }) {
       </>}
       {API_MODE && <NeracaHarianApiCard />}
       {API_MODE && <RadarJadwalCard />}
-      <Card>
+      <Card data-tour="transfer-history">
         <SectionTitle title={alat ? `Riwayat transfer ${alat}` : "Riwayat transfer"} subtitle="Selisih = volume keluar dari alat asal dikurangi volume diterima alat tujuan." />
         <div className="table-wrap"><table className="schedule-table flow-table">
           <thead><tr><th>Transfer</th><th>Dari ke</th><th className="numeric">Keluar</th><th className="numeric">Diterima</th><th className="numeric">Selisih</th><th>Waktu</th><th>Sumber</th></tr></thead>

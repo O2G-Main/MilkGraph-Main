@@ -95,7 +95,7 @@ export function BerandaApiAttention({ role, title, subtitle }: { role: RoleId; t
   const shown = items.filter(a => canOpen(role, a.href.split("?")[0], findNav(a.href.split("?")[0]).tab.href));
   const visible = showAll ? shown : shown.slice(0, 4);
 
-  return <Card className="home-attention"><SectionTitle title={title} subtitle={subtitle} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
+  return <Card className="home-attention" data-tour="attention"><SectionTitle title={title} subtitle={subtitle} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
     {loading
       ? <p className="small muted">Memuat data perhatian dari server…</p>
       : err

@@ -20,7 +20,7 @@ export function QualityCard({ output, onSource }: { output: Output; onSource: (i
       action: <PageLink className="button secondary" href="/qc-produk">Lihat QC Barang Jadi<Icon icon={ArrowRight} size={16} /></PageLink>,
     };
 
-  return <Card className="rp-quality">
+  return <Card className="rp-quality" data-tour="rp-quality">
     <SectionTitle title="Mutu & tindak lanjut" subtitle="Hasil QC barang jadi untuk lot ini dan langkah berikutnya." />
     <div className={`rp-quality-row ${state.tone}`}>
       <span className="rp-quality-icon"><Icon icon={state.icon} size={22} /></span>

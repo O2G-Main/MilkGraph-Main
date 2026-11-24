@@ -1817,3 +1817,22 @@ html:has(.login-page) { background: var(--color-canvas); }
   .radar-legend { justify-content: flex-start; }
   .radar-avg { grid-template-columns: 1fr 1fr; }
 }
+
+/* Product tour: sorotan elemen asli + tooltip langkah (components/tour/product-tour.tsx) */
+.tour-root { position: fixed; inset: 0; z-index: 120; }
+.tour-catcher { position: absolute; inset: 0; }
+.tour-spot { position: fixed; border: 2px solid var(--color-accent-fill, #B7791F); border-radius: 14px; box-shadow: 0 0 0 9999px rgba(9, 26, 17, .58); pointer-events: none; transition: top .3s ease, left .3s ease, width .3s ease, height .3s ease; }
+.tour-tip { position: fixed; width: min(330px, calc(100vw - 24px)); background: var(--color-surface); border: 2px solid var(--color-surface-inverse); border-radius: 16px; box-shadow: 8px 8px 0 color-mix(in oklab, var(--color-surface-inverse) 16%, transparent); padding: 18px 18px 14px; z-index: 121; }
+.tour-progress { height: 5px; border-radius: 99px; background: var(--color-surface-muted, #E7EDE8); overflow: hidden; margin-bottom: 12px; }
+.tour-progress span { display: block; height: 100%; background: var(--color-accent-fill, #B7791F); border-radius: 99px; transition: width .3s ease; }
+.tour-close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-surface-inverse); cursor: pointer; }
+.tour-count { font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--color-primary-hover, #14532D); margin: 0 0 4px; }
+.tour-title { font-size: 17px; font-weight: 700; color: var(--color-surface-inverse); margin: 0 0 6px; }
+.tour-body { font-size: 13.5px; line-height: 1.55; color: var(--color-text, inherit); margin: 0 0 14px; }
+.tour-actions { display: flex; justify-content: space-between; gap: 10px; }
+.tour-offer { position: fixed; left: 18px; bottom: 18px; z-index: 110; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; max-width: min(430px, calc(100vw - 36px)); background: var(--color-surface); border: 2px solid var(--color-surface-inverse); border-radius: 16px; box-shadow: 8px 8px 0 color-mix(in oklab, var(--color-surface-inverse) 16%, transparent); padding: 16px; }
+.tour-offer-icon { width: 42px; height: 42px; flex: none; border: 2px solid var(--color-surface-inverse); border-radius: 12px; background: var(--color-accent-soft); color: var(--color-primary-hover); display: flex; align-items: center; justify-content: center; }
+.tour-offer-copy { display: flex; flex-direction: column; gap: 3px; font-size: 13px; line-height: 1.5; flex: 1; min-width: 210px; }
+.tour-offer-copy strong { font-size: 14.5px; color: var(--color-surface-inverse); }
+.tour-offer-actions { display: flex; gap: 8px; width: 100%; padding-left: 54px; }
+@media (max-width: 640px) { .tour-offer { left: 12px; right: 12px; bottom: 12px; } }

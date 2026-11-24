@@ -81,7 +81,7 @@ export function ImportCsvCard<Row>(props: Props<Row>) {
   const bisaCommit = !!file && !!laporan && !laporan.commit && busy === null;
 
   return (
-    <Card>
+    <Card data-tour="import-csv">
       <SectionTitle title={title} subtitle={subtitle}
         action={<button type="button" className="button secondary" onClick={unduhTemplate}><Icon icon={Download} size={15} />Unduh template CSV</button>} />
       <div className="schedule-form">

@@ -29,7 +29,7 @@ export function NeracaHarianApiCard() {
   const metode = detailRes.data?.metode ?? list?.metode;
 
   return (
-    <Card className="rules-card">
+    <Card className="rules-card" data-tour="transfer-neraca">
       <SectionTitle title="Neraca volume harian (historis)" subtitle={list ? `${list.jendela}. Label data: ${list.label_data}.` : "Agregat harian data historis dari server."} />
       {listRes.error && <p className="crit-text" role="alert">Gagal memuat neraca harian: {listRes.error.message}</p>}
       {!list && !listRes.error && <p className="muted" role="status">Memuat neraca harian…</p>}

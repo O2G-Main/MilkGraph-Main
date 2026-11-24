@@ -17,7 +17,7 @@ type Step = ReturnType<typeof buildSteps>[number];
 /** Jalur produksi bertahap: jam dan durasi di kiri, kartu tahap di kanan, jeda antarcatatan di antaranya. */
 export function ProductionPath({ output, active, onPick }: { output: Output; active: number; onPick: (i: number) => void }) {
   const steps = buildSteps(output.chain);
-  return <Card className="rp-path">
+  return <Card className="rp-path" data-tour="rp-path">
     <SectionTitle title="Jalur produksi" subtitle="Ikuti dari sumber susu sampai hasil akhir. Pilih tahap untuk melihat detailnya." />
     <ol className="rp-steps">
       {steps.map((s: Step) => <li key={s.index}>

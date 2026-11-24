@@ -47,13 +47,13 @@ export function Penjadwalan() {
         : `Target dan jadwal produksi per lini filling untuk Shift Siang, ${clockOf(SHIFT.start)} - ${clockOf(SHIFT.end)}. Jeda antar-order dicek dengan standar di Aturan Produksi.`}>
         {allowed && <button className="button primary" onClick={() => setEditing({ ...EMPTY })}><Icon icon={CalendarPlus} size={16} />Tambah jadwal</button>}
       </PageHeading>
-      <div className="schedule-stats">
+      <div className="schedule-stats" data-tour="sched-kpis">
         <Card><span className="small muted">Order di shift ini</span><strong>{items.length}</strong><span className="small muted">{new Set(items.map(i => i.line)).size} lini filling</span></Card>
         <Card><span className="small muted">Total target</span><strong>{number(total)} <small>pak</small></strong><span className="small muted">Kapasitas jam terjadwal {number(capacity)} pak</span></Card>
         {mine ? <Card><span className="small muted">Hasil baik order selesai</span><strong>{done.length ? `${attainment(goodOut, doneTarget)}%` : "-"}</strong><span className="small muted">{done.length} selesai, {items.filter(i => runState(runs[i.id]) === "jalan").length} jalan, {items.filter(i => runState(runs[i.id]) === "belum").length} belum mulai</span></Card> : <Card><span className="small muted">Perlu dicek</span><strong className={problems.some(i => checks[i.id].issues.some(x => x.tone === "crit")) ? "crit-text" : problems.length ? "warn-text" : "ok-text"}>{problems.length}</strong><span className="small muted">{problems.length ? "Order bentrok, kurang jeda, atau melebihi kapasitas" : "Semua order masuk akal"}</span></Card>}
       </div>
-      <Card>
-        <SectionTitle title="Jadwal produksi" subtitle="Urut per lini dan jam mulai. Kapasitas dihitung dari laju target mesin dikali durasi [simulasi]." action={<PageLink className="text-link" href="/rencana">Cek kelayakan rencana<Icon icon={ArrowRight} size={14} /></PageLink>} />
+      <Card data-tour="sched-table">
+        <SectionTitle title="Jadwal produksi" subtitle="Urut per lini dan jam mulai. Kapasitas dihitung dari laju target mesin dikali durasi [simulasi]." action={<PageLink className="text-link" data-tour="sched-feasibility" href="/rencana">Cek kelayakan rencana<Icon icon={ArrowRight} size={14} /></PageLink>} />
         <div className="table-wrap">
           <table className="schedule-table">
             <thead><tr><th>Lini</th><th>Produk</th><th>Jam</th><th className="numeric">Target</th><th className="numeric">Kapasitas</th><th>Status</th><th>Realisasi</th>{(allowed || mayRun) && <th><span className="sr-only">Aksi</span></th>}</tr></thead>

@@ -58,7 +58,7 @@ export function Simulasi() {
         </PageLink>
       </div>
 
-      <div className="page-tabs">
+      <div className="page-tabs" data-tour="sim-scenario">
         <Toggle
           label="Kondisi simulasi"
           value={state}
@@ -80,7 +80,7 @@ export function Simulasi() {
       </div>
 
       <div className="sim-grid">
-        <Card className="sim-canvas-card">
+        <Card className="sim-canvas-card" data-tour="sim-canvas">
           <PlantScene
             state={state}
             focus={focus}
@@ -98,7 +98,7 @@ export function Simulasi() {
           </p>
         </Card>
 
-        <Card className="sim-side">
+        <Card className="sim-side" data-tour="sim-bottleneck">
           <SectionTitle
             title="Bottleneck"
             subtitle={

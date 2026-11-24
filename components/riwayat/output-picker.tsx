@@ -26,7 +26,7 @@ export function OutputPicker({ outputs, filters, setFilters, selected, onSelect,
   const list = matchOutputs(all, filters);
   const set = (k: keyof Filters) => (e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, [k]: e.target.value });
   const put = (k: keyof Filters) => (value: string) => setFilters({ ...filters, [k]: value });
-  return <Card className="rp-picker">
+  return <Card className="rp-picker" data-tour="rp-picker">
     <SectionTitle title="Pilih output produksi" subtitle="Tentukan hasil produksi untuk melihat seluruh riwayatnya." action={<button type="button" className="inline-link" onClick={() => setFilters(EMPTY)}>Reset pilihan</button>} />
     <label className="rp-field rp-main"><span>Output yang dilacak</span>
       <Select label="Output yang dilacak" value={list.some(o => o.id === selected) ? selected : ""} onChange={onSelect} disabled={!list.length} placeholder="Tidak ada output yang cocok" options={list.map(o => ({ value: o.id, label: `${o.id} · ${o.product}` }))} />
@@ -39,7 +39,7 @@ export function OutputPicker({ outputs, filters, setFilters, selected, onSelect,
     </div>
     <div className="rp-picker-foot">
       <span className="small muted" role="status">{list.length} output tersedia</span>
-      <button type="button" className="text-link" onClick={onExample}>Contoh stroberi · 16.00<Icon icon={ArrowRight} size={14} /></button>
+      <button type="button" className="text-link" data-tour="rp-example" onClick={onExample}>Contoh stroberi · 16.00<Icon icon={ArrowRight} size={14} /></button>
     </div>
   </Card>;
 }
