@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Compass, X } from "lucide-react";
 import { Icon } from "@/components/ui";
 import { filterStepsWithAnchors, tourStepsFor, type TourStepDef } from "@/lib/tour-steps";
 
@@ -156,6 +156,21 @@ export function ProductTour({ runId, role, pathname, onDone, onStart }: {
         <button type="button" className="button secondary" onClick={prev} disabled={idx === 0}><Icon icon={ArrowLeft} size={15} />Kembali</button>
         <button type="button" className="button primary" onClick={next}>{last ? <><Icon icon={Check} size={15} />Selesai</> : <>Lanjut<Icon icon={ArrowRight} size={15} /></>}</button>
       </div>
+    </div>
+  </div>;
+}
+
+/** Popup singkat sebelum panduan berjalan; hanya tampil setelah tombol "Panduan halaman" diklik. */
+export function TourOffer({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+  return <div className="tour-offer" role="dialog" aria-label="Panduan halaman">
+    <span className="tour-offer-icon"><Icon icon={Compass} size={20} /></span>
+    <div className="tour-offer-copy">
+      <strong>Panduan halaman</strong>
+      <span>Ikuti panduan singkat halaman ini. Langkahnya mengikuti halaman yang sedang dibuka.</span>
+    </div>
+    <div className="tour-offer-actions">
+      <button type="button" className="button secondary" onClick={onDecline}>Nanti saja</button>
+      <button type="button" className="button primary" onClick={onAccept}>Mulai panduan</button>
     </div>
   </div>;
 }

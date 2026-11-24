@@ -1884,3 +1884,11 @@ html:has(.login-page) { background: var(--color-canvas); }
 .tour-title { font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--color-on-surface); margin: 0 0 6px; }
 .tour-body { font-size: 13px; line-height: 1.55; color: var(--color-on-surface-muted); margin: 0 0 14px; }
 .tour-actions { display: flex; justify-content: space-between; gap: 8px; }
+/* Popup singkat sebelum panduan berjalan; gaya kartu aplikasi, bukan gaya kotak tebal. */
+.tour-offer { position: fixed; left: 24px; bottom: 24px; z-index: 110; width: min(380px, calc(100vw - 32px)); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 12px; align-items: start; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); padding: 16px 18px; }
+.tour-offer-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--color-accent-soft); color: var(--color-primary); }
+.tour-offer-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tour-offer-copy strong { font-size: 14px; font-weight: 600; color: var(--color-on-surface); }
+.tour-offer-copy span { font-size: 12.5px; line-height: 1.5; color: var(--color-on-surface-muted); }
+.tour-offer-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+@media (max-width: 640px) { .tour-offer { left: 12px; right: 12px; bottom: 12px; width: auto; } }
