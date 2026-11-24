@@ -10,6 +10,7 @@ import type { Hold } from "@/lib/demo";
 import type { RoleId } from "@/lib/roles";
 import type { DataSource, LabResult } from "@/mock/ops";
 import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
+import { RadarJadwalChartCard, RadarJadwalTableCard } from "@/components/radar/radar-jadwal";
 import { Bullets, C, Donut, ExecKpis, type ExecKpi } from "./executive";
 
 /**
@@ -87,6 +88,8 @@ function SuperadminApi({ attention }: { attention: ReactNode }) {
         <li><i style={{ background: C.warn }} aria-hidden="true" /><strong>{costs.data.items?.length ?? 0}</strong><span>Item biaya operasional</span></li>
       </ul> : <Empty>Belum ada data biaya.</Empty>}
     </Panel>
+    <RadarJadwalChartCard />
+    <RadarJadwalTableCard />
   </Layout>;
 }
 
