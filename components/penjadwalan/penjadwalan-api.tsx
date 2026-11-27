@@ -72,7 +72,7 @@ export function PenjadwalanApi({ role }: { role: string }) {
   }
 
   return (
-    <div className="page-enter">
+    <div className="page-enter penjadwalan-page">
       <PageHeading title="Penjadwalan" subtitle="Target produksi berupa PO dalam liter. Jadwal, status pencapaian, dan peringatan dihitung Backend, bukan di halaman ini.">
         {write && <button className="button primary" onClick={() => setAdding(true)}><Icon icon={CalendarPlus} size={16} />Tambah PO</button>}
       </PageHeading>

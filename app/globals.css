@@ -1606,7 +1606,7 @@ html:has(.login-page) { background: var(--color-canvas); }
 .schedule-stats .card { display: flex; flex-direction: column; gap: 4px; }
 .schedule-stats strong { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .schedule-stats strong small { font-size: 13px; font-weight: 500; color: var(--color-on-surface-muted); }
-.kedatangan-page > .card + .card { margin-block-start: var(--spacing-md); }
+:is(.kedatangan-page, .penjadwalan-page) > .card + .card { margin-block-start: var(--spacing-md); }
 .schedule-table td { vertical-align: top; }
 .schedule-table .table-sub { display: block; margin-top: 6px; max-width: 360px; white-space: normal; }
 .schedule-table .table-action { white-space: nowrap; text-align: right; }
