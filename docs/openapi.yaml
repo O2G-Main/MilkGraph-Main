@@ -9,9 +9,7 @@ info:
     - **Dokumen Publik:** `GET /docs` (Swagger UI) dan `GET /openapi.yaml` dapat diakses langsung dari domain backend.
 servers:
   - url: /
-    description: Current Backend Server (Same-Origin)
-  - url: https://api-aquaseq.hadooyy.my.id
-    description: Production / Dokploy Backend
+    description: Current MilkGraph Backend Server (Same-Origin)
   - url: http://localhost:8080
     description: Local Development
 security:
