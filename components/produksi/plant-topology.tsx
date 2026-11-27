@@ -18,7 +18,7 @@ import styles from "./plant-topology.module.css";
 
 const nodeTypes = { "plant-asset": PlantAssetNode, stage: oldNodeTypes.stage };
 
-export function PlantTopology({ focusAssets = [], title = "Alur pabrik", subtitle = "Aset dan koneksi Greenfields yang sama digunakan di Produksi dan Rencana." }: {
+export function PlantTopology({ focusAssets = [], title = "Alur pabrik", subtitle = "Konfigurasi alat saat ini dari master pabrik. Tampilan ini tidak mengikuti filter tanggal prediksi." }: {
   focusAssets?: string[]; title?: string; subtitle?: string;
 }) {
   const topology = useResource<PlantTopologyData>("/master/topology");
@@ -61,14 +61,15 @@ export function PlantTopology({ focusAssets = [], title = "Alur pabrik", subtitl
     : !topology.data ? <p className="muted" role="status">Memuat alur pabrik…</p>
     : <>
       <div className={styles.toolbar}>
-        <label className="schedule-form"><span className="field-label">Cari alat atau rute</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Kode atau nama alat" /></label>
-        <label className="schedule-form"><span className="field-label">Jenis alat</span><Select label="Jenis alat pada alur" value={type} onChange={setType} options={[{ value: "", label: "Semua jenis" }, ...[...new Set(topology.data.nodes.map(asset => asset.asset_type))].sort().map(value => ({ value, label: value }))]} /></label>
-        <span className="small muted">{topology.data.nodes.length} alat · {topology.data.edges.length} koneksi</span>
+        <label className="schedule-form"><span className="field-label">Cari alat atau rute</span><input type="search" value={query} onChange={event => { setQuery(event.target.value); setSelected(null); }} placeholder="Kode atau nama alat" /></label>
+        <label className="schedule-form"><span className="field-label">Jenis alat</span><Select label="Jenis alat pada alur" value={type} onChange={value => { setType(value); setSelected(null); }} options={[{ value: "", label: "Semua jenis" }, ...[...new Set(topology.data.nodes.map(asset => asset.asset_type))].sort().map(value => ({ value, label: value }))]} /></label>
+        <span className="small muted">Menampilkan {visible.size} dari {topology.data.nodes.length} alat · {routes.length} dari {topology.data.edges.length} rute</span>
       </div>
       {assets.error && <p className="small crit-text" role="alert">Status alat gagal dimuat: {assets.error.message}. Topologi tetap menunjukkan konfigurasi, bukan kondisi berjalan.</p>}
+      <p className="small muted">Garis hijau menunjukkan rute yang dikonfigurasi. Status pada kartu adalah catatan terakhir alat; diagram tidak menunjukkan aliran susu secara langsung.</p>
       {!!focusAssets.length && <p className="small muted">Alat pada rencana terpilih diberi garis hijau. Koneksi menunjukkan kemampuan rute, bukan bukti aliran yang sedang berjalan.</p>}
       {graph && graph.missing.length > 0 && <p className="small crit-text" role="status">{graph.missing.length} koneksi memiliki alat yang belum tersedia di katalog. Detail tetap ada di daftar rute.</p>}
-      {view !== "routes" ? !visualAssets.some(asset => visible.has(asset.id)) ? <p className="muted">Tidak ada alat yang cocok dengan filter.</p> : <>
+      {view !== "routes" ? !visualAssets.some(asset => visible.has(asset.id)) ? <p className="muted">{topology.data.nodes.length ? "Tidak ada alat yang cocok dengan filter." : "Data konfigurasi alat belum tersedia."}</p> : <>
         <div className={`flow-canvas ${styles.canvas}`} role="region" aria-label="Diagram alur alat Greenfields">
           {view === "3d" ? <Flow3D assets={visualAssets.filter(asset => visible.has(asset.id))} edges={edges.map(edge => ({ id: edge.id, source: edge.source, target: edge.target, kind: "idle" as const }))} pos={layout.pos} columns={layout.columns} badges={{}} picked={selected} onPick={setSelected} onClear={() => setSelected(null)} label="Alur pabrik 3D" />
           : <ReactFlow key={`${type}:${query}`} nodeTypes={nodeTypes} nodes={nodes} edges={edges} defaultViewport={{ x: 24, y: 24, zoom: .9 }} fitView={Boolean(type || query)} fitViewOptions={{ padding: .15, maxZoom: 1 }} nodesDraggable={false} nodesConnectable={false} onNodeClick={(_, node) => setSelected(node.id)} minZoom={.15} maxZoom={1.8} ariaLabelConfig={{ "controls.zoomIn.ariaLabel": "Perbesar alur", "controls.zoomOut.ariaLabel": "Perkecil alur", "controls.fitView.ariaLabel": "Pas ke layar" }}>
@@ -76,10 +77,10 @@ export function PlantTopology({ focusAssets = [], title = "Alur pabrik", subtitl
           </ReactFlow>}
         </div>
         <p className="small muted">Geser dan perbesar diagram untuk melihat detail. Pilih alat untuk melihat spesifikasi dan rute terkait.</p>
-      </> : <div className="table-wrap"><table className="schedule-table"><thead><tr><th>Rute</th><th>Dari</th><th>Ke</th><th>Melalui</th><th>Jenis aliran</th><th>Batas L/jam</th></tr></thead><tbody>{routes.map(edge => <tr key={edge.connection_id}><td>{edge.connection_id}</td><td><button className="text-link" onClick={() => setSelected(edge.source_asset_id)}>{edge.source_asset_id}</button></td><td><button className="text-link" onClick={() => setSelected(edge.destination_asset_id)}>{edge.destination_asset_id}</button></td><td>{edge.via_asset_id || "Tidak tercatat"}</td><td>{edge.flow_type}</td><td>{edge.max_flow_lph || "Belum tersedia"}</td></tr>)}</tbody></table>{!routes.length && <p className="muted">Tidak ada rute yang cocok.</p>}</div>}
+      </> : <div className="table-wrap"><table className="schedule-table"><thead><tr><th>Rute</th><th>Dari</th><th>Ke</th><th>Melalui</th><th>Jenis aliran</th><th>Batas aliran (L/jam)</th></tr></thead><tbody>{routes.map(edge => <tr key={edge.connection_id}><td>{edge.connection_id}</td><td><button className="text-link" onClick={() => setSelected(edge.source_asset_id)}>{edge.source_asset_id}</button></td><td><button className="text-link" onClick={() => setSelected(edge.destination_asset_id)}>{edge.destination_asset_id}</button></td><td>{edge.via_asset_id || "Tidak dicantumkan"}</td><td>{edge.flow_type}</td><td>{edge.max_flow_lph || "Belum tersedia"}</td></tr>)}</tbody></table>{!routes.length && <p className="muted">Tidak ada rute yang cocok.</p>}</div>}
       {picked && <div className={styles.inspector} aria-live="polite">
         <SectionTitle title={`${picked.asset_id} · ${picked.asset_name}`} subtitle={picked.asset_type} action={<button className="button secondary" onClick={() => setSelected(null)}>Tutup detail</button>} />
-        <dl className={styles.details}><div><dt>Status terakhir</dt><dd>{statusLabel(picked.asset_id)}</dd></div><div><dt>Kapasitas (L)</dt><dd>{picked.capacity_l || "Belum tersedia"}</dd></div><div><dt>Kecepatan proses (L/jam)</dt><dd>{picked.process_speed_lph || "Belum tersedia"}</dd></div><div><dt>Rute terkait</dt><dd>{pickedRoutes.length}</dd></div></dl>
+        <dl className={styles.details}><div><dt>Status terakhir</dt><dd>{statusLabel(picked.asset_id)}</dd></div><div><dt>Kapasitas (L)</dt><dd>{picked.capacity_l || "Belum tersedia"}</dd></div><div><dt>Kecepatan proses (L/jam)</dt><dd>{picked.process_speed_lph || "Belum tersedia"}</dd></div><div><dt>Rute terkait</dt><dd>{pickedRoutes.length} rute</dd></div></dl>
         <p className="small muted">{pickedRoutes.map(edge => `${edge.source_asset_id} → ${edge.destination_asset_id}`).join(" · ") || "Belum ada koneksi tercatat."}</p>
         <Link className="text-link" href="/alat">Buka daftar dan status alat</Link>
       </div>}

@@ -27,7 +27,7 @@ export function AiRecommendationReview({ date, batch, rows, role }: { date: stri
   }
   return <Card>
     <SectionTitle title="Analisis solusi oleh AI" subtitle="Minta asisten server membandingkan kandidat berdasarkan fakta dan rules yang tersedia." />
-    <button className="button secondary" disabled={busy || !role || !date || !candidates.length || candidates.length > 20} onClick={() => void ask()}>{busy ? "Meminta analisis…" : "Minta rekomendasi terbaik dari AI"}</button>
+    <button className="button secondary" disabled={busy || !role || !date || !candidates.length || candidates.length > 20} onClick={() => void ask()}>{busy ? "Meminta analisis…" : "Bandingkan solusi dengan AI"}</button>
     {!candidates.length && <p className="small muted">Analisis tersedia setelah server menghasilkan kandidat rekomendasi untuk pilihan ini.</p>}
     {candidates.length > 20 && <p className="small muted">Pilih batch yang lebih spesifik untuk membandingkan maksimal 20 kandidat dalam satu analisis.</p>}
     {error && <p role="alert" className="crit-text">Analisis AI belum tersedia: {error}. Kandidat BE tetap dapat ditinjau.</p>}

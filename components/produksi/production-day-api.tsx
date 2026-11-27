@@ -7,12 +7,12 @@ import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import type { ProductionDaily, ProductionSession } from "@/lib/api/production";
 import { canRunPrediction, planningPath, runPlanningPrediction, type FulfillmentPrediction, type PlanningList, type ProductionRecommendation } from "@/lib/api/planning";
-import { latestPredictions, recommendationLabels, relatedRecommendations } from "@/lib/operational-prediction";
+import { batchTargetVolume, latestPredictions, predictionLabels, predictionSummary, predictionTime, predictedShortage, recommendationLabels, relatedRecommendations } from "@/lib/operational-prediction";
 import { canSee, type RoleId } from "@/lib/roles";
 import { usePlanningSelection } from "@/components/rencana/planning-state";
+import { PredictionInputs } from "./prediction-inputs";
 import styles from "./production-prediction.module.css";
 
-const labels = { terpenuhi: "Diprediksi terpenuhi", berisiko: "Berisiko", tidak_terpenuhi: "Diprediksi tidak terpenuhi", data_tidak_cukup: "Data tidak cukup" };
 const tones = { terpenuhi: "ok", berisiko: "warn", tidak_terpenuhi: "crit", data_tidak_cukup: "neutral" } as const;
 
 export function ProductionDayApi({ date, role }: { date: string; role: RoleId }) {
@@ -27,46 +27,63 @@ export function ProductionDayApi({ date, role }: { date: string; role: RoleId })
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const allowed = !session.loading && !session.error && session.data?.role === role && canRunPrediction(session.data.permissions);
-  const rows = latestPredictions(predictions.data?.items ?? [], date);
+  const predictionProblem = predictions.error?.message || (predictions.data && !Array.isArray(predictions.data.items) ? "Format hasil prediksi dari server belum dapat dibaca." : null);
+  const recommendationProblem = recommendations.error || (recommendations.data && !Array.isArray(recommendations.data.items));
+  const dailyRows = Array.isArray(daily.data?.batches) ? daily.data.batches : [];
+  const rows = latestPredictions(Array.isArray(predictions.data?.items) ? predictions.data.items : [], date);
+  const batchListReady = !daily.error && !daily.loading && daily.data?.production_date === date && Array.isArray(daily.data.batches);
+  const summary = predictionSummary(rows, batchListReady ? dailyRows.map(batch => batch.batch_id) : null);
+  const noBatches = summary.total === 0 && !summary.mismatch && rows.length === 0;
   const canRecommend = canSee(role, "/rencana/upgrade");
-  const reload = () => { void predictions.reload(); void recommendations.reload(); void daily.reload(); void session.reload(); };
+  const reload = () => { setMessage(null); setError(null); void predictions.reload(); void recommendations.reload(); void daily.reload(); void session.reload(); };
   async function run() {
     if (!allowed || lock.current || !session.data) return;
     lock.current = true; setBusy(true); setError(null); setMessage(null);
     try {
-      await runPlanningPrediction(filter, role, session.data.permissions);
+      const result = await runPlanningPrediction(filter, role, session.data.permissions);
       invalidateResources([planningPath("predictions", filter), planningPath("recommendations", filter), planningPath("daily", filter)]);
-      setMessage("Prediksi dan rekomendasi berhasil dihitung serta dibaca ulang dari server.");
+      setMessage(latestPredictions(result.predictions.items, date).length ? "Hasil perhitungan terbaru sudah diterima. Tinjau status dan rekomendasi di bawah." : "Permintaan perhitungan selesai, tetapi server belum mengirim hasil prediksi untuk tanggal ini.");
     } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
     finally { lock.current = false; setBusy(false); }
   }
   return <Card>
-    <SectionTitle title="Prediksi pemenuhan produksi" subtitle="Perkiraan berdasarkan fakta yang tersedia. Hasil prediksi terpisah dari realisasi produksi."
+    <SectionTitle title="Prediksi pemenuhan produksi" subtitle={`Prediksi untuk ${new Date(`${date}T00:00:00Z`).toLocaleDateString("id-ID", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" })}. Status menunjukkan perkiraan pemenuhan target; hasil produksi aktual dilihat di Riwayat Produksi.`}
       action={<div className={styles.actions}>
-        <button className="button secondary" disabled={busy} onClick={reload}><Icon icon={RefreshCw} size={16} />Muat ulang</button>
-        {allowed && <button className="button primary" disabled={busy} onClick={() => void run()}>{busy ? "Menghitung…" : "Jalankan prediksi"}</button>}
+        <button className="button secondary" disabled={busy} onClick={reload}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</button>
+        {allowed && <button className="button primary" disabled={busy || noBatches} onClick={() => void run()}>{busy ? "Menghitung prediksi…" : rows.length ? "Hitung ulang prediksi" : "Hitung prediksi"}</button>}
       </div>} />
+    <p className={`small muted ${styles.help}`}>Perbarui tampilan mengambil hasil yang sudah tersimpan.{allowed ? " Hitung prediksi mengevaluasi data produksi dan menyiapkan rekomendasi, tanpa menjalankan produksi atau mengubah alat." : " Perhitungan prediksi memerlukan izin dari pengelola sistem."}</p>
+    {(daily.error || (daily.data && !batchListReady && !daily.loading)) && <p className="small crit-text" role="alert">Daftar batch gagal dimuat. Cakupan seluruh batch dan nama batch belum dapat dipastikan.</p>}
     {error && <p className="crit-text" role="alert">{error}</p>}
     {message && <p className="ok-text" role="status">{message}</p>}
     {session.error && <p className="crit-text" role="alert">Izin prediksi gagal dimuat. Muat ulang untuk mencoba lagi.</p>}
-    {predictions.error ? <div role="alert"><p className="crit-text">Gagal memuat prediksi: {predictions.error.message}</p><button className="text-link" onClick={reload}>Coba lagi</button></div>
+    {predictionProblem ? <div role="alert"><p className="crit-text">Gagal memuat prediksi: {predictionProblem}</p><button className="text-link" onClick={reload}>Coba lagi</button></div>
     : predictions.loading || !predictions.data ? <p className="muted" role="status">Memuat prediksi produksi…</p>
-    : !rows.length ? <p className="muted">Belum ada prediksi untuk tanggal ini.{allowed ? " Jalankan prediksi untuk mengevaluasi pemenuhan." : " Planner dapat menjalankan prediksi saat data produksi tersedia."}</p>
+    : !rows.length ? <div role="status"><p className="muted">{noBatches ? "Belum ada batch produksi pada tanggal ini." : "Belum ada hasil prediksi untuk tanggal ini."}</p><p className="small muted">{noBatches ? "Tambahkan batch melalui Penjadwalan, lalu hitung prediksinya." : allowed ? "Pilih Hitung prediksi untuk mengevaluasi data produksi yang tersedia." : "Minta Planner menghitung prediksi setelah data produksi tersedia."}</p></div>
     : <>
-      <dl className={styles.summary}>{Object.entries(labels).map(([status, label]) => <div key={status}><dt>{label}</dt><dd>{rows.filter(row => row.fulfill_status === status).length}</dd></div>)}</dl>
+      <div className={styles.coverage}>
+        <p>{summary.mismatch ? `${summary.assessed} batch memiliki hasil prediksi. Daftar batch dan hasil prediksi belum sinkron; perbarui tampilan.` : summary.total === null ? `${summary.assessed} batch memiliki hasil prediksi. Jumlah seluruh batch belum tersedia.` : `${summary.assessed} dari ${summary.total} batch memiliki hasil prediksi.`}</p>
+        {summary.missing !== null && summary.missing > 0 && <p className="small muted">{summary.missing} batch belum memiliki hasil prediksi. Cakupan prediksi tanggal ini belum lengkap.</p>}
+        {summary.daily > 0 && <p className="small muted">Ada prediksi untuk seluruh hari yang ditampilkan terpisah dan tidak dihitung sebagai batch.</p>}
+      </div>
+      {(summary.assessed > 0 || (summary.total ?? 0) > 0) && <dl className={styles.summary} aria-label="Jumlah batch menurut hasil prediksi">{Object.entries(predictionLabels).map(([status, label]) => <div key={status}><dt>{label}</dt><dd>{summary.counts[status]} <span>batch</span></dd></div>)}</dl>}
       <ul className={styles.predictions}>{rows.map(row => {
-        const candidates = relatedRecommendations(row, recommendations.data?.items ?? []);
+        const candidates = relatedRecommendations(row, Array.isArray(recommendations.data?.items) ? recommendations.data.items : []);
         const needsAction = row.fulfill_status === "berisiko" || row.fulfill_status === "tidak_terpenuhi" || (row.shortage_l ?? 0) > 0;
-        const batch = daily.data?.batches?.find(batch => batch.batch_id === row.batch_id);
+        const batch = dailyRows.find(batch => batch.batch_id === row.batch_id);
+        const target = batchListReady ? batchTargetVolume(dailyRows, row.batch_id) : null;
         return <li key={row.id}>
-          <header><h3>{batch?.batch_code || row.batch_id || "Seluruh produksi harian"}</h3><Badge tone={tones[row.fulfill_status] ?? "neutral"}>{labels[row.fulfill_status] ?? "Status belum dikenali"}</Badge></header>
-          <p>{row.risk_reason || "Alasan prediksi belum tersedia."}</p>
-          <dl className={styles.facts}><div><dt>Kekurangan terprediksi</dt><dd>{row.shortage_l == null ? "Belum dihitung" : `${new Intl.NumberFormat("id-ID").format(row.shortage_l)} L`}</dd></div><div><dt>Alat pembatas</dt><dd>{row.bottleneck_asset_id || "Belum tersedia"}</dd></div></dl>
-          <p className="small muted">Dihitung: {row.calculated_at ? new Date(row.calculated_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) : "Belum tersedia"} WIB</p>
+          <header><h3>{row.batch_id ? `Batch ${batch?.batch_code || row.batch_id}` : row.batch_id === null ? "Prediksi seluruh hari" : "Cakupan prediksi tidak disertakan"}</h3><Badge tone={tones[row.fulfill_status] ?? "neutral"}>{predictionLabels[row.fulfill_status] ?? "Belum dapat dinilai"}</Badge></header>
+          <p>{row.risk_reason || "Server mengirim status prediksi tanpa alasan rinci."}</p>
+          {row.fulfill_status === "terpenuhi" && (row.shortage_l ?? 0) > 0 && <p className="crit-text" role="alert">Status terpenuhi dan perkiraan kekurangan dari server tidak konsisten. Tinjau kembali hasil ini.</p>}
+          {row.fulfill_status === "data_tidak_cukup" && <p className="small muted">Data belum cukup untuk menyatakan target akan terpenuhi atau tidak. Lengkapi data batch dan alat pada tanggal terpilih, lalu hitung ulang prediksi.</p>}
+          <dl className={styles.facts}><div><dt>{row.batch_id ? "Target batch (liter)" : "Target hari terpilih (liter)"}</dt><dd>{target === null ? "Target belum tersedia pada data batch" : `${new Intl.NumberFormat("id-ID").format(target)} L`}</dd></div><div><dt>Perkiraan kekurangan (liter)</dt><dd>{predictedShortage(row.shortage_l)}</dd></div><div><dt>Alat yang membatasi produksi</dt><dd>{row.bottleneck_asset_id || "Tidak disebutkan dalam hasil prediksi"}</dd></div></dl>
+          <p className="small muted">Perhitungan terakhir: {predictionTime(row.calculated_at)}</p>
+          <PredictionInputs facts={row.input_facts} />
           {needsAction && <div className={styles.recommendation}>
-            <strong>Solusi untuk ditinjau</strong>
-            <p>{recommendations.error ? "Rekomendasi gagal dimuat. Gunakan Muat ulang." : recommendations.loading ? "Memuat rekomendasi…" : candidates.length ? [...new Set(candidates.map(item => recommendationLabels[item.recommendation_type] || item.recommendation_type))].join(" · ") : "Belum ada rekomendasi terkait hasil prediksi ini."}</p>
-            {canRecommend ? <Link className="button secondary" href="/rencana/upgrade" onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }}>Lihat rekomendasi<Icon icon={ArrowRight} size={16} /></Link>
+            <strong>{candidates.length ? `${candidates.length} kandidat rekomendasi terkait` : "Tindak lanjut prediksi"}</strong>
+            <p>{recommendationProblem ? "Rekomendasi gagal dimuat. Pilih Perbarui tampilan." : recommendations.loading ? "Memuat rekomendasi…" : candidates.length ? [...new Set(candidates.map(item => recommendationLabels[item.recommendation_type] || item.recommendation_type))].join(" · ") : "Belum ada rekomendasi aktif yang terhubung ke hasil prediksi ini."}</p>
+            {canRecommend ? <Link className="button secondary" href="/rencana/upgrade" onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }} aria-label={`${candidates.length ? "Tinjau" : "Periksa"} rekomendasi untuk ${row.batch_id ? `batch ${batch?.batch_code || row.batch_id}` : "seluruh hari"}`}>{candidates.length ? "Tinjau rekomendasi" : "Periksa rekomendasi"}<Icon icon={ArrowRight} size={16} /></Link>
             : <p className="small muted">Minta Planner meninjau rekomendasi untuk batch ini.</p>}
           </div>}
         </li>;
