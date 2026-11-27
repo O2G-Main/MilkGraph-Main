@@ -365,11 +365,9 @@ func (s *Server) Handler() http.Handler {
 		}
 		res := map[string]any{}
 		for _, id := range ids {
-			v, ok := obj(seeds.Ops["lotLocation"])[id]
-			if !ok {
-				return nil, missing()
+			if v, ok := obj(seeds.Ops["lotLocation"])[id]; ok {
+				res[id] = v
 			}
-			res[id] = v
 		}
 		return res, nil
 	})

@@ -104,6 +104,8 @@ func (s *Server) labResultsFromDB(ctx context.Context) ([]map[string]any, error)
 			"detail":  detail,
 			"status":  status,
 			"params":  params,
+			"source":  "lims",
+			"sampled": "Hari ini",
 		}
 		if len(decisionRaw) > 0 && string(decisionRaw) != "null" {
 			var dec any
