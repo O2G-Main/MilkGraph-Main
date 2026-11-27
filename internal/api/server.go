@@ -215,7 +215,7 @@ func (s *Server) Handler() http.Handler {
 		}
 		return res, nil
 	})
-	register("GET /api/v1/graph", "", func(r *http.Request) (any, error) { return s.graph.View(), nil })
+	register("GET /api/v1/graph", "", func(r *http.Request) (any, error) { return s.dynamicGraph(r.Context()) })
 	register("GET /api/v1/graph/subgraph", "", func(r *http.Request) (any, error) {
 		node := r.URL.Query().Get("node")
 		depthStr := r.URL.Query().Get("depth")

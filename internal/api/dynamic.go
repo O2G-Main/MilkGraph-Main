@@ -366,7 +366,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	})
 	register("GET /api/v1/lab/results", "", func(r *http.Request) (any, error) {
 		kind := r.URL.Query().Get("kind")
-		if kind != "" && kind != "penerimaan" && kind != "qc-fg" {
+		if kind != "" && kind != "penerimaan" && kind != "batch" && kind != "qc-fg" {
 			return nil, invalid("Jenis lab tidak valid.", "kind")
 		}
 		rows, e := s.labResults(r.Context())
@@ -400,48 +400,10 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 		return map[string]any{"waiting": summary["waiting"], "released": released, "avgWaitMin": summary["avgMinutes"]}, nil
 	})
 	register("POST /api/v1/lab/results/{id}/decision", "lab.decide", func(r *http.Request) (any, error) {
-		if err := s.dbRequired(); err != nil {
-			return nil, err
-		}
-		id := r.PathValue("id")
-		lab := item(s.seeds.Ops["labResults"], id)
-		if lab == nil {
-			return nil, missing()
-		}
-		var b decisionBody
-		if e := decode(r, &b); e != nil {
-			return nil, e
-		}
-		if b.Status != "dirilis" && b.Status != "ditolak" {
-			return nil, invalid("Status harus dirilis atau ditolak.", "status")
-		}
-		if e := noteValid(b.Note, b.Status == "ditolak"); e != nil {
-			return nil, e
-		}
-		if str(lab["kind"]) != "penerimaan" {
-			return nil, invalid("Hanya hasil lab penerimaan yang dapat diputuskan.", "kind")
-		}
-		status := str(lab["status"])
-		if status == "uji-ulang" && b.Status == "dirilis" {
-			return nil, invalid("Rilis menunggu hasil uji ulang.", "status")
-		}
-		if status != "hasil-siap" && status != "uji-ulang" {
-			return nil, invalid("Hasil lab belum siap atau sudah selesai.", "status")
-		}
-		a, _ := s.authenticate(r)
-		return s.change(r.Context(), "lab", id, func(tx *store.Tx, raw json.RawMessage) (store.Change, error) {
-			if len(raw) > 0 {
-				return store.Change{}, conflict()
-			}
-			view := clone(lab)
-			view["decision"] = domain.LabDecision{Status: b.Status, Note: b.Note, By: a.Name, At: "14.42"}
-			tone := "ok"
-			if b.Status == "ditolak" {
-				tone = "crit"
-			}
-			return store.Change{Value: view, Log: auditEntry(a, "lab", fmt.Sprintf("Hasil lab %s %s", str(lab["subject"]), b.Status), id, b.Note, tone), Event: "lab.decided"}, nil
-		})
+		return s.decideLabDynamic(r)
 	})
+	s.registerLabDynamic(register)
+	s.registerUsers(register)
 	s.registerHolds(register)
 	s.registerNotifikasi(register)
 	s.registerRTArrivals(register)
@@ -690,32 +652,7 @@ func (s *Server) demandDetail() string {
 }
 func floatValue(v any) float64 { n, _ := v.(float64); return n }
 func (s *Server) labResults(ctx context.Context) ([]map[string]any, error) {
-	out := []map[string]any{}
-	saved := map[string]map[string]any{}
-	if s.DB != nil {
-		rows, e := s.DB.List(ctx, "lab")
-		if e != nil {
-			return nil, e
-		}
-		for _, raw := range rows {
-			var m map[string]any
-			if e = json.Unmarshal(raw, &m); e != nil {
-				return nil, e
-			}
-			saved[str(m["id"])] = m
-		}
-	}
-	for _, v := range arr(s.seeds.Ops["labResults"]) {
-		m := clone(obj(v))
-		if x, ok := saved[str(m["id"])]; ok {
-			m = x
-		}
-		if str(m["status"]) == "uji-ulang" {
-			m["eta"] = "15.30"
-		}
-		out = append(out, m)
-	}
-	return out, nil
+	return s.labResultsFromDB(ctx)
 }
 func (s *Server) receiving(ctx context.Context) (map[string]any, error) {
 	if skenarioNovemberAktif() {

@@ -85,6 +85,51 @@ func faktaChatFG(p ai.NarrateRequest) []string {
 // RAG sederhana sesuai kontrak v2). Berbeda dari /assistant/ask yang menjawab
 // lokal, endpoint ini memang bergantung pada service AI: 503 bila belum
 // dikonfigurasi, 502 bila tidak terjangkau, pola yang sama dengan narrate.
+func (s *Server) dynamicChatFacts(ctx context.Context) []string {
+	fakta := []string{}
+	if arrivals, err := s.rtArrivals(ctx); err == nil && len(arrivals) > 0 {
+		tiba, totalL := 0, 0.0
+		for _, a := range arrivals {
+			if a.Status == "Sudah Tiba" {
+				tiba++
+				totalL += a.VolumeL
+			}
+		}
+		fakta = append(fakta, fmt.Sprintf("Kedatangan RT: %d dari %d RT berstatus Sudah Tiba (total %.0f liter).", tiba, len(arrivals), totalL))
+	}
+	var sch Schedule
+	if err := s.state(ctx, "schedule", "current", &sch); err == nil && sch.ScheduleID != "" {
+		fakta = append(fakta, fmt.Sprintf("Jadwal aktif %s versi %d memiliki %d run dan %d peringatan.", sch.ScheduleID, sch.Version, len(sch.Runs), len(sch.Warnings)))
+	}
+	if labs, err := s.labResults(ctx); err == nil {
+		oos, ready := 0, 0
+		for _, m := range labs {
+			switch str(m["status"]) {
+			case "positif":
+				oos++
+			case "hasil-siap":
+				ready++
+			}
+		}
+		fakta = append(fakta, fmt.Sprintf("Lab: %d sampel out-of-spec, %d sampel siap keputusan QA.", oos, ready))
+	}
+	if holds, err := s.holds(ctx); err == nil {
+		aktif, diajukan := 0, 0
+		for _, h := range holds {
+			if h.Status == "aktif" {
+				aktif++
+			} else if h.Status == "diajukan" {
+				diajukan++
+			}
+		}
+		fakta = append(fakta, fmt.Sprintf("Hold produk: %d aktif, %d menunggu persetujuan QA.", aktif, diajukan))
+	}
+	if downs, err := s.downtimeEvents(ctx); err == nil && len(downs) > 0 {
+		fakta = append(fakta, fmt.Sprintf("Downtime tercatat: %d kejadian.", len(downs)))
+	}
+	return fakta
+}
+
 func (s *Server) chatAI(ctx context.Context, pertanyaan string) (any, error) {
 	if s.AI == nil || !s.AI.Enabled() {
 		return nil, &apiError{503, "UNAVAILABLE", "Layanan AI belum dikonfigurasi.", ""}
@@ -93,11 +138,13 @@ func (s *Server) chatAI(ctx context.Context, pertanyaan string) (any, error) {
 	if !ok {
 		return nil, &apiError{503, "UNAVAILABLE", "Fakta batch tidak tersedia.", ""}
 	}
+	fakta := s.dynamicChatFacts(ctx)
+	fakta = append(fakta, faktaChatFG(payload)...)
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	req := ai.ChatRequest{
 		Pertanyaan:   pertanyaan,
-		KonteksFakta: faktaChatFG(payload),
+		KonteksFakta: fakta,
 		LabelData:    payload.LabelData,
 	}
 	resp, err := s.AI.Chat(ctx, req)
