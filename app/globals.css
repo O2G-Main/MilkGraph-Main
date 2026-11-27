@@ -1205,7 +1205,7 @@ button.flow-node { pointer-events: all; font: inherit; cursor: pointer; }
 .rp-detail h2 { font-size: 18px; }
 .rp-detail .flow-facts > div { padding-bottom: 10px; border-bottom: 1px solid var(--color-border); }
 .rp-note { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--color-status-warn-soft); color: var(--color-status-warn); }
-.rp-quality { margin-top: 16px; }
+.rp-quality { margin-block: var(--spacing-md); }
 .rp-quality-row { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: var(--radius-md); background: var(--color-canvas); }
 .rp-quality-row.crit { background: var(--color-status-crit-soft); }
 .rp-quality-row.ok { background: var(--color-status-ok-soft); }
