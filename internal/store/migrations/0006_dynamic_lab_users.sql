@@ -28,7 +28,7 @@ INSERT INTO milkgraph.users (id, name, email, role_id, active, assets) VALUES
     ('USR-01', 'Bagas Wicaksono', 'superadmin@milkgraph.id', 'superadmin', true, '[]'::jsonb),
     ('USR-02', 'Rino Akbar Hanif', 'rino.akbar@milkgraph.id', 'planner', true, '[]'::jsonb),
     ('USR-03', 'Dimas Prasetyo', 'dimas.prasetyo@milkgraph.id', 'receiving', true, '[]'::jsonb),
-    ('USR-04', 'Hendra Kusuma', 'hendra.kusuma@milkgraph.id', 'operator', '["FM-1", "FM-2"]'::jsonb),
+    ('USR-04', 'Hendra Kusuma', 'hendra.kusuma@milkgraph.id', 'operator', true, '["FM-1", "FM-2"]'::jsonb),
     ('USR-05', 'Ratna Maharani', 'ratna.maharani@milkgraph.id', 'qa', true, '[]'::jsonb),
     ('USR-06', 'Wahyu Pratama', 'wahyu.pratama@milkgraph.id', 'manager', true, '[]'::jsonb),
     ('USR-07', 'Sri Lestari', 'sri.lestari@milkgraph.id', 'lab', true, '[]'::jsonb)
