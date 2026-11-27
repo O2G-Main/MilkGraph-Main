@@ -293,7 +293,7 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 
 		origin := r.Header.Get("Origin")
 		if origin != "" {
-			allowed := false
+			allowed := origin == "https://"+r.Host || origin == "http://"+r.Host
 			for _, o := range s.Origins {
 				if o != "*" && o == origin {
 					allowed = true
@@ -305,7 +305,7 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 				return
 			}
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Demo-Role, Last-Event-ID")
 			w.Header().Set("Access-Control-Expose-Headers", "Location, Retry-After, X-Request-ID")
 		}

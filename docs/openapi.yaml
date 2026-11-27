@@ -8,6 +8,8 @@ info:
     - **Autentikasi:** `MODE=demo` menerima header `X-Demo-Role` atau `Authorization: Bearer <JWT>`; `MODE=live` mewajibkan `Authorization: Bearer <JWT>` HS256 dan menolak `X-Demo-Role`.
     - **Dokumen Publik:** `GET /docs` (Swagger UI) dan `GET /openapi.yaml` dapat diakses langsung dari domain backend.
 servers:
+  - url: /
+    description: Current Backend Server (Same-Origin)
   - url: https://api-aquaseq.hadooyy.my.id
     description: Production / Dokploy Backend
   - url: http://localhost:8080
