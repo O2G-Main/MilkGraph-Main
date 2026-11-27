@@ -57,7 +57,7 @@ export function Kedatangan() {
   const blank: ArrivalRow = { id: nextId, farm: farmOptions[0]?.label ?? "", farmId: API_MODE ? farmOptions[0]?.value : undefined, volume: 0, depart: "15:00", target: "16:30", eta: "16:30", milkStart: "09:00", status: "loading", note: "", late: 0 };
 
   return (
-    <div className="page-enter">
+    <div className="page-enter kedatangan-page">
       <PageHeading title="Jadwal Kedatangan RT" subtitle="Road tanker yang dijadwalkan, dalam perjalanan, dan sudah tiba. Keterlambatan = estimasi tiba dibanding target tiba.">
         {allowed && <button className="button primary" onClick={() => setEditing({ isNew: true, item: blank })}><Icon icon={Plus} size={16} />Tambah jadwal RT</button>}
       </PageHeading>

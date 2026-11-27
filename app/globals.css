@@ -830,12 +830,11 @@ button.recommendation-saving { min-height: 36px; }
 .kg-lot .kg-shape { fill: var(--color-on-surface-muted); }
 .kg-label { font-size: 11px; font-weight: 500; fill: var(--color-on-surface); paint-order: stroke; stroke: var(--color-canvas); stroke-width: 3px; pointer-events: none; }
 .kg-key { display: inline-block; width: 10px; height: 10px; flex-shrink: 0; }
-.kg-icon { color: #fff; pointer-events: none; }
-.kg-mutu .kg-icon { color: var(--color-on-surface); }
-.kg-chip { display: inline-grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; color: #fff; border-radius: 6px; }
+.kg-icon { color: var(--color-on-inverse); pointer-events: none; }
+.kg-chip { display: inline-grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; color: var(--color-on-inverse); border-radius: 6px; }
 .kg-chip.kg-asal, .kg-chip.kg-lot { border-radius: 50%; }
 .kg-chip.kg-asal { background: var(--color-primary); }
-.kg-chip.kg-mutu { background: var(--color-accent-fill); color: var(--color-on-surface); }
+.kg-chip.kg-mutu { background: var(--color-accent-fill); }
 .kg-chip.kg-proses { background: var(--color-surface-inverse); }
 .kg-chip.kg-lot { background: var(--color-on-surface-muted); }
 .kg-type { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
@@ -1607,6 +1606,7 @@ html:has(.login-page) { background: var(--color-canvas); }
 .schedule-stats .card { display: flex; flex-direction: column; gap: 4px; }
 .schedule-stats strong { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .schedule-stats strong small { font-size: 13px; font-weight: 500; color: var(--color-on-surface-muted); }
+.kedatangan-page > .card + .card { margin-block-start: var(--spacing-md); }
 .schedule-table td { vertical-align: top; }
 .schedule-table .table-sub { display: block; margin-top: 6px; max-width: 360px; white-space: normal; }
 .schedule-table .table-action { white-space: nowrap; text-align: right; }
