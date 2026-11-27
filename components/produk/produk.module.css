@@ -5,11 +5,12 @@
 }
 .page :global(.badge) { font-size: 12px; }
 .page :global(.button) { font-size: 14px; }
-.page :global(.rules-table) { font-size: 14px; line-height: 1.5; }
-.page :global(.rules-table th) { font-size: 12px; font-weight: 500; }
-.page :global(.rules-table td) { font-size: 14px; }
-.page :global(.rules-table td::before) { font-size: 12px; }
-.page :global(.rules-table td.mono) { font-size: 13px; }
+.page :global(.rules-table) { font-size: 16px; line-height: 1.5; }
+.page :global(.rules-table th) { font-size: 16px; font-weight: 600; }
+.page :global(.rules-table td) { font-size: 16px; }
+.page :global(.rules-table td::before) { font-size: 14px; }
+.page :global(.rules-table td.mono) { font-size: 15px; }
+.page :global(.rules-table .button) { font-size: 15px; }
 .summary { font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
 .toolbar {
   display: flex;
