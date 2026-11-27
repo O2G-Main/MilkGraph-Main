@@ -458,6 +458,7 @@ func (s *Server) registerDynamic(register func(string, string, endpoint), mux *h
 	s.registerTraceHistoris(register)
 	s.registerRoles(register)
 	s.registerSkenarioNov(register)
+	s.registerProductionBatch(register)
 	register("GET /api/v1/supply/farms", "", func(r *http.Request) (any, error) {
 		return s.farmsDariState(r.Context())
 	})

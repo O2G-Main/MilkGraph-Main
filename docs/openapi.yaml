@@ -1,0 +1,595 @@
+openapi: 3.0.3
+info:
+  title: MilkGraph Backend API
+  version: 3.0.0
+  description: |
+    Dokumentasi OpenAPI 3.0.3 menyeluruh untuk MilkGraph Backend (`milkgraph-back`, berbasis branch `deployment` + PostgreSQL Batch Production Mapping).
+    - **Database:** PostgreSQL (`schema: milkgraph`). Tabel runtime (`state`, `audit`, `events`, `audit_seeds`, `schema_migrations`) tetap dipertahankan bersama tabel relasional produksi berbasis batch.
+    - **Autentikasi:** `MODE=demo` menerima header `X-Demo-Role` atau `Authorization: Bearer <JWT>`; `MODE=live` mewajibkan `Authorization: Bearer <JWT>` HS256 dan menolak `X-Demo-Role`.
+    - **Dokumen Publik:** `GET /docs` (Swagger UI) dan `GET /openapi.yaml` dapat diakses langsung dari domain backend.
+servers:
+  - url: https://api-aquaseq.hadooyy.my.id
+    description: Production / Dokploy Backend
+  - url: http://localhost:8080
+    description: Local Development
+security:
+  - bearerAuth: []
+  - demoRole: []
+
+tags:
+  - name: System & Docs
+  - name: Production & Batch
+  - name: Master & Graph
+  - name: Supply & Receiving
+  - name: Planning, PO & Schedules
+  - name: Traceability & Volume
+  - name: Quality, Holds & Lab
+  - name: Downtime, Costs & Dashboard
+  - name: AI Assistant
+  - name: Roles, Audit & Realtime
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer JWT HS256 (wajib di MODE=live; diterima di MODE=demo).
+    demoRole:
+      type: apiKey
+      in: header
+      name: X-Demo-Role
+      description: Hanya MODE=demo (planner, receiving, supervisor, qa, manager, superadmin, dll).
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: VALIDATION }
+            message: { type: string }
+            field: { type: string }
+    ProductionDailyRow:
+      type: object
+      properties:
+        production_date: { type: string, format: date }
+        batch_id: { type: string }
+        batch_code: { type: string }
+        sequence_no: { type: integer }
+        production_group_id: { type: string, nullable: true }
+        batch_status: { type: string }
+        line_no: { type: integer, nullable: true }
+        production_order_id: { type: string, nullable: true }
+        finished_sku_id: { type: string, nullable: true }
+        liquid_sku_id: { type: string, nullable: true }
+        product_name: { type: string, nullable: true }
+        filling_line_id: { type: string, nullable: true }
+        aseptic_tank_id: { type: string, nullable: true }
+        sterilizer_id: { type: string, nullable: true }
+        target_packs: { type: number, nullable: true }
+        target_volume_l: { type: number, nullable: true }
+        fulfill_status: { type: string, enum: [terpenuhi, berisiko, tidak_terpenuhi, data_tidak_cukup], nullable: true }
+        shortage_l: { type: number, nullable: true }
+        bottleneck_asset_id: { type: string, nullable: true }
+        risk_reason: { type: string, nullable: true }
+    AssetStatusRow:
+      type: object
+      properties:
+        asset_id: { type: string }
+        asset_type: { type: string }
+        asset_name: { type: string }
+        node_role: { type: string }
+        compatible_product_family: { type: string, nullable: true }
+        current_status: { type: string, nullable: true }
+        current_status_reason: { type: string, nullable: true }
+        current_status_source: { type: string, nullable: true }
+        current_status_observed_at: { type: string, format: date-time, nullable: true }
+        capacity_l: { type: number, nullable: true }
+        holding_time_limit_hours: { type: number, nullable: true }
+        input_flow_lph: { type: number, nullable: true }
+        output_flow_lph: { type: number, nullable: true }
+        process_speed_lph: { type: number, nullable: true }
+        cip_duration_minutes: { type: number, nullable: true }
+        speed_packph: { type: number, nullable: true }
+    ProductCatalogResult:
+      type: object
+      properties:
+        products: { type: array, items: { type: object } }
+        pack_size_codes: { type: array, items: { type: object } }
+        product_pack_sizes: { type: array, items: { type: object } }
+        product_market_variants: { type: array, items: { type: object } }
+        finished_skus: { type: array, items: { type: object } }
+    CreateBatchInput:
+      type: object
+      required: [lines]
+      properties:
+        production_date: { type: string, format: date, example: "2026-11-01" }
+        production_group_id: { type: string, example: "CAM-003664" }
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [finished_sku_id, filling_line_id, target_volume_l]
+            properties:
+              production_order_id: { type: string }
+              finished_sku_id: { type: string, example: "ESL-FC-1000-LOCAL" }
+              filling_line_id: { type: string, example: "FL-01" }
+              aseptic_tank_id: { type: string, example: "AT-01" }
+              sterilizer_id: { type: string, example: "ST-01" }
+              target_packs: { type: number, nullable: true }
+              target_volume_l: { type: number, example: 12000 }
+    FulfillmentPredictionRow:
+      type: object
+      properties:
+        id: { type: integer }
+        production_date: { type: string, format: date }
+        batch_id: { type: string, nullable: true }
+        fulfill_status: { type: string, enum: [terpenuhi, berisiko, tidak_terpenuhi, data_tidak_cukup] }
+        shortage_l: { type: number, nullable: true }
+        bottleneck_asset_id: { type: string, nullable: true }
+        risk_reason: { type: string, nullable: true }
+        input_facts: { type: object }
+        calculated_at: { type: string, format: date-time }
+    RecommendationRow:
+      type: object
+      properties:
+        id: { type: integer }
+        production_date: { type: string, format: date }
+        batch_id: { type: string, nullable: true }
+        prediction_id: { type: integer, nullable: true }
+        recommendation_type: { type: string, enum: [upgrade_kapasitas, naikkan_speed, pindahkan_alat, geser_jadwal] }
+        target_asset_id: { type: string, nullable: true }
+        expected_gain: { type: number, nullable: true }
+        reason_facts: { type: object }
+        status: { type: string, enum: [draft, accepted, rejected, applied] }
+  responses:
+    OK:
+      description: Berhasil
+      content:
+        application/json:
+          schema: { type: object }
+    Error:
+      description: Kesalahan validasi, otorisasi, atau server
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+paths:
+  /healthz:
+    get:
+      tags: [System & Docs]
+      summary: Liveness check
+      security: []
+      responses: { '200': { $ref: '#/components/responses/OK' } }
+  /readyz:
+    get:
+      tags: [System & Docs]
+      summary: Readiness check (PostgreSQL ping)
+      security: []
+      responses: { '200': { $ref: '#/components/responses/OK' }, '503': { $ref: '#/components/responses/Error' } }
+  /docs:
+    get:
+      tags: [System & Docs]
+      summary: Swagger UI interaktif OpenAPI 3.0
+      security: []
+      responses: { '200': { description: HTML Swagger UI } }
+  /openapi.yaml:
+    get:
+      tags: [System & Docs]
+      summary: Spesifikasi OpenAPI 3.0.3 (YAML)
+      security: []
+      responses: { '200': { description: OpenAPI 3.0.3 YAML } }
+  /api/v1/meta:
+    get:
+      tags: [System & Docs]
+      summary: Metadata server, waktu WIB, mode & label data
+      security: []
+      responses: { '200': { $ref: '#/components/responses/OK' } }
+
+  /api/v1/production/daily:
+    get:
+      tags: [Production & Batch]
+      summary: Query Produksi harian per tanggal (default tanggal operasional aktif)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date }, description: Tanggal produksi (opsional, default 2026-11-01) }
+      responses:
+        '200':
+          description: Daftar batch harian dari production_daily_view
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  production_date: { type: string }
+                  count: { type: integer }
+                  batches: { type: array, items: { $ref: '#/components/schemas/ProductionDailyRow' } }
+        '503': { $ref: '#/components/responses/Error' }
+
+  /api/v1/production/schedule:
+    get:
+      tags: [Production & Batch]
+      summary: Query Jadwal Produksi harian terurut (production_date, sequence_no)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+        - { name: batch_id, in: query, schema: { type: string } }
+      responses: { '200': { $ref: '#/components/responses/OK' }, '503': { $ref: '#/components/responses/Error' } }
+
+  /api/v1/production/batches:
+    post:
+      tags: [Production & Batch]
+      summary: Buat batch produksi harian dengan validasi rules & batch_code_rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBatchInput' }
+      responses: { '200': { $ref: '#/components/responses/OK' }, '422': { $ref: '#/components/responses/Error' }, '403': { $ref: '#/components/responses/Error' } }
+
+  /api/v1/production/batches/{id}/trace:
+    get:
+      tags: [Production & Batch]
+      summary: Trace batch ke processing_transactions dan filling_transactions
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses: { '200': { $ref: '#/components/responses/OK' }, '404': { $ref: '#/components/responses/Error' } }
+
+  /api/v1/production/trace:
+    get:
+      tags: [Production & Batch]
+      summary: Trace batch berdasarkan batch_id atau production_group_id
+      parameters:
+        - { name: batch_id, in: query, schema: { type: string } }
+        - { name: production_group_id, in: query, schema: { type: string } }
+      responses: { '200': { $ref: '#/components/responses/OK' }, '404': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+
+  /api/v1/production/assets:
+    get:
+      tags: [Production & Batch]
+      summary: Daftar Alat dari asset_current_status_view (default 63 aset operasional, tanpa PIPE-01..PIPE-10)
+      parameters:
+        - { name: asset_type, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: include_pipes, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200':
+          description: Daftar aset operasional beserta status terbaru
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  items: { type: array, items: { $ref: '#/components/schemas/AssetStatusRow' } }
+
+  /api/v1/production/assets/{id}/status:
+    post:
+      tags: [Production & Batch]
+      summary: Catat perubahan status/kondisi alat ke asset_status_events
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, example: Maintenance }
+                status_reason: { type: string, example: CIP terjadwal }
+                source: { type: string, example: manual }
+      responses: { '200': { $ref: '#/components/responses/OK' }, '404': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+
+  /api/v1/production/products:
+    get:
+      tags: [Production & Batch]
+      summary: Master Produk terpisah dari Alat (products, finished_skus, pack_size_codes, variants)
+      parameters:
+        - { name: product_family, in: query, schema: { type: string } }
+        - { name: pack_size_code, in: query, schema: { type: string } }
+        - { name: market_variant, in: query, schema: { type: string } }
+        - { name: search, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Katalog produk ternormalisasi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductCatalogResult' }
+
+  /api/v1/production/plans:
+    get:
+      tags: [Production & Batch]
+      summary: Rencana produksi mingguan dan hubungannya ke production_batches
+      parameters:
+        - { name: week, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses: { '200': { $ref: '#/components/responses/OK' } }
+
+  /api/v1/production/predictions:
+    get:
+      tags: [Production & Batch]
+      summary: Hasil prediksi pemenuhan (fulfillment_predictions)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+        - { name: batch_id, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Daftar prediksi pemenuhan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  items: { type: array, items: { $ref: '#/components/schemas/FulfillmentPredictionRow' } }
+
+  /api/v1/production/predictions/run:
+    post:
+      tags: [Production & Batch]
+      summary: Jalankan prediksi pemenuhan berbasis fakta & generate recommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                production_date: { type: string, format: date }
+                batch_id: { type: string }
+      responses: { '200': { $ref: '#/components/responses/OK' } }
+
+  /api/v1/production/recommendations:
+    get:
+      tags: [Production & Batch]
+      summary: Daftar rekomendasi terstruktur (recommendations)
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date } }
+        - { name: batch_id, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Daftar rekomendasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  items: { type: array, items: { $ref: '#/components/schemas/RecommendationRow' } }
+
+  /api/v1/production/recommendations/{id}:
+    patch:
+      tags: [Production & Batch]
+      summary: Ubah status rekomendasi (draft, accepted, rejected, applied)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [draft, accepted, rejected, applied] }
+      responses: { '200': { $ref: '#/components/responses/OK' }, '404': { $ref: '#/components/responses/Error' } }
+
+  /api/v1/production/outputs:
+    get: { tags: [Production & Batch], summary: Daftar output produksi (rantai volume), responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Production & Batch], summary: Catat output produksi baru, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/production/aseptic-tanks:
+    get: { tags: [Production & Batch], summary: Daftar tangki aseptik (legacy static), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/production/changeover-matrix:
+    get: { tags: [Production & Batch], summary: Matriks changeover (legacy static), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/production/fillers:
+    get: { tags: [Production & Batch], summary: Daftar filler (legacy static), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/production/unit-states:
+    get: { tags: [Production & Batch], summary: Status unit (legacy static), responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/master:
+    get: { tags: [Master & Graph], summary: Ringkasan katalog master Greenfields, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/assets:
+    get: { tags: [Master & Graph], summary: Master aset CSV, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/connections:
+    get: { tags: [Master & Graph], summary: Master koneksi antar aset CSV, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/topology:
+    get: { tags: [Master & Graph], summary: Topologi rute pabrik, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/products:
+    get: { tags: [Master & Graph], summary: Master produk CSV, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/finished-skus:
+    get: { tags: [Master & Graph], summary: Master finished SKU CSV, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/lines:
+    get: { tags: [Master & Graph], summary: Master dedikasi & kompatibilitas line CSV, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/rules:
+    get: { tags: [Master & Graph], summary: Master aturan changeover, CIP, dan constraint CSV, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/master/changeover/classify:
+    post: { tags: [Master & Graph], summary: Klasifikasi jenis changeover antara dua SKU, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/graph:
+    get: { tags: [Master & Graph], summary: Graph topologi aset lengkap, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/graph/subgraph:
+    get: { tags: [Master & Graph], summary: Subgraph dari node tertentu, parameters: [{ name: node, in: query, required: true, schema: { type: string } }, { name: depth, in: query, schema: { type: integer } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assets:
+    get: { tags: [Master & Graph], summary: Daftar aset skenario (kompatibel dengan tangki.tsx FE), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assets/cip-log:
+    get: { tags: [Master & Graph], summary: Log CIP aset, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assets/cip-policy:
+    get: { tags: [Master & Graph], summary: Kebijakan interval CIP tangki, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assets/mid-tanks:
+    get: { tags: [Master & Graph], summary: Daftar mid tanks, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/site/layout:
+    get: { tags: [Master & Graph], summary: Layout site pabrik, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/site/status:
+    get: { tags: [Master & Graph], summary: Status operasional site, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/site/bottlenecks:
+    get: { tags: [Master & Graph], summary: Daftar bottleneck site, parameters: [{ name: view, in: query, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/scenario/november:
+    get: { tags: [Supply & Receiving], summary: Snapshot skenario aktif 1 November 2026 lengkap, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/scenario/november/tanks:
+    get: { tags: [Supply & Receiving], summary: Snapshot 28 tangki Opening Inventory 1 Nov 2026 06.00 WIB, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/receiving:
+    get: { tags: [Supply & Receiving], summary: Ringkasan penerimaan susu harian, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/sources:
+    get: { tags: [Supply & Receiving], summary: Daftar sumber susu, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/sources/{id}:
+    get: { tags: [Supply & Receiving], summary: Detail sumber susu, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/farms:
+    get: { tags: [Supply & Receiving], summary: Agregat pasokan per farm dari state kedatangan RT, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/trend:
+    get: { tags: [Supply & Receiving], summary: Tren pasokan susu, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/demand-plan:
+    get: { tags: [Supply & Receiving], summary: Rencana kebutuhan susu dari PO aktif, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/demand-sends:
+    get: { tags: [Supply & Receiving], summary: Riwayat pengiriman demand ke farm, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/demand/send:
+    post: { tags: [Supply & Receiving], summary: Kirim demand ke farm, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/rt-arrivals:
+    get: { tags: [Supply & Receiving], summary: Daftar jadwal kedatangan RT, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Supply & Receiving], summary: Tambah jadwal kedatangan RT, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/rt-arrivals/{id}:
+    put: { tags: [Supply & Receiving], summary: Perbarui status/ETA kedatangan RT, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/supply/rt-arrivals/import:
+    post: { tags: [Supply & Receiving], summary: Import CSV jadwal kedatangan RT (dry-run & commit), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/balance/daily:
+    get: { tags: [Supply & Receiving], summary: Neraca volume harian historis Greenfields, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/data-sources:
+    get: { tags: [Supply & Receiving], summary: Status sumber data integrasi, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/data-sources/{id}/test:
+    post: { tags: [Supply & Receiving], summary: Uji koneksi sumber data, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/data-sources/{id}/sync:
+    post: { tags: [Supply & Receiving], summary: Sinkronisasi sumber data, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/pos:
+    get: { tags: [Planning, PO & Schedules], summary: Daftar Production Order (demand), responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Planning, PO & Schedules], summary: Buat Production Order baru, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/pos/import:
+    post: { tags: [Planning, PO & Schedules], summary: Import CSV Production Order (dry-run & commit), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/schedules:
+    get: { tags: [Planning, PO & Schedules], summary: Riwayat versi jadwal produksi, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/schedules/latest:
+    get: { tags: [Planning, PO & Schedules], summary: Jadwal produksi versi terbaru (untuk Radar Kualitas Jadwal), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/schedules/generate:
+    post: { tags: [Planning, PO & Schedules], summary: Generate jadwal produksi dari PO aktif, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/schedules/triggers:
+    post: { tags: [Planning, PO & Schedules], summary: Catat pemicu regenerasi jadwal, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/schedules/narrate:
+    post: { tags: [Planning, PO & Schedules], summary: Narasi jadwal oleh AI, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/plans:
+    get: { tags: [Planning, PO & Schedules], summary: Daftar rencana skenario, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/plans/{id}:
+    get: { tags: [Planning, PO & Schedules], summary: Detail rencana skenario, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/plans/{id}/check:
+    post: { tags: [Planning, PO & Schedules], summary: Cek kelayakan rencana terhadap limits, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/plans/{id}/solve:
+    post: { tags: [Planning, PO & Schedules], summary: Jalankan solver rencana, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/plans/{id}/decision:
+    post: { tags: [Planning, PO & Schedules], summary: Simpan keputusan planner atas rencana, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/plans/{id}/instructions:
+    get: { tags: [Planning, PO & Schedules], summary: Daftar instruksi kerja untuk rencana, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/instructions/{id}/ack:
+    post: { tags: [Planning, PO & Schedules], summary: Konfirmasi (ack) instruksi kerja, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/decisions:
+    get: { tags: [Planning, PO & Schedules], summary: Daftar keputusan rencana, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/limits:
+    get: { tags: [Planning, PO & Schedules], summary: Batas operasional aktif, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    put: { tags: [Planning, PO & Schedules], summary: Ubah batas operasional, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/limits/schema:
+    get: { tags: [Planning, PO & Schedules], summary: Skema parameter limits, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/shifts:
+    get: { tags: [Planning, PO & Schedules], summary: Daftar shift operasional, responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/trace/history:
+    get: { tags: [Traceability & Volume], summary: Daftar group trace historis Greenfields, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/history/backward:
+    get: { tags: [Traceability & Volume], summary: Trace backward satu production group historis, parameters: [{ name: groupId, in: query, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/transfers:
+    get: { tags: [Traceability & Volume], summary: Daftar catatan transfer volume, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Traceability & Volume], summary: Catat transfer volume baru, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/assets/{ref}/volume:
+    get: { tags: [Traceability & Volume], summary: Saldo volume per aset dari transfer, parameters: [{ name: ref, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/batches/{batch_id}/volume-chain:
+    get: { tags: [Traceability & Volume], summary: Rantai volume satu batch, parameters: [{ name: batch_id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/backward:
+    get: { tags: [Traceability & Volume], summary: Trace backward per lotId, parameters: [{ name: lotId, in: query, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/forward:
+    get: { tags: [Traceability & Volume], summary: Trace forward per rtId & date, parameters: [{ name: rtId, in: query, required: true, schema: { type: string } }, { name: date, in: query, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/explain:
+    get: { tags: [Traceability & Volume], summary: Penjelasan state resource pada waktu tertentu, parameters: [{ name: resource, in: query, required: true, schema: { type: string } }, { name: time, in: query, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/trace/handoffs:
+    get: { tags: [Traceability & Volume], summary: Handoffs per lotId, parameters: [{ name: lotId, in: query, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/lots/locations:
+    get: { tags: [Traceability & Volume], summary: Lokasi banyak lot (maks 100 ids), parameters: [{ name: ids, in: query, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/holds:
+    get: { tags: [Quality, Holds & Lab], summary: Daftar QA hold lot, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Quality, Holds & Lab], summary: Ajukan QA hold lot baru, responses: { '201': { $ref: '#/components/responses/OK' } } }
+  /api/v1/holds/summary:
+    get: { tags: [Quality, Holds & Lab], summary: Ringkasan baseline hold, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/holds/{id}/review:
+    post: { tags: [Quality, Holds & Lab], summary: Review keputusan QA hold, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/holds/{id}/genealogy:
+    get: { tags: [Quality, Holds & Lab], summary: Genealogy lot yang di-hold, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/quality/active-event:
+    get: { tags: [Quality, Holds & Lab], summary: Event QC aktif, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/lab/results:
+    get: { tags: [Quality, Holds & Lab], summary: Daftar hasil uji lab, parameters: [{ name: kind, in: query, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/lab/summary:
+    get: { tags: [Quality, Holds & Lab], summary: Ringkasan antrean & hasil lab, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/lab/results/{id}/decision:
+    post: { tags: [Quality, Holds & Lab], summary: Keputusan rilis/reject hasil lab, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/downtime-events:
+    get: { tags: [Downtime, Costs & Dashboard], summary: Daftar kejadian downtime alat, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Downtime, Costs & Dashboard], summary: Catat kejadian downtime baru, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/downtime-events/prediction:
+    get: { tags: [Downtime, Costs & Dashboard], summary: Prediksi downtime berikutnya per resource, parameters: [{ name: resource_id, in: query, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/maintenance/recommendation:
+    get: { tags: [Downtime, Costs & Dashboard], summary: Rekomendasi jendela maintenance alat, parameters: [{ name: resource_id, in: query, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/costs:
+    get: { tags: [Downtime, Costs & Dashboard], summary: Ringkasan biaya produksi & operasional, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/costs/items:
+    get: { tags: [Downtime, Costs & Dashboard], summary: Daftar item biaya, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Downtime, Costs & Dashboard], summary: Tambah/ubah item biaya, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/dashboard/executive:
+    get: { tags: [Downtime, Costs & Dashboard], summary: Dashboard eksekutif (penerimaan, utilisasi mesin, ringkasan PO), responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/assistant/templates:
+    get: { tags: [AI Assistant], summary: Daftar template pertanyaan asisten, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assistant/ask:
+    post: { tags: [AI Assistant], summary: Tanya asisten berbasis fakta terstruktur, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assistant/narrate:
+    post: { tags: [AI Assistant], summary: Narasi batch oleh LLM, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/assistant/chat:
+    post: { tags: [AI Assistant], summary: Chat asisten operasional, responses: { '200': { $ref: '#/components/responses/OK' } } }
+
+  /api/v1/session:
+    get: { tags: [Roles, Audit & Realtime], summary: Informasi sesi & peran aktif, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/session/role:
+    post: { tags: [Roles, Audit & Realtime], summary: Ganti peran demo aktif (MODE=demo), responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/roles:
+    get: { tags: [Roles, Audit & Realtime], summary: Registri role & hak akses, responses: { '200': { $ref: '#/components/responses/OK' } } }
+    post: { tags: [Roles, Audit & Realtime], summary: Tambah role kustom, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/roles/{role_id}:
+    put: { tags: [Roles, Audit & Realtime], summary: Ubah role kustom, parameters: [{ name: role_id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+    delete: { tags: [Roles, Audit & Realtime], summary: Hapus role kustom, parameters: [{ name: role_id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/permissions:
+    get: { tags: [Roles, Audit & Realtime], summary: Daftar seluruh permission sistem, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/notifications:
+    get: { tags: [Roles, Audit & Realtime], summary: Daftar notifikasi operasional & status baca per akun, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/notifications/{id}/read:
+    post: { tags: [Roles, Audit & Realtime], summary: Tandai satu notifikasi terbaca, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/notifications/read-all:
+    post: { tags: [Roles, Audit & Realtime], summary: Tandai seluruh notifikasi terbaca, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/audit:
+    get: { tags: [Roles, Audit & Realtime], summary: Log audit immutable, responses: { '200': { $ref: '#/components/responses/OK' } } }
+  /api/v1/audit.csv:
+    get: { tags: [Roles, Audit & Realtime], summary: Ekspor log audit dalam format CSV, responses: { '200': { description: text/csv } } }
+  /api/v1/events:
+    get: { tags: [Roles, Audit & Realtime], summary: Stream SSE real-time domain events, responses: { '200': { description: text/event-stream } } }
+  /api/v1/demo/reset:
+    post: { tags: [Roles, Audit & Realtime], summary: Reset data demo (butuh permission role.manage), responses: { '200': { $ref: '#/components/responses/OK' } } }
