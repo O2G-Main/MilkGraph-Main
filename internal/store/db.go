@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -58,6 +59,7 @@ func Open(ctx context.Context, dsn string) (*DB, error) {
 	cfg.MaxConnLifetime = time.Hour
 	cfg.MaxConnIdleTime = 5 * time.Minute
 	cfg.ConnConfig.ConnectTimeout = 5 * time.Second
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
 	cfg.ConnConfig.RuntimeParams["statement_timeout"] = "5000"
 	cfg.ConnConfig.RuntimeParams["lock_timeout"] = "5000"
 	cfg.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "15000"

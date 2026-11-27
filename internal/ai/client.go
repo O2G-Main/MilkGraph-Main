@@ -17,6 +17,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"milkgraph/internal/telemetry"
 )
 
 // DefaultURL is the AI service address inside the Dokploy docker network.
@@ -39,7 +41,10 @@ func New(baseURL, token string) *Client {
 		token:   token,
 		// Batas 60 detik harus di atas batas konteks pemanggil (45 detik),
 		// karena satu panggilan menampung Jev ditambah narasi LLM reasoning.
-		http: &http.Client{Timeout: 60 * time.Second},
+		http: &http.Client{
+			Timeout:   60 * time.Second,
+			Transport: telemetry.HTTPTransport(nil),
+		},
 	}
 }
 

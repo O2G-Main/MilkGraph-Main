@@ -16,6 +16,7 @@ import (
 	"milkgraph/internal/api"
 	"milkgraph/internal/sse"
 	"milkgraph/internal/store"
+	"milkgraph/internal/telemetry"
 )
 
 func main() {
@@ -52,6 +53,9 @@ func run(cfg config, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	shutdownTelemetry := telemetry.Init(ctx, cfg.Mode, log)
+	defer shutdownTelemetry(context.Background())
+
 	openCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	db, err := store.Open(openCtx, cfg.DatabaseURL)
 	cancel()
@@ -76,7 +80,7 @@ func run(cfg config, log *slog.Logger) error {
 	// Per-route deadlines live in API middleware.
 	hs := &http.Server{
 		Addr:              cfg.BindAddress,
-		Handler:           srv.Handler(),
+		Handler:           telemetry.WrapHandler(srv.Handler(), "milkgraph-back"),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		IdleTimeout:       60 * time.Second,
