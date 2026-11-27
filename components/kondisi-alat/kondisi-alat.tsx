@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, CircleCheck, Pencil, Search, TimerOff } from "lucide-react";
 import { Badge, Card, Icon, Modal, PageHeading, SectionTitle, Toggle } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
@@ -40,7 +40,7 @@ function AssetTable({ rows, onEdit }: { rows: Asset[]; onEdit?: (a: Asset) => ((
   </table></div>;
 }
 
-export function KondisiAlat({ title = "Kondisi Alat" }: { title?: string } = {}) {
+export function KondisiAlat({ title = "Kondisi Alat", navigation }: { title?: string; navigation?: ReactNode } = {}) {
   const demo = useDemo();
   const mayUpdate = can(demo.role, "equipment.update");
   const assigned = assignedAssets(demo);
@@ -67,6 +67,7 @@ export function KondisiAlat({ title = "Kondisi Alat" }: { title?: string } = {})
     <PageHeading title={title} subtitle={assigned ? `Kondisi alat yang ditugaskan (${assigned.join(", ")}) dan semua alat lain, snapshot pukul 14.42. Perbarui kondisi mesin dan catat downtime.` : "Kondisi setiap alat pada snapshot pukul 14.42, diurutkan sesuai alur produksi."}>
       {mayUpdate && !API_MODE && <button className="button primary" onClick={() => setDowntime({ asset: machines[0]?.id, cause: "Breakdown", start: NOW, note: "" })}><Icon icon={TimerOff} size={16} />Catat downtime</button>}
     </PageHeading>
+    {navigation}
     <div className="page-tabs"><Toggle label="Tampilan alat" value={view} onChange={setView} options={[...(assigned ? [{ value: "tugas" as const, label: `Ditugaskan (${mine.length})` }] : []), { value: "semua", label: `Semua (${assets.length})` }, { value: "perhatian", label: `Perlu diperhatikan (${attentionCount})` }]} /></div>
     <Card>
       <div className="asset-toolbar">

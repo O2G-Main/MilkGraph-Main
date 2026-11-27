@@ -66,7 +66,7 @@ export function ProductionSettings({ role }: { role: RoleId }) {
     setNotice(false);
     try {
       const latest = API_MODE ? await apiGet<Limits>("/limits", role) : current;
-      await setLimits({ ...latest, ...patch }, "Pengaturan batas dari halaman Produksi");
+      await setLimits({ ...latest, ...patch }, "Pengaturan batas dari halaman Alat");
       if (API_MODE) await saved.reload();
       setDraft({});
       setNotice(true);

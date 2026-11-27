@@ -12,11 +12,34 @@ import { canRecordStatus, createStatusRecorder, EQUIPMENT_PATH, equipmentSpecs, 
 import type { ProductionAsset, ProductionList, ProductionSession } from "@/lib/api/production";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import { useDemo } from "@/lib/demo";
+import { ProductionSettings } from "@/components/produksi/production-settings";
+import { ProductionLines } from "@/components/produksi/production-lines";
+
+type EquipmentView = "catalog" | "settings" | "lines";
 
 export function EquipmentPage() {
   const { role } = useDemo();
-  if (!API_MODE) return <><p className="small muted">Mode demo · data simulasi, bukan katalog backend.</p><KondisiAlat title="Alat" /></>;
-  return <EquipmentApi key={role} role={role} />;
+  const [view, setView] = useState<EquipmentView>("catalog");
+  const navigation = <div className="page-tabs production-tabs">
+    <Toggle label="Bagian Alat" value={view} onChange={setView} options={[
+      { value: "catalog", label: "Katalog alat" },
+      { value: "settings", label: "Pengaturan" },
+      ...(API_MODE ? [{ value: "lines" as const, label: "Konfigurasi lini" }] : []),
+    ]} />
+  </div>;
+  if (!API_MODE && view === "catalog") return <>
+    <p className="small muted">Mode demo · data simulasi, bukan katalog backend.</p>
+    <KondisiAlat title="Alat" navigation={navigation} />
+  </>;
+  return <div className="page-enter">
+    <PageHeading title="Alat" subtitle="Pantau katalog dan status alat, kelola pengaturan operasional, serta periksa konfigurasi lini." />
+    {navigation}
+    <div className="production-stack">
+      {view === "catalog" && <EquipmentApi key={role} role={role} />}
+      {view === "settings" && <ProductionSettings role={role} />}
+      {view === "lines" && API_MODE && <ProductionLines />}
+    </div>
+  </div>;
 }
 
 function EquipmentApi({ role }: { role: string }) {
@@ -37,8 +60,7 @@ function EquipmentApi({ role }: { role: string }) {
   const types = [...new Set(rows.map(asset => asset.asset_type))].sort();
   const statuses = [...new Set(rows.flatMap(asset => asset.current_status ? [asset.current_status] : []))].sort();
 
-  return <div className="page-enter">
-    <PageHeading title="Alat" subtitle="Katalog alat dan status terakhir dari backend. Status alat terpisah dari catatan kejadian downtime." />
+  return <div className="production-stack">
     <div className="page-tabs"><Toggle label="Cakupan katalog alat" value={includePipes ? "all" : "operational"} onChange={value => { setIncludePipes(value === "all"); setType(""); setStatus(""); }} options={[{ value: "operational", label: "Alat operasional" }, { value: "all", label: "Termasuk pipa" }]} /></div>
     <Card>
       <SectionTitle title="Katalog alat" subtitle={assets.data ? `${shown.length} dari ${rows.length} alat · ${rows.filter(asset => !asset.current_status).length} belum memiliki status tercatat` : "Status kosong berarti belum tercatat, bukan alat berjalan normal."}

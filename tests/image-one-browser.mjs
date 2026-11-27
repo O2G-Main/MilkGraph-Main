@@ -92,10 +92,11 @@ try {
   await page.unroute(equipmentRoute);
   report.push('Local-mock equipment mutation: validation, exact POST body, GET readback, single write');
 
-  await page.goto(root + '/produksi');
+  await page.goto(root + '/alat');
   await page.getByRole('button', { name: 'Konfigurasi lini', exact: true }).click();
   await page.getByRole('heading', { name: 'Kompatibilitas finished SKU', exact: true }).waitFor();
   await page.getByText('FL-01', { exact: true }).first().waitFor();
+  await page.goto(root + '/produksi');
   await page.getByRole('button', { name: 'Alur pabrik', exact: true }).click();
   await page.locator('.react-flow__node').first().waitFor();
   assert.equal(await page.locator('.react-flow__node').count(), liveTopology.nodes.length);
