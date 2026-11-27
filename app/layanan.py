@@ -21,7 +21,10 @@ from .schemas import (
     ChatResponse,
     JevPenilaianAkarMasalah,
     JevPenilaianPrioritas,
+    JevPenilaianRekomendasi,
     LLMUsage,
+    RecommendationChoiceRequest,
+    RecommendationChoiceResponse,
     RepairPriorityRequest,
     RepairPriorityResponse,
     RootCauseRequest,
@@ -413,4 +416,84 @@ def jawaban_chat(req: ChatRequest) -> ChatResponse:
         sumber="jev+llm" if ok else "template",
         label_data=req.label_data,
         llm_usage=usage,
+    )
+
+
+def _state_rekomendasi(req: RecommendationChoiceRequest) -> str:
+    baris = [
+        f"Batch {req.batch_id}, tanggal produksi {req.production_date}.",
+        "Fakta prediksi dari backend:",
+    ]
+    baris.extend(f"- {f}" for f in req.fakta)
+    baris.append("Kandidat solusi dari backend (urutan skor menurun):")
+    for kandidat in req.kandidat:
+        baris.append(
+            f"- {kandidat.kode}: {kandidat.deskripsi} "
+            f"(skor backend {_angka(kandidat.skor_be)})"
+        )
+    return "\n".join(baris)
+
+
+def pilih_rekomendasi(req: RecommendationChoiceRequest) -> RecommendationChoiceResponse:
+    """Pilih satu kandidat solusi lewat Jev; tanpa Jev pakai peringkat backend.
+
+    Keputusan akhir tetap manusia: respons ini hanya rekomendasi terstruktur,
+    backend menyimpannya sebagai draft untuk ditinjau.
+    """
+    dasar = RecommendationChoiceResponse(
+        batch_id=req.batch_id,
+        pilihan=req.kandidat[0].kode,
+        sumber="template",
+        label_data=req.label_data,
+    )
+    if not jev.tersedia():
+        return dasar
+
+    questions = {
+        "solusi_terbaik": {
+            "type": "choice",
+            "instructions": (
+                "Pilih solusi yang paling tepat untuk mengatasi kekurangan "
+                "pemenuhan batch berdasarkan fakta pada state. Nilai hanya "
+                "dari fakta yang tertulis."
+            ),
+            "criteria": {k.kode: k.deskripsi for k in req.kandidat},
+        },
+        "keyakinan_pilihan": {
+            "type": "score",
+            "instructions": (
+                "Nilai kekuatan fakta pada state dalam mendukung satu "
+                "pilihan solusi yang konsisten."
+            ),
+            "criteria": jev.RUBRIK_SCORE,
+        },
+    }
+    hasil = jev.panggil(_state_rekomendasi(req), questions)
+    if hasil is None:
+        return dasar
+    answers = hasil["answers"]
+
+    pilihan, probabilitas, confidence = _parse_choice(answers.get("solusi_terbaik"))
+    kode_valid = {k.kode for k in req.kandidat}
+    if pilihan is None or pilihan not in kode_valid:
+        log.warning("Pilihan solusi Jev tidak cocok dengan kandidat BE: %r", pilihan)
+        return dasar
+
+    skor = _parse_angka(answers.get("keyakinan_pilihan"), "score", "value")
+    penilaian = JevPenilaianRekomendasi(
+        pilihan=pilihan,
+        probabilitas=probabilitas,
+        confidence=confidence,
+        keyakinan_skor=(
+            jev.skor_ke_100(skor, len(jev.RUBRIK_SCORE)) if skor is not None else None
+        ),
+        model=hasil.get("model"),
+    )
+    return RecommendationChoiceResponse(
+        batch_id=req.batch_id,
+        pilihan=pilihan,
+        sumber="jev",
+        label_data=req.label_data,
+        jev=penilaian,
+        selisih_dengan_be=pilihan != req.kandidat[0].kode,
     )

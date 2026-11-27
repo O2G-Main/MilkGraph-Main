@@ -9,6 +9,8 @@ from .schemas import (
     ChatRequest,
     ChatResponse,
     HealthResponse,
+    RecommendationChoiceRequest,
+    RecommendationChoiceResponse,
     RepairPriorityRequest,
     RepairPriorityResponse,
     RootCauseRequest,
@@ -70,6 +72,15 @@ def narrate_root_cause(req: RootCauseRequest) -> RootCauseResponse:
 )
 def explain_repair_priority(req: RepairPriorityRequest) -> RepairPriorityResponse:
     return layanan.penjelasan_prioritas(req)
+
+
+@app.post(
+    "/ai/recommendation/choose",
+    response_model=RecommendationChoiceResponse,
+    dependencies=[Depends(wajib_token)],
+)
+def choose_recommendation(req: RecommendationChoiceRequest) -> RecommendationChoiceResponse:
+    return layanan.pilih_rekomendasi(req)
 
 
 @app.post("/ai/chat", response_model=ChatResponse, dependencies=[Depends(wajib_token)])

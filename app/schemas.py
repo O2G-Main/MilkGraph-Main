@@ -107,6 +107,37 @@ class ChatResponse(BaseModel):
     llm_usage: LLMUsage | None = None
 
 
+class KandidatRekomendasi(BaseModel):
+    kode: str
+    deskripsi: str
+    skor_be: float = 0
+
+
+class RecommendationChoiceRequest(BaseModel):
+    batch_id: str
+    production_date: str
+    fakta: list[str] = Field(default_factory=list)
+    kandidat: list[KandidatRekomendasi] = Field(min_length=1)
+    label_data: str
+
+
+class JevPenilaianRekomendasi(BaseModel):
+    pilihan: str
+    probabilitas: dict[str, float] = Field(default_factory=dict)
+    confidence: float | None = None
+    keyakinan_skor: int | None = None
+    model: str | None = None
+
+
+class RecommendationChoiceResponse(BaseModel):
+    batch_id: str
+    pilihan: str
+    sumber: str
+    label_data: str
+    jev: JevPenilaianRekomendasi | None = None
+    selisih_dengan_be: bool = False
+
+
 class HealthResponse(BaseModel):
     status: str
     llm: str
