@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, "..");
 test("telemetry config files exist for Next.js standalone", () => {
   for (const rel of [
     "instrumentation.ts",
-    "sentry.client.config.ts",
+    "instrumentation-client.ts",
     "sentry.server.config.ts",
     "next.config.ts",
     "Dockerfile",
