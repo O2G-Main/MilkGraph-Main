@@ -1,19 +1,16 @@
 "use client";
 
 import { Card, SectionTitle } from "@/components/ui";
+import { TransactionTimeline } from "./transaction-timeline";
+import { traceTimestamp } from "@/lib/production-trace";
 import { Equipment } from "@/components/trace/equipment";
 import type { BeTraceBackward, BeTraceHistoryGroup } from "@/lib/api/trace-historis";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const liter = (n: number) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(n)} L`;
 const persen = (n: number) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(n)}%`;
-/** "2026-10-31T19:43:30+07:00" menjadi "31 Okt 2026, 19.43". */
-const waktuText = (iso: string) => {
-  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
-  return y && m && d ? `${d} ${MONTHS[m - 1]} ${y}, ${iso.slice(11, 16).replace(":", ".")}` : iso;
-};
-const jamText = (iso: string) => iso.slice(11, 16).replace(":", ".");
-const dateText = (iso: string) => { const [y, m, d] = iso.slice(0, 10).split("-").map(Number); return y && m && d ? `${d} ${MONTHS[m - 1]} ${y}` : iso; };
+const waktuText = traceTimestamp;
+const jamText = (iso: string) => traceTimestamp(iso).split(", ")[1] || traceTimestamp(iso);
+const dateText = (iso: string) => traceTimestamp(iso).split(", ")[0];
 
 /**
  * Detail telusur group historis (label data historis) di Riwayat Produksi.
@@ -35,6 +32,7 @@ export function HistorisDetail({ group, detail, loading, error }: {
         <div><dt>Asal susu</dt><dd>Prepared Product Release<small>batas hulu data</small></dd></div>
       </dl>
     </Card>
+    <TransactionTimeline key={group.group_id} groupId={group.group_id} evidence={detail} />
     {loading && <Card><p className="muted" role="status">Memuat telusur balik {group.group_id}…</p></Card>}
     {error && <Card><p className="crit-text" role="alert">Gagal memuat telusur balik {group.group_id}: {error.message}</p></Card>}
     {detail && <>
