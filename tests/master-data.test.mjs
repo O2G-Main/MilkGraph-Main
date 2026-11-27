@@ -4,19 +4,22 @@ import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('navigation includes master-data tab (Master Alat)', () => {
+test('navigation separates Master Produk and Alat, retaining the old master-data entry as an alias', () => {
   const nav = read('lib/nav.ts');
   assert.ok(nav.includes('"/master-data"'), 'nav missing /master-data route');
-  assert.ok(nav.includes('"Master Alat"'), 'nav missing Master Alat label');
+  assert.ok(nav.includes('"Master Produk"'), 'nav missing Master Produk label');
+  assert.ok(nav.includes('href: "/produk"'));
+  assert.ok(nav.includes('label: "Alat", href: "/alat"'));
+  assert.ok(!nav.includes('label: "Master Alat"'));
 });
 
-test('master-data view queries master endpoints and changeover classifier in API mode', () => {
-  const comp = read('components/master-data/master-data.tsx');
-  for (const path of ['/master', '/master/assets', '/master/connections', '/master/finished-skus', '/master/lines']) {
-    assert.ok(comp.includes(`"${path}"`), `master-data view missing ${path}`);
-  }
-  assert.ok(comp.includes('"/master/changeover/classify"'), 'master-data view missing /master/changeover/classify');
+test('old master-data page directs users to domain pages and keeps only the actual dataset summary', () => {
+  // Master data is distributed by domain rather than kept in a combined editor.
+  assert.match(read('app/master-data/page.tsx'), /MasterDirectory/);
+  const comp = read('components/master-data/master-directory.tsx');
+  for (const path of ['/master', '/produk', '/alat', '/produksi', '/aturan-produksi']) assert.ok(comp.includes(`"${path}"`));
   assert.match(comp, /numericalPlanningReady/);
-  assert.match(comp, /AT_SAME_PRODUCT/);
-  assert.match(comp, /asset_connections\.csv/);
+  assert.doesNotMatch(comp, /validationStatus:\s*"VALID"/);
+  assert.match(read('components/produksi/plant-topology.tsx'), /"\/master\/topology"/);
+  assert.match(read('components/produksi/production-lines.tsx'), /"\/master\/lines"/);
 });

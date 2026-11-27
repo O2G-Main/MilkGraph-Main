@@ -5,7 +5,7 @@ import { Clock3 } from "lucide-react";
 import { Icon, Toggle } from "@/components/ui";
 import { scenario } from "@/lib/data";
 import { API_MODE } from "@/lib/api/client";
-import { useResource } from "@/lib/api/resource";
+import { PlanningProvider } from "./planning-state";
 import type { Adjustments } from "./adjust";
 
 /**
@@ -26,14 +26,18 @@ type State = {
 const Ctx = createContext<State | null>(null);
 
 export function RencanaProvider({ children }: { children: ReactNode }) {
+  return <ScenarioContextProvider>{API_MODE ? <PlanningProvider>{children}</PlanningProvider> : children}</ScenarioContextProvider>;
+}
+
+// AssistantChat also consumes this context globally; API mode exposes no legacy plans.
+function ScenarioContextProvider({ children }: { children: ReactNode }) {
   const [planId, setPlanId] = useState("current");
   const [view, setView] = useState<"before" | "after">("before");
   const [adj, setAdj] = useState<Adjustments>({});
   // Poin 14: Alur rencana punya tampilan 2D dan 3D.
   const [mode, setMode] = useState<"2d" | "3d">("2d");
-  const res = useResource<PlanItem[]>(API_MODE ? "/plans" : null);
-  const plans = API_MODE ? res.data ?? null : scenario.plans;
-  return <Ctx.Provider value={{ plans, plansError: API_MODE ? res.error ?? null : null, planId, setPlanId, view, setView, adj, setAdj, mode, setMode }}>{children}</Ctx.Provider>;
+  const plans = API_MODE ? null : scenario.plans;
+  return <Ctx.Provider value={{ plans, plansError: null, planId, setPlanId, view, setView, adj, setAdj, mode, setMode }}>{children}</Ctx.Provider>;
 }
 
 export function useRencana() {

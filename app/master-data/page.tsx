@@ -1,10 +1,10 @@
-import { MasterDataView } from "@/components/master-data/master-data";
+import { MasterDirectory } from "@/components/master-data/master-directory";
 
 export const metadata = {
-  title: "Katalog Master | MilkGraph",
-  description: "Katalog konfigurasi master Greenfields v2.1: aset, rute, SKU, dedikasi lini, dan aturan changeover CIP.",
+  title: "Data Induk | MilkGraph",
+  description: "Akses produk, alat, alur produksi, dan aturan sesuai jenis data master Greenfields.",
 };
 
 export default function MasterDataPage() {
-  return <MasterDataView />;
+  return <MasterDirectory />;
 }

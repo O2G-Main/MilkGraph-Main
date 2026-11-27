@@ -118,7 +118,8 @@ export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
 export type MenuMap = Record<RoleId, string[]>;
 let menus: MenuMap = {};
 export const setMenus = (next: MenuMap | undefined) => { menus = next ?? {}; };
-export const hiddenFor = (role: RoleId): string[] => role === SUPERADMIN ? [] : menus[role]?.map(href => href === "/alur" ? "/produksi" : href) ?? HIDDEN_PAGES[role] ?? [];
-export const canSee = (role: RoleId, href: string) => !hiddenFor(role).includes(href);
+const currentPage = (href: string) => href === "/alur" ? "/produksi" : href === "/kondisi-alat" ? "/alat" : href;
+export const hiddenFor = (role: RoleId): string[] => role === SUPERADMIN ? [] : (menus[role] ?? HIDDEN_PAGES[role] ?? []).map(currentPage);
+export const canSee = (role: RoleId, href: string) => !hiddenFor(role).includes(currentPage(href));
 /** Riwayat Persetujuan terbuka bagi semua peran yang punya izin audit.view, meski menu induknya (Rencana) disembunyikan. */
 export const canOpen = (role: RoleId, pathname: string, tabHref: string) => pathname === "/persetujuan" ? can(role, "audit.view") : canSee(role, tabHref);

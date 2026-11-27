@@ -8,10 +8,11 @@ import { useDemo } from "@/lib/demo";
 import { dateInWib } from "@/lib/production-date";
 import { DemoProductionDay } from "./production-day";
 import { ProductionDayApi } from "./production-day-api";
-import { ProductionCatalog } from "./production-catalog";
+import { ProductionLines } from "./production-lines";
+import { PlantTopology } from "./plant-topology";
 import { ProductionSettings } from "./production-settings";
 
-type View = "daily" | "settings" | "catalog" | "flow";
+type View = "daily" | "settings" | "lines" | "flow";
 
 export function ProductionPage({ initialDate }: { initialDate: string }) {
   const { role } = useDemo();
@@ -23,7 +24,7 @@ export function ProductionPage({ initialDate }: { initialDate: string }) {
       <Toggle label="Bagian Produksi" value={view} onChange={setView} options={[
         { value: "daily", label: "Produksi harian" },
         { value: "settings", label: "Pengaturan" },
-        ...(API_MODE ? [{ value: "catalog" as const, label: "Aset dan produk" }] : []),
+        ...(API_MODE ? [{ value: "lines" as const, label: "Konfigurasi lini" }] : []),
         { value: "flow", label: "Alur pabrik" },
       ]} />
     </div>
@@ -41,8 +42,8 @@ export function ProductionPage({ initialDate }: { initialDate: string }) {
           : <DemoProductionDay date={date} role={role} />}
       </>}
       {view === "settings" && <ProductionSettings role={role} />}
-      {view === "catalog" && API_MODE && <ProductionCatalog role={role} />}
-      {view === "flow" && <Alur />}
+      {view === "lines" && API_MODE && <ProductionLines />}
+      {view === "flow" && (API_MODE ? <PlantTopology /> : <Alur />)}
     </div>
   </div>;
 }

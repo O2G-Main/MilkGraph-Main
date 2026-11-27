@@ -1,0 +1,25 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.field {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 220px;
+}
+.detail {
+  display: grid;
+  gap: 20px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.facts dt { margin-bottom: 4px; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.sku { overflow-wrap: anywhere; }

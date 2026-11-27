@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { API_MODE } from "@/lib/api/client";
+import { ApiAturanProduksi } from "./api-aturan-produksi";
 import { setChangeoverRule, setCipRule, setPaperRule, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { SOP_CHANGEOVER } from "@/lib/rules";
@@ -12,6 +14,10 @@ import { RuleValue } from "./rule-dialog";
 const statusOf = (value: number, standard: number) => value === standard ? <Badge tone="ok">Sesuai standar</Badge> : <Badge tone="warn">+{value - standard} menit dari standar</Badge>;
 
 export function AturanProduksi() {
+  return API_MODE ? <ApiAturanProduksi /> : <MockAturanProduksi />;
+}
+
+function MockAturanProduksi() {
   const demo = useDemo();
   const allowed = can(demo.role, "rules.edit");
   const { rules } = demo;

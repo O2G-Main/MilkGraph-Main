@@ -4,17 +4,18 @@ import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL(`../components/${path}`, import.meta.url), 'utf8');
 
-test('Rencana integrates with API mode: uses /plans and /plans/{id}/check, handles loading/error, awaits decidePlan', () => {
+test('Rencana uses production planning in API mode and retains scenario decisions only in demo mode', () => {
   const rencana = read('rencana/rencana.tsx');
   assert.match(rencana, /API_MODE/);
-  // Daftar rencana diambil sekali di state bersama sub halaman Rencana.
-  assert.match(read('rencana/rencana-state.tsx'), /useResource.*"\/plans"/);
-  assert.match(rencana, /\/plans\/.*\/check/);
+  // Batch planning and legacy scenario plans have different contracts.
+  assert.match(rencana, /API_MODE \? <ApiPlanning page="decisions" \/> : <DemoRencana/);
+  assert.match(read('rencana/rencana-state.tsx'), /API_MODE \? <PlanningProvider/);
+  assert.match(read('rencana/rencana-state.tsx'), /ScenarioContextProvider/);
   assert.match(rencana, /await decidePlan\(/);
   assert.match(rencana, /catch/);
-  assert.match(rencana, /Memuat data Rencana/);
-  assert.match(rencana, /Gagal memuat Rencana/);
-  assert.match(rencana, /Tidak ada rencana tersedia/);
+  assert.match(read('rencana/api-planning.tsx'), /Gagal memuat data/);
+  assert.match(read('rencana/api-planning.tsx'), /Memuat data produksi/);
+  assert.match(read('rencana/api-planning.tsx'), /Belum ada data untuk filter ini/);
   assert.doesNotMatch(rencana, /evaluate\(plan/);
 });
 

@@ -24,8 +24,8 @@ const tools = [
   { href: "/penjadwalan", label: "Penjadwalan", detail: "Kelola PO, jadwal produksi, dan pemicu regenerasi." },
   { href: "/aturan-produksi", label: "Aturan Produksi", detail: "Lihat atau atur changeover, durasi CIP, dan ketentuan mutu." },
   { href: "/constraint", tab: "/rencana", label: "Constraint", detail: "Periksa kelayakan rencana dan pengaturan constraint lainnya." },
-  { href: "/master-data", label: "Master Alat", detail: "Kelola data induk alat dan lini produksi." },
-  { href: "/kondisi-alat", label: "Kondisi Alat", detail: "Tinjau kondisi alat dan kelola catatan downtime." },
+  { href: "/produk", label: "Master Produk", detail: "Lihat katalog produk, kemasan, pasar, dan finished SKU." },
+  { href: "/alat", label: "Alat", detail: "Lihat spesifikasi Greenfields, catat status, dan tinjau downtime." },
 ];
 
 export function ProductionSettings({ role }: { role: RoleId }) {

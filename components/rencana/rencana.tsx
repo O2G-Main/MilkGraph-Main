@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ScenarioBar, useRencana } from "./rencana-state";
 import { withAdjust } from "./with-adjust";
@@ -13,19 +13,12 @@ import { Badge, Card, Icon, Modal, SectionTitle, SourceButton, SourceModal, Time
 import { decidePlan, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { DEFAULT_LIMITS, evaluate, starvation, type ConstraintId } from "@/lib/rules";
-import { API_MODE, apiSend } from "@/lib/api/client";
+import { API_MODE } from "@/lib/api/client";
+import { ApiPlanning } from "./api-planning";
 import type { Block } from "@/mock/types";
 
 const DEFAULT_RESOURCES = ["Lab test", "Bay 1", "Bay 2", "Bay 3", "Filling F1", "Filling F2", "Filling F4"];
 
-type PlanCheckVerdict = { ok: boolean; text: string };
-type PlanCheckResult = {
-  before: Record<string, PlanCheckVerdict>;
-  after: Record<string, PlanCheckVerdict>;
-  violations: { before: number; after: number };
-  starvation: { before: number; after: number };
-  holdingLeft: number;
-};
 
 type PlanItem = {
   id: string;
@@ -45,7 +38,11 @@ type PlanItem = {
 
 /** Sub halaman Rencana > Kelayakan & keputusan (alamat /rencana). */
 export function Rencana() {
-  const { plans: loaded, plansError, planId, view, setView, adj, setAdj } = useRencana();
+  return API_MODE ? <ApiPlanning page="decisions" /> : <DemoRencana />;
+}
+
+function DemoRencana() {
+  const { planId, view, setView, adj, setAdj } = useRencana();
   const [dialog, setDialog] = useState<"approved" | "rejected" | null>(null);
   const [note, setNote] = useState("");
   const [source, setSource] = useState<string | null>(null);
@@ -55,40 +52,15 @@ export function Rencana() {
   const [allChecks, setAllChecks] = useState(false);
 
   const demo = useDemo();
-  const [apiCheck, setApiCheck] = useState<PlanCheckResult | null>(null);
-  const [checkError, setCheckError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    if (!API_MODE) return;
-    let live = true;
-    void apiSend<PlanCheckResult>("POST", `/plans/${planId}/check`, {}, demo.role)
-      .then(res => { if (live) { setApiCheck(res); setCheckError(null); } })
-      .catch(err => { if (live) setCheckError(err instanceof Error ? err : new Error(String(err))); });
-    return () => { live = false; };
-  }, [planId, demo.role, demo.limits]);
-
-  if (API_MODE) {
-    if ((!loaded && !plansError) || (!apiCheck && !checkError)) {
-      return <div className="page-enter" role="status">Memuat data Rencana & What-if…</div>;
-    }
-    const err = plansError || checkError;
-    if (err) {
-      return <div className="page-enter" role="status">Gagal memuat Rencana & What-if: {err.message}</div>;
-    }
-    if (!loaded || loaded.length === 0) {
-      return <div className="page-enter" role="status">Tidak ada rencana tersedia.</div>;
-    }
-  }
-
-  const plans = (API_MODE ? loaded! : scenario.plans) as typeof scenario.plans;
+  const plans = scenario.plans;
   const plan = plans.find(p => p.id === planId) ?? plans[0];
   const decision = demo.decisions.find(d => d.plan === planId);
   const allowed = can(demo.role, "plan.decide");
 
-  const mockPlan = !API_MODE ? scenario.plans.find(p => p.id === planId)! : null;
+  const mockPlan = plan;
   // Upgrade atau maintenance yang dicoba di Rekomendasi upgrade / Alur rencana ikut dihitung di sini (angkanya sama dengan Alur rencana).
   const adjIds = Object.keys(adj);
-  const adjusted = !API_MODE && adjIds.length > 0;
+  const adjusted = adjIds.length > 0;
   const projected = adjusted ? { before: withAdjust(mockPlan!, "before", adj, demo.limits), after: withAdjust(mockPlan!, "after", adj, demo.limits) } : null;
   const mockChecks = mockPlan ? {
     before: projected?.before.checks ?? evaluate(mockPlan, "before", demo.limits),
@@ -96,16 +68,11 @@ export function Rencana() {
   } : null;
   const adjustText = adjIds.map(id => `${id} ${badgeOf(adj[id])}`).join(", ");
 
-  const violated = (v: "before" | "after") => {
-    if (API_MODE) {
-      return apiCheck?.violations[v] ?? 0;
-    }
-    return Object.values(mockChecks![v]).filter(c => !c.ok).length;
-  };
+  const violated = (v: "before" | "after") => Object.values(mockChecks![v]).filter(c => !c.ok).length;
 
   const planAny = plan as unknown as PlanItem;
-  const starvationBefore = API_MODE ? (apiCheck?.starvation.before ?? 0) : starvation((projected?.before.blocks ?? plan.before) as unknown as Block[]);
-  const starvationAfter = API_MODE ? (apiCheck?.starvation.after ?? 0) : starvation((projected?.after.blocks ?? plan.after) as unknown as Block[]);
+  const starvationBefore = starvation((projected?.before.blocks ?? plan.before) as unknown as Block[]);
+  const starvationAfter = starvation((projected?.after.blocks ?? plan.after) as unknown as Block[]);
 
   const changed = JSON.stringify(demo.limits) !== JSON.stringify(DEFAULT_LIMITS);
   const queueLabel = planAny.queueLabel ?? "RT antre di plant pukul 16.00";
@@ -119,7 +86,7 @@ export function Rencana() {
   const resources = planAny.resources ?? DEFAULT_RESOURCES;
 
   const open = (kind: "approved" | "rejected") => { setNote(""); setActionError(null); setDialog(kind); };
-  const checkOf = (v: "before" | "after", id: string) => API_MODE ? (apiCheck?.[v]?.[id] ?? { ok: false, text: "Memuat..." }) : mockChecks![v][id as ConstraintId];
+  const checkOf = (v: "before" | "after", id: string) => mockChecks![v][id as ConstraintId];
   const problems = plan.constraints.filter(c => !checkOf("before", c.id).ok || !checkOf("after", c.id).ok);
   const rows = allChecks ? plan.constraints : problems;
 

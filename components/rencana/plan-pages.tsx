@@ -8,6 +8,8 @@ import { PlanFlow } from "./plan-flow";
 import { UpgradePicks } from "./upgrade-picks";
 import { BASE_PLAN, ScenarioBar, useRencana } from "./rencana-state";
 import { ProposeAdjust } from "./proposals";
+import { API_MODE } from "@/lib/api/client";
+import { ApiPlanning } from "./api-planning";
 
 /**
  * Sub halaman Rencana berurutan (poin 9 dan 10): 1. Alur rencana (tampilan awal, sama dengan operasi),
@@ -25,6 +27,10 @@ function NextStep({ text, href, label, skip }: { text: string; href: string; lab
 
 /** Langkah 1: Alur rencana (poin 9, 14-17). */
 export function RencanaAlur() {
+  return API_MODE ? <ApiPlanning page="flow" /> : <DemoRencanaAlur />;
+}
+
+function DemoRencanaAlur() {
   const { plans, plansError, adj, setAdj, view, setView, mode } = useRencana();
   // Revisi 8 Nov poin 6: tanpa skenario what-if bawaan, simulasinya diatur sendiri lewat atur alat.
   const plan = plans?.find(p => p.id === BASE_PLAN) ?? plans?.[0];
@@ -40,6 +46,10 @@ export function RencanaAlur() {
 
 /** Langkah 2: Rekomendasi upgrade (poin 10). Upgrade diterapkan di sini, efeknya langsung terlihat tanpa pindah halaman. */
 export function RencanaUpgrade() {
+  return API_MODE ? <ApiPlanning page="recommendations" /> : <DemoRencanaUpgrade />;
+}
+
+function DemoRencanaUpgrade() {
   const { setAdj } = useRencana();
   return <div className="page-enter">
     <div className="page-heading"><div><h1>Rekomendasi upgrade</h1><p>Alat mana yang paling menambah produksi bila di-upgrade, diurutkan dari tambahan terbesar. Terapkan ke rencana untuk melihat efeknya ke constraint.</p></div><div className="page-actions"><ProposeAdjust /></div></div>
