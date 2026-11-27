@@ -12,7 +12,7 @@ import { Icon } from "./index";
 
 type Placement = { top: number; bottom: number; left: number; width: number; maxHeight: number; up: boolean; host: HTMLElement };
 
-function usePopover(open: boolean, close: () => void, minWidth = 220) {
+function usePopover(open: boolean, close: () => void, minWidth = 220, maxPanelHeight = 340) {
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<Placement | null>(null);
@@ -37,14 +37,14 @@ function usePopover(open: boolean, close: () => void, minWidth = 220) {
       const left = Math.min(Math.max(8, left0), Math.max(8, box.width - width - 8));
       setPlace({
         top: top + r.height + 6, bottom: box.height - top + 6, left, width, up, host,
-        maxHeight: Math.min(340, Math.max(120, (up ? above : below) - 8)),
+        maxHeight: Math.min(maxPanelHeight, Math.max(120, (up ? above : below) - 8)),
       });
     };
     update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => { window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [open, minWidth]);
+  }, [open, minWidth, maxPanelHeight]);
 
   useEffect(() => {
     if (!open) return;
@@ -151,7 +151,7 @@ export function formatDate(value: string) {
 export function DateField({ value, onChange, placeholder = "Pilih tanggal", label, id, initialMonth }: { value: string; onChange: (value: string) => void; placeholder?: string; label?: string; id?: string; initialMonth?: string }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  const { trigger, panel, place } = usePopover(open, close, 280);
+  const { trigger, panel, place } = usePopover(open, close, 280, 400);
   const base = () => value || initialMonth || iso(new Date().getFullYear(), new Date().getMonth(), 1);
   const [view, setView] = useState(() => monthOf(base()));
   const first = (new Date(view.y, view.m, 1).getDay() + 6) % 7;

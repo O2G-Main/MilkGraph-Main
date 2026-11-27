@@ -1500,6 +1500,7 @@ button.plan-metric.selected { box-shadow: var(--glass-rim), 0 0 0 2px var(--colo
 .field-group:first-child { padding-top: 4px; }
 .field-empty { padding: 12px 10px; color: var(--color-on-surface-muted); font-size: 13px; }
 .field-calendar, .field-time { padding: 10px; }
+.field-calendar { overflow-y: auto; overscroll-behavior: contain; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .cal-head strong { font-size: 14px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
