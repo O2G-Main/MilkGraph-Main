@@ -94,7 +94,7 @@ export const whoCan = (permission: Permission) => `Hanya ${rolesFor(permission).
 export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
   planner: ["/qc-produk", "/master-data", "/sumber-data", "/pengguna", "/role-akses"],
   receiving: [
-    "/simulasi", "/alur", "/qc-produk", "/master-data",
+    "/simulasi", "/produksi", "/qc-produk", "/master-data",
     "/penjadwalan", "/aturan-produksi", "/rencana/alur", "/rencana/upgrade", "/rencana",
     "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna", "/role-akses",
   ],
@@ -105,11 +105,11 @@ export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
   ],
   manager: ["/sumber-data", "/pengguna", "/role-akses"],
   qa: [
-    "/simulasi", "/kedatangan", "/receiving", "/alur", "/kondisi-alat", "/master-data",
+    "/simulasi", "/kedatangan", "/receiving", "/produksi", "/kondisi-alat", "/master-data",
     "/penjadwalan", "/rencana/alur", "/rencana/upgrade", "/rencana", "/sumber-data", "/pengguna", "/role-akses",
   ],
   lab: [
-    "/simulasi", "/kedatangan", "/transfer", "/alur", "/kondisi-alat", "/qc-produk", "/master-data",
+    "/simulasi", "/kedatangan", "/transfer", "/produksi", "/kondisi-alat", "/qc-produk", "/master-data",
     "/penjadwalan", "/aturan-produksi", "/rencana/alur", "/rencana/upgrade", "/rencana",
     "/riwayat-produksi", "/graph", "/hold", "/sumber-data", "/pengguna", "/role-akses",
   ],
@@ -118,7 +118,7 @@ export const HIDDEN_PAGES: Partial<Record<RoleId, string[]>> = {
 export type MenuMap = Record<RoleId, string[]>;
 let menus: MenuMap = {};
 export const setMenus = (next: MenuMap | undefined) => { menus = next ?? {}; };
-export const hiddenFor = (role: RoleId): string[] => role === SUPERADMIN ? [] : menus[role] ?? HIDDEN_PAGES[role] ?? [];
+export const hiddenFor = (role: RoleId): string[] => role === SUPERADMIN ? [] : menus[role]?.map(href => href === "/alur" ? "/produksi" : href) ?? HIDDEN_PAGES[role] ?? [];
 export const canSee = (role: RoleId, href: string) => !hiddenFor(role).includes(href);
 /** Riwayat Persetujuan terbuka bagi semua peran yang punya izin audit.view, meski menu induknya (Rencana) disembunyikan. */
 export const canOpen = (role: RoleId, pathname: string, tabHref: string) => pathname === "/persetujuan" ? can(role, "audit.view") : canSee(role, tabHref);

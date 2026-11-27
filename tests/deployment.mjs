@@ -6,7 +6,10 @@ const health = await get("/api/health");
 assert.equal(health.status, 200, "health status");
 assert.deepEqual(await health.json(), { status: "ok", service: "milkgraph-frontend" });
 
-const routes = ["/", "/receiving", "/simulasi", "/alur", "/kondisi-alat", "/tangki", "/filling", "/qc-produk", "/master-data", "/rencana", "/rencana/upgrade", "/rencana/alur", "/pasokan", "/constraint", "/persetujuan", "/riwayat-produksi", "/trace", "/lab", "/hold", "/graph", "/sumber-data", "/pengguna"];
+const routes = ["/", "/receiving", "/simulasi", "/produksi", "/kondisi-alat", "/tangki", "/filling", "/qc-produk", "/master-data", "/rencana", "/rencana/upgrade", "/rencana/alur", "/pasokan", "/constraint", "/persetujuan", "/riwayat-produksi", "/trace", "/lab", "/hold", "/graph", "/sumber-data", "/pengguna"];
+const moved = await fetch(new URL("/alur?ref=menu", base), { signal: AbortSignal.timeout(15000), redirect: "manual" });
+assert.equal(moved.status, 308, "old production route");
+assert.equal(moved.headers.get("location"), "/produksi?ref=menu");
 let home;
 for (const route of routes) {
   const response = await get(route);

@@ -5,7 +5,7 @@ import { classify } from "../components/assistant/intent.ts";
 import { reply, suggestions, thinkingSteps } from "../components/assistant/answer.ts";
 
 const scenario = JSON.parse(readFileSync(new URL("../mock/scenario.json", import.meta.url), "utf8"));
-const asset = (id, status, tone, note = "", stage = "Filling") => ({ id, status, tone, note, stage, group: stage, kind: stage, href: "/alur", active: tone === "ok" });
+const asset = (id, status, tone, note = "", stage = "Filling") => ({ id, status, tone, note, stage, group: stage, kind: stage, href: "/produksi", active: tone === "ok" });
 const data = {
   assets: [asset("Bay 2", "CIP", "warn", "32 / 70 mnt"), asset("RMT-2", "Normal", "ok"), asset("MX-1", "Terisi", "ok"), asset("UHT-2", "Jalan", "ok"), asset("AT-2", "Pasokan menipis", "crit", "1.480 / 30.000 L"), asset("F2", "Jalan", "ok"), asset("F4", "Jalan", "ok"), asset("F10", "Breakdown", "crit", "Seal jaw rusak")],
   links: [["Bay 2", "RMT-2"], ["RMT-2", "MX-1"], ["MX-1", "UHT-2"], ["UHT-2", "AT-2"], ["AT-2", "F2"], ["AT-2", "F4"]],
@@ -14,7 +14,7 @@ const data = {
   plans: scenario.plans,
   upgrades: [{ id: "UHT-2", line: "AT-2", from: 6990, gain: 1300, pct: 19, reason: "" }],
 };
-const state = { page: "/alur", user: "Rino Akbar Hanif", roleLabel: "Planner PPIC", roleFocus: "Rencana shift yang layak.", planId: "current", decisions: [], holds: [], labs: {}, adjustText: "", broken: { before: 3, after: 0 } };
+const state = { page: "/produksi", user: "Rino Akbar Hanif", roleLabel: "Planner PPIC", roleFocus: "Rencana shift yang layak.", planId: "current", decisions: [], holds: [], labs: {}, adjustText: "", broken: { before: 3, after: 0 } };
 const ask = (q, over = {}) => reply(q, data, { ...state, ...over });
 
 test("kalimat bebas yang bukan contoh latih tetap dikenali maksudnya", () => {

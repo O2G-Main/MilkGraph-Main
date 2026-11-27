@@ -33,7 +33,7 @@ const unknown: Reply = { text: "Maaf, aku belum bisa menjawab itu, dan aku tidak
 const SUGGEST: Record<string, string[]> = {
   "/receiving": ["RT-04 masuk ke lot apa?", "FG-1013-07 berasal dari mana?", "Status QC FG-1013-07 bagaimana?", "Kenapa FG-1013-07 out-of-spec?"],
   "/lab": ["Hasil lab FG-1013-07 bagaimana?", "RT-04 masuk ke lot apa?", "FG-1013-07 berasal dari mana?", "Kenapa RT-04 jadi kandidat penyebab utama?"],
-  "/alur": ["Ada kendala apa di alur susu?", "Kenapa FG-1013-07 out-of-spec?", "Perjalanan FG-1013-07 lewat mana saja?", "Apa kandidat penyebab selain RT-04?"],
+  "/produksi": ["Ada kendala apa di alur susu?", "Kenapa FG-1013-07 out-of-spec?", "Perjalanan FG-1013-07 lewat mana saja?", "Apa kandidat penyebab selain RT-04?"],
   "/kondisi-alat": ["Ada kendala apa di alur susu?", "Status QC FG-1013-07 bagaimana?", "Apa penyebab utama FG-1013-07 bermasalah?", "Kandidat penyebab FG-1013-07 apa saja?"],
   "/rencana": ["Ada kendala apa di alur susu?", "Kenapa FG-1013-07 out-of-spec?", "Apa penyebab utama FG-1013-07 bermasalah?", "FG-1013-07 berasal dari mana?"],
   "/riwayat-produksi": ["FG-1013-07 berasal dari mana?", "RT-04 masuk ke lot apa?", "Ada kendala apa di alur susu?", "Perjalanan FG-1013-07 berapa lama?"],
@@ -137,7 +137,7 @@ export function reply(question: string, d: Data, s: State): Reply {
   const id = named ?? s.lastAsset;
   const asset = d.assets.find(a => a.id === id);
   const needAsset: Reply = { text: "Alat mana yang kamu maksud? Sebutkan kodenya, misalnya UHT-2, AT-2, atau F2.", links: [] };
-  const alur: Link = { label: "Lihat di Alur", href: "/alur" };
+  const alur: Link = { label: "Lihat di Produksi", href: "/produksi" };
 
   switch (intent) {
     case "bantuan": return { text: `Halo ${s.user.split(" ")[0]}, kamu masuk sebagai ${s.roleLabel}. ${s.roleFocus} Tanyakan kendala alur susu, jalur dan dampak alat, asal lot, antrean truk, upgrade, atau rencana shift. Jawabanku dihitung dari data dan kondisi aplikasi saat ini.`, links: [] };

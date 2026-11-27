@@ -16,7 +16,9 @@ test("menu yang diatur Superadmin menimpa pengaturan awal", () => {
   assert.equal(canSee("planner", "/pengguna"), false);
   setMenus({ planner: [] });
   assert.equal(canSee("planner", "/pengguna"), true);
-  setMenus({ gudang: ["/rencana"] });
+  setMenus({ gudang: ["/rencana", "/alur"] });
+  assert.equal(canSee("gudang", "/produksi"), false);
+  assert.ok(hiddenFor("gudang").includes("/produksi"));
   assert.equal(canSee("gudang", "/rencana"), false);
   assert.deepEqual(hiddenFor("superadmin"), []);
   setMenus({});
