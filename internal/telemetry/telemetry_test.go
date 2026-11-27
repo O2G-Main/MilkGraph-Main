@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,4 +43,9 @@ func TestHTTPTransportReturnsNonNil(t *testing.T) {
 	if tr := HTTPTransport(nil); tr == nil {
 		t.Fatal("expected non-nil transport")
 	}
+}
+
+func TestCaptureErrorSafeWhenUnset(t *testing.T) {
+	CaptureError(nil)
+	CaptureError(errors.New("boom"))
 }

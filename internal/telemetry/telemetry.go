@@ -120,3 +120,11 @@ func HTTPTransport(base http.RoundTripper) http.RoundTripper {
 	}
 	return otelhttp.NewTransport(base)
 }
+
+// CaptureError reports an unexpected error to Sentry/GlitchTip (no-op if nil or unconfigured).
+func CaptureError(err error) {
+	if err == nil {
+		return
+	}
+	sentry.CaptureException(err)
+}

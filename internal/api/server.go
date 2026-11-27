@@ -17,6 +17,7 @@ import (
 	"milkgraph/internal/graph"
 	"milkgraph/internal/sse"
 	"milkgraph/internal/store"
+	"milkgraph/internal/telemetry"
 	"milkgraph/internal/trace"
 	"milkgraph/seed/master"
 )
@@ -60,6 +61,7 @@ func fail(w http.ResponseWriter, err error) {
 	e := &apiError{500, "INTERNAL", "Kesalahan internal.", ""}
 	if !errors.As(err, &e) {
 		slog.Error("request failed", "error", err)
+		telemetry.CaptureError(err)
 		e = &apiError{500, "INTERNAL", "Kesalahan internal.", ""}
 	}
 	detail := map[string]any{"code": e.code, "message": e.message}
