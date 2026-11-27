@@ -9,6 +9,7 @@ import { useResource } from "@/lib/api/resource";
 import { equipmentSpecs } from "@/lib/api/equipment";
 import { connectedRoutes, type PlantTopologyData } from "@/lib/api/topology";
 import { canSee, type RoleId } from "@/lib/roles";
+import { AssetConfigurationPanel } from "./asset-configuration-editor";
 import { ProductionSettings } from "./production-settings";
 import { ProductionLines } from "./production-lines";
 import styles from "./process-management.module.css";
@@ -25,7 +26,7 @@ export function ProcessManagement({ role }: { role: RoleId }) {
       ]} />
       <p className={`small muted ${styles.scope}`}>{view === "limits"
         ? "Perubahan berlaku global untuk perencanaan, bukan untuk satu alat atau tanggal tertentu. Jadwal yang sudah dibuat tidak otomatis berubah."
-        : "Konfigurasi master hanya dapat dibaca. Backend belum menyediakan penyimpanan perubahan kapasitas, kecepatan per alat, dedikasi lini, atau koneksi rute."}</p>
+        : "Parameter alat dapat diatur sesuai jenisnya bila layanan konfigurasi tersedia. Dedikasi lini dan koneksi rute mengikuti master backend."}</p>
     </Card>
     {view === "limits" && <ProductionSettings role={role} showTools={false} origin="Produksi · Manajemen proses" />}
     {view === "equipment" && API_MODE && <ProcessEquipment role={role} />}
@@ -53,7 +54,10 @@ function ProcessEquipment({ role }: { role: RoleId }) {
       ]} /></label>
       {!asset ? <p role="status">Alat yang dipilih sudah tidak ada pada konfigurasi terbaru. Pilih alat lain.</p> : <>
         <div className={styles.identity}><h3>{asset.asset_id} · {asset.asset_name}</h3><Badge tone="neutral">{asset.asset_type}</Badge></div>
-        <dl className={styles.specs}>{specs?.map(spec => <div key={spec.key}><dt>{spec.label}</dt><dd>{spec.value}</dd></div>)}</dl>
+        <AssetConfigurationPanel key={asset.asset_id} id={asset.asset_id} role={role} />
+        <details className={styles.masterSpecs}><summary>Spesifikasi master lengkap</summary>
+          <dl className={styles.specs}>{specs?.map(spec => <div key={spec.key}><dt>{spec.label}</dt><dd>{spec.value}</dd></div>)}</dl>
+        </details>
         <h3 className={styles.routeHeading}>Rute terhubung <span className="small muted">({routes.length})</span></h3>
         {!routes.length ? <p className="muted">Tidak ada rute yang mencantumkan ID alat ini.</p>
         : <div className="table-wrap"><table className="schedule-table"><thead><tr><th>Dari</th><th>Ke</th><th>Melalui</th><th>Batas aliran (L/jam)</th></tr></thead><tbody>{routes.map(route => <tr key={route.connection_id}>

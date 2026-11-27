@@ -6,6 +6,7 @@ import { createResourceStore, type Resource } from "./resource-store.ts";
 import { streamEvents } from "./events.ts";
 
 export const EVENT_INVALIDATIONS: Record<string, string[]> = {
+  "asset.configuration.updated": ["/production/assets", "/master/assets", "/master/topology", "/master/lines", "/audit", "/schedules"],
   "plan.decided": ["/decisions", "/plans", "/site/status", "/site/bottlenecks", "/receiving", "/audit", "/notifications"],
   "plan.solved": ["/plans", "/audit"],
   "instruction.acked": ["/plans", "/audit"],
