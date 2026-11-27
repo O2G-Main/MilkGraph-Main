@@ -10,8 +10,7 @@
 .metrics strong { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .planSummary { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); flex-wrap: wrap; color: var(--color-on-surface-muted); font-size: 12px; }
 .days { display: grid; gap: var(--spacing-sm); }
-.days button { display: grid; grid-template-columns: 32px 64px minmax(0, 1fr) auto; align-items: center; gap: 8px; text-align: left; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--glass-chip); min-width: 0; }
-.days button:hover { background: var(--color-surface); }
+.dayRow { display: grid; grid-template-columns: 32px 64px minmax(0, 1fr) auto; align-items: center; gap: 8px; text-align: left; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--glass-chip); min-width: 0; }
 .days .selected { border-color: var(--color-primary); background: var(--color-accent-soft); color: var(--color-primary); }
 .days span, .days small { font-size: 12px; }
 .days small { color: var(--color-on-surface-muted); overflow-wrap: anywhere; }
@@ -69,9 +68,10 @@
   .calendarPanel { grid-template-columns: minmax(0, 1fr); }
 }
 
-.days .detailLink { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); font-size: 12px; }
+.days .detailLink { display: inline-flex; align-items: center; gap: 6px; color: var(--color-primary); font-size: 12px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--color-primary); background: var(--color-surface); box-shadow: none; white-space: nowrap; }
+.days .detailLink:hover { background: var(--color-accent-soft); }
 @media (max-width: 640px) {
-  .days button { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .dayRow { grid-template-columns: 28px minmax(0, 1fr) auto; }
   .days .rowSummary { grid-column: 2; }
   .days .detailLink { grid-column: 3; grid-row: 1 / span 2; }
 }

@@ -126,9 +126,11 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
       {days.map((day, dayIndex) => {
         const resource = resources[dayIndex];
         const volume = resource.data && !resource.error && !resource.loading ? scheduledVolume(resource.data.items) : null;
-        return <button key={day} className={day === date ? styles.selected : ""} aria-current={day === date ? "date" : undefined}
-          onClick={() => openDay(day)}><span>{dayName(day)}</span><strong>{dayNumber(day)}</strong>
-          <span className={styles.rowSummary}><small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><DayConditionSummary date={day} /></span><span className={styles.detailLink}>Detail<Icon icon={ChevronRight} size={14} /></span></button>;
+        return <div key={day} className={`${styles.dayRow} ${day === date ? styles.selected : ""}`} aria-current={day === date ? "date" : undefined}>
+          <span>{dayName(day)}</span><strong>{dayNumber(day)}</strong>
+          <span className={styles.rowSummary}><small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><DayConditionSummary date={day} /></span>
+          <button type="button" className={`button secondary ${styles.detailLink}`} aria-label={`Detail jadwal ${dayName(day)}, ${dayNumber(day)}`} onClick={() => openDay(day)}>Detail<Icon icon={ChevronRight} size={14} /></button>
+        </div>;
       })}
       </nav>
       </Card>
