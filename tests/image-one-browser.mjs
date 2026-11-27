@@ -99,7 +99,7 @@ try {
   await page.goto(root + '/produksi');
   await page.getByRole('button', { name: 'Alur pabrik', exact: true }).click();
   await page.locator('.react-flow__node').first().waitFor();
-  assert.equal(await page.locator('.react-flow__node').count(), liveTopology.nodes.length);
+  assert.equal(await page.locator('.react-flow__node-plant-asset').count(), liveTopology.nodes.length);
   await page.getByRole('button', { name: 'Lihat alat UB-01', exact: true }).focus();
   await page.keyboard.press('Enter');
   await page.getByRole('heading', { name: 'UB-01 · Unloading Bay', exact: true }).waitFor();
@@ -108,8 +108,8 @@ try {
   assert.equal(await page.locator('tbody tr').count(), liveTopology.edges.length);
   await page.getByLabel('Cari alat atau rute', { exact: true }).fill(liveTopology.edges[0].connection_id);
   assert.ok(await page.locator('tbody tr').count() > 0);
-  await page.getByRole('button', { name: 'Diagram', exact: true }).click();
-  assert.ok(await page.locator('.react-flow__node').count() >= 2);
+  await page.getByRole('button', { name: 'Alur 2D', exact: true }).click();
+  assert.ok(await page.locator('.react-flow__node-plant-asset').count() >= 2);
   await page.getByLabel('Cari alat atau rute', { exact: true }).fill('');
   report.push(`Live Production: line configuration, shared ${liveTopology.nodes.length}-node diagram and ${liveTopology.edges.length} routes`);
   report.push('Keyboard: Enter opens product/asset detail, Escape closes modal, focus returns to trigger');
@@ -117,7 +117,7 @@ try {
   await page.goto(root + '/rencana/alur');
   await page.getByText(`Usulan dari server: ${livePlans.count}`, { exact: true }).waitFor();
   await page.locator('.react-flow__node').first().waitFor();
-  assert.equal(await page.locator('.react-flow__node').count(), liveTopology.nodes.length);
+  assert.equal(await page.locator('.react-flow__node-plant-asset').count(), liveTopology.nodes.length);
   for (const route of ['/rencana/upgrade', '/rencana']) {
     await page.goto(root + route);
     await page.getByText('Belum ada data untuk filter ini.').first().waitFor();

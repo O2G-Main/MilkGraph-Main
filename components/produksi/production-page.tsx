@@ -17,10 +17,10 @@ export function ProductionPage({ initialDate }: { initialDate: string }) {
   const [date, setDate] = useState(initialDate);
   const [view, setView] = useState<View>("daily");
   return <div className="page-enter">
-    <PageHeading title="Produksi" subtitle="Pantau jadwal dan hasil produksi harian serta lihat alur pabrik." />
+    <PageHeading title="Produksi" subtitle="Periksa prediksi pemenuhan berdasarkan data produksi dan tinjau solusi saat target berisiko." />
     <div className="page-tabs production-tabs">
       <Toggle label="Bagian Produksi" value={view} onChange={setView} options={[
-        { value: "daily", label: "Produksi harian" },
+        { value: "daily", label: "Prediksi pemenuhan" },
         { value: "flow", label: "Alur pabrik" },
       ]} />
     </div>
