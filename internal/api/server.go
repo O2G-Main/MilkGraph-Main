@@ -155,6 +155,7 @@ func (s *Server) Handler() http.Handler {
 			writeJSON(w, status, value)
 		})
 	}
+	s.registerAssetConfiguration(register)
 	mux.HandleFunc("GET /api/v1/meta", s.handleMeta)
 	mux.HandleFunc("GET /openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
@@ -191,12 +192,18 @@ func (s *Server) Handler() http.Handler {
 		register("GET /api/v1"+path, "", func(r *http.Request) (any, error) { return value, nil })
 	}
 	register("GET /api/v1/master", "", func(r *http.Request) (any, error) { return s.master.Summary(), nil })
-	register("GET /api/v1/master/assets", "", func(r *http.Request) (any, error) { return s.master.Assets(), nil })
+	register("GET /api/v1/master/assets", "", func(r *http.Request) (any, error) { return s.configuredMasterAssets(r) })
 	register("GET /api/v1/master/connections", "", func(r *http.Request) (any, error) { return s.master.Connections(), nil })
-	register("GET /api/v1/master/topology", "", func(r *http.Request) (any, error) { return s.master.Topology(), nil })
+	register("GET /api/v1/master/topology", "", func(r *http.Request) (any, error) {
+		assets, err := s.configuredMasterAssets(r)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"kind": "route_capability", "nodes": assets, "edges": s.master.Connections()}, nil
+	})
 	register("GET /api/v1/master/products", "", func(r *http.Request) (any, error) { return s.master.Products(), nil })
 	register("GET /api/v1/master/finished-skus", "", func(r *http.Request) (any, error) { return s.master.FinishedSKUs(), nil })
-	register("GET /api/v1/master/lines", "", func(r *http.Request) (any, error) { return s.master.Lines(), nil })
+	register("GET /api/v1/master/lines", "", func(r *http.Request) (any, error) { return s.configuredMasterLines(r) })
 	register("GET /api/v1/master/rules", "", func(r *http.Request) (any, error) { return s.master.Rules(), nil })
 	register("POST /api/v1/master/changeover/classify", "", func(r *http.Request) (any, error) {
 		var b struct {

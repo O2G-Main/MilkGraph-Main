@@ -266,6 +266,38 @@ paths:
                   count: { type: integer }
                   items: { type: array, items: { $ref: '#/components/schemas/AssetStatusRow' } }
 
+  /api/v1/production/assets/{id}/configuration:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Production & Batch]
+      summary: Parameter numerik dinamis per alat berdasarkan subtipe, nilai nullable, batas validasi, dan versi
+      responses:
+        '200': { description: 'asset_id, asset_name, asset_type, version, updated_at, fields[{key,label,unit,min,max,step,nullable}], values{key:number|null}' }
+        '404': { description: Alat tidak ditemukan }
+    patch:
+      tags: [Production & Batch]
+      summary: Simpan parameter per alat; memerlukan constraint.edit dan versi terkini
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, changes]
+              additionalProperties: false
+              properties:
+                version: { type: integer, minimum: 1 }
+                changes:
+                  type: object
+                  minProperties: 1
+                  additionalProperties: { type: number, nullable: true }
+      responses:
+        '200': { description: Konfigurasi baru; transaksi mencatat audit dan event asset.configuration.updated }
+        '403': { description: Izin constraint.edit diperlukan }
+        '404': { description: Alat tidak ditemukan }
+        '409': { description: Versi sudah berubah; muat ulang sebelum menyimpan }
+        '422': { description: Parameter tidak berlaku atau nilai tidak valid }
   /api/v1/production/assets/{id}/status:
     post:
       tags: [Production & Batch]

@@ -149,7 +149,7 @@ func normalisasiIDAset(id string) string {
 //     limits (holdingMin, 630 menit) tetap bawaan untuk sisanya
 //     (Keputusan 9 pemetaan Greenfields).
 func (s *Server) paramsJadwal(ctx context.Context) (ParamsJadwal, map[string]InfoSKU, error) {
-	katalog, e := s.katalogMaster()
+	katalog, e := s.configuredCatalog(ctx)
 	if e != nil {
 		return ParamsJadwal{}, nil, e
 	}
