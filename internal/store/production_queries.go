@@ -18,11 +18,11 @@ var ErrNotFound = errors.New("not found")
 
 // ProductCatalogResult separates liquid products, finished SKUs, pack sizes, and market variants.
 type ProductCatalogResult struct {
-	Products            []ProductRow           `json:"products"`
-	PackSizeCodes       []PackSizeCodeRow      `json:"pack_size_codes"`
-	ProductPackSizes    []ProductPackSizeRow   `json:"product_pack_sizes"`
-	ProductMarketVars   []ProductMarketVarRow  `json:"product_market_variants"`
-	FinishedSKUs        []FinishedSKURow       `json:"finished_skus"`
+	Products          []ProductRow          `json:"products"`
+	PackSizeCodes     []PackSizeCodeRow     `json:"pack_size_codes"`
+	ProductPackSizes  []ProductPackSizeRow  `json:"product_pack_sizes"`
+	ProductMarketVars []ProductMarketVarRow `json:"product_market_variants"`
+	FinishedSKUs      []FinishedSKURow      `json:"finished_skus"`
 }
 
 type ProductRow struct {
@@ -764,6 +764,22 @@ func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string
 			return err
 		}
 
+		var futureSupplyL float64
+		if err := tx.QueryRow(ctx,
+			`SELECT COALESCE(SUM(planned_volume_l), 0) FROM milkgraph.future_supply WHERE eta_delivery_note::date = $1::date`,
+			date,
+		).Scan(&futureSupplyL); err != nil {
+			return err
+		}
+
+		var rtSupplyL float64
+		if err := tx.QueryRow(ctx,
+			`SELECT COALESCE(SUM(volume_l), 0) FROM milkgraph.rt_arrivals WHERE target_arrival::date = $1::date AND status <> 'Dibatalkan'`,
+			date,
+		).Scan(&rtSupplyL); err != nil {
+			return err
+		}
+
 		rows, err := tx.Query(ctx,
 			`SELECT b.batch_id, COALESCE(SUM(bl.target_volume_l), 0) AS demand_l,
 				MIN(bl.filling_line_id) AS primary_line_id
@@ -793,7 +809,7 @@ func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string
 		}
 		rows.Close()
 
-		totalAvailable := availableStockL + plannedSupplyL
+		totalAvailable := availableStockL + plannedSupplyL + futureSupplyL + rtSupplyL
 		for _, bd := range batches {
 			status := "terpenuhi"
 			var shortage *float64
@@ -804,6 +820,8 @@ func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string
 				"opening_inventory_rows": oiCount,
 				"opening_stock_l":        availableStockL,
 				"planned_supply_l":       plannedSupplyL,
+				"future_supply_l":        futureSupplyL,
+				"rt_supply_l":            rtSupplyL,
 				"batch_demand_l":         bd.demand,
 			}
 
@@ -837,11 +855,13 @@ func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string
 
 			if status == "tidak_terpenuhi" || status == "berisiko" {
 				recFacts, _ := json.Marshal(map[string]any{
-					"shortage_l":        shortage,
-					"bottleneck_asset":  bottleneck,
-					"opening_stock_l":   availableStockL,
-					"planned_supply_l":  plannedSupplyL,
-					"batch_demand_l":    bd.demand,
+					"shortage_l":       shortage,
+					"bottleneck_asset": bottleneck,
+					"opening_stock_l":  availableStockL,
+					"planned_supply_l": plannedSupplyL,
+					"future_supply_l":  futureSupplyL,
+					"rt_supply_l":      rtSupplyL,
+					"batch_demand_l":   bd.demand,
 				})
 				if _, err := tx.Exec(ctx,
 					`INSERT INTO milkgraph.recommendations
