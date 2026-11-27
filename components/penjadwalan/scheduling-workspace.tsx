@@ -13,6 +13,7 @@ import { dateInWib, completedOnProductionDate } from "@/lib/production-date";
 import type { BeTraceHistory } from "@/lib/api/trace-historis";
 import { moveDate, scheduledVolume, uniqueSchedule, weeklyTargets } from "@/lib/scheduling";
 import { useWeekSchedule } from "./use-week-schedule";
+import { DayConditionSummary } from "./day-condition-summary";
 import { ProductionCalendar } from "./production-calendar";
 import { SchedulingBoard } from "./scheduling-board";
 import styles from "./scheduling.module.css";
@@ -102,13 +103,13 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
         <button className="text-link" onClick={backToCalendar}><Icon icon={ArrowLeft} size={16} />Kembali ke kalender</button>
         <h2 tabIndex={-1} ref={detailHeading}>Produksi {new Date(`${date}T00:00:00Z`).toLocaleDateString("id-ID", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h2>
       </div>
+      <Card><h3>Kondisi produksi harian</h3><DayConditionSummary date={date} detailed fetchOnMount /></Card>
       <SchedulingBoard key={date} role={role} rows={selected.data?.items ?? []} date={date} error={selected.error}
         loading={selected.loading || !selected.data} onRetry={() => void selected.reload()} />
     </> : <Card className={styles.calendarPanel}>
       <div ref={calendarReturn}>
         <ProductionCalendar date={date} month={calendarMonth} today={dateInWib()} onMonthChange={choose} onSelect={choose}
-          onPreview={day => { setDate(day); setSaved(false); }}
-          scheduledDates={days.filter((_, dayIndex) => { const resource = resources[dayIndex]; return !resource.loading && !resource.error && !!resource.data?.items.length; })} />
+          onPreview={day => { setDate(day); setSaved(false); }} />
       </div>
       <div className={styles.weekOverview}>
       <h2>Pratinjau jadwal mingguan</h2>
@@ -119,9 +120,13 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
         const volume = resource.data && !resource.error && !resource.loading ? scheduledVolume(resource.data.items) : null;
         return <button key={day} className={day === date ? styles.selected : ""} aria-current={day === date ? "date" : undefined}
           onClick={() => openDay(day)}><span>{dayName(day)}</span><strong>{dayNumber(day)}</strong>
-          <small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><span className={styles.detailLink}>Detail<Icon icon={ChevronRight} size={14} /></span></button>;
+          <span className={styles.rowSummary}><small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><DayConditionSummary date={day} /></span><span className={styles.detailLink}>Detail<Icon icon={ChevronRight} size={14} /></span></button>;
       })}
       </nav>
+      <section className={styles.selectedCondition} aria-label="Kondisi tanggal terpilih" aria-live="polite">
+        <h3>{dayName(date)}, {dayNumber(date)}</h3>
+        <DayConditionSummary date={date} detailed />
+      </section>
       </div>
     </Card>}
     <p className={styles.footnote}>Jam produksi dan kapasitas tersisa belum tersedia untuk jadwal batch ini. Sisa realisasi dan pemindahan target ke hari berikutnya mengikuti perhitungan serta dukungan penyimpanan dari layanan penjadwalan.</p>

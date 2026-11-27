@@ -9,16 +9,17 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "@/components/ui";
 import { moveDate, productionWeek } from "@/lib/scheduling";
+import { CalendarDate } from "./calendar-date";
+import { ConditionIndicator } from "./condition-indicator";
+import { conditionLabels, type DayConditionKind } from "@/lib/production-condition";
 import styles from "./scheduling.module.css";
 
 const asDate = (value: string) => new Date(`${value}T00:00:00Z`);
 const iso = (value: Date) => value.toISOString().slice(0, 10);
-const label = (value: string) => asDate(value).toLocaleDateString("id-ID", {
-  timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric",
-});
 
-export function ProductionCalendar({ date, month, today, scheduledDates, onMonthChange, onSelect, onPreview }: {
-  date: string; month: string; today: string; scheduledDates: string[];
+
+export function ProductionCalendar({ date, month, today, onMonthChange, onSelect, onPreview }: {
+  date: string; month: string; today: string;
   onMonthChange: (date: string) => void; onSelect: (date: string) => void; onPreview: (date: string) => void;
 }) {
   const grid = useRef<HTMLDivElement>(null);
@@ -75,8 +76,8 @@ export function ProductionCalendar({ date, month, today, scheduledDates, onMonth
       <div role="grid" aria-label={monthLabel} ref={grid} onKeyDown={navigate}>
         {Array.from({ length: 6 }, (_, week) => <div key={week} role="row" className={styles.calendarWeek}>
           {cells.slice(week * 7, week * 7 + 7).map(day => <div role="gridcell" key={day} aria-selected={day === date}>
-            <button data-date={day} type="button" tabIndex={day === date ? 0 : -1}
-              aria-label={label(day)} aria-current={day === today ? "date" : undefined}
+            <CalendarDate date={day} type="button" tabIndex={day === date ? 0 : -1}
+              aria-current={day === today ? "date" : undefined}
               className={`${styles.calendarDay} ${day.slice(0, 7) !== month ? styles.outside : ""} ${selectedWeek.includes(day) ? styles.activeWeek : ""} ${day === date ? styles.activeDay : ""}`}
               onPointerEnter={event => {
                 if (event.pointerType !== "mouse") return;
@@ -85,14 +86,14 @@ export function ProductionCalendar({ date, month, today, scheduledDates, onMonth
               }}
               onPointerLeave={clearPreview}
               onFocus={() => { clearPreview(); onPreview(day); }}
-              onClick={() => { clearPreview(); onSelect(day); }}>
-              <span>{asDate(day).getUTCDate()}</span>
-              {scheduledDates.includes(day) && <span className={styles.eventDot} aria-label="Ada jadwal produksi" />}
-            </button>
+              onClick={() => { clearPreview(); onSelect(day); }} />
           </div>)}
         </div>)}
       </div>
     </motion.div>
+    <ul className={styles.conditionLegend} aria-label="Arti penanda tanggal">
+      {(["complete", "scheduled", "risk", "action", "empty", "unknown", "error"] as DayConditionKind[]).map(kind => <li key={kind} className={styles.legendItem} data-condition={kind}><ConditionIndicator kind={kind} />{conditionLabels[kind]}</li>)}
+    </ul>
     <p className="small muted">Arahkan kursor atau pilih tanggal untuk melihat ringkasan minggu. Buka detail harian melalui daftar jadwal.</p>
   </div>;
 }

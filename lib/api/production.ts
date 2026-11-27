@@ -21,6 +21,7 @@ export interface ProductionBatchRow extends ProductionLine {
   product_name: string | null;
   fulfill_status: string | null;
   risk_reason: string | null;
+  shortage_l?: number | null;
 }
 
 export type ProductionDaily = { production_date: string; count: number; batches: ProductionBatchRow[] };

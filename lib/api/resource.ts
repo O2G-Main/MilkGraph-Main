@@ -63,19 +63,20 @@ export function startEventStream() {
   void connect();
 }
 
-export function useResource<T>(path: string | null): { data: T | null; error: Error | null; loading: boolean; reload: () => Promise<void> } {
+export function useResource<T>(path: string | null, options: { fetchOnMount?: boolean } = {}): { data: T | null; error: Error | null; loading: boolean; reload: () => Promise<void> } {
   const snapshot = useSyncExternalStore(
     store.subscribe,
     () => (path ? (store.snapshot(path) as Resource<T>) : (idle as Resource<T>)),
     () => (path ? (store.snapshot(path) as Resource<T>) : (idle as Resource<T>))
   );
 
+  const fetchOnMount = options.fetchOnMount ?? true;
   useEffect(() => {
-    if (path && API_MODE) {
+    if (path && API_MODE && fetchOnMount) {
       startEventStream();
       void store.load(path);
     }
-  }, [path]);
+  }, [path, fetchOnMount]);
 
   return {
     data: snapshot.data ?? null,
