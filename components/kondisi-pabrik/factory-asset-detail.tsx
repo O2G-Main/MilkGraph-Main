@@ -18,7 +18,7 @@ export function FactoryAssetDetail({ id, asset, nodeName, date, assignments, sch
   const batches = [...new Set(assignments.map(row => row.batch_id))].map(batch => assignments.filter(row => row.batch_id === batch));
   const events = (Array.isArray(downtime.data) ? downtime.data : []).filter(row => row.resource_id === id)
     .sort((a, b) => (Date.parse(b.start) || 0) - (Date.parse(a.start) || 0));
-  return <Modal title={`${id}${asset?.asset_name || nodeName ? ` · ${asset?.asset_name || nodeName}` : ""}`} onClose={onClose} className={styles.detail}>
+  return <Modal title={`${id}${asset?.asset_name || nodeName ? ` · ${asset?.asset_name || nodeName}` : ""}`} onClose={onClose}>
     <div className={styles.detailBody}>
       {asset ? <>
         <Badge tone={assetStatusTone(asset.current_status)}>{asset.current_status?.trim() || "Belum tercatat"}</Badge>

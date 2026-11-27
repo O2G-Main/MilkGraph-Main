@@ -14,7 +14,6 @@
 .list p { margin-top: 4px; }
 .attention { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .legend, .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.detail { width: min(720px, calc(100vw - 32px)); }
 .detailBody { display: grid; gap: 20px; }
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .facts > div:last-child { grid-column: 1 / -1; }

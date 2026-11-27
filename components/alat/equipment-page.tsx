@@ -104,7 +104,7 @@ function EquipmentDetail({ asset, onClose }: { asset: ProductionAsset; onClose: 
     <p>Status terakhir: <strong>{asset.current_status || "Belum tercatat"}</strong></p>
     {asset.current_status_reason && <p className="muted">{asset.current_status_reason}</p>}
     {asset.current_status_observed_at && <p className="small muted">Dicatat {fmtWaktu(asset.current_status_observed_at)}</p>}
-    <SectionTitle title="Spesifikasi alat" subtitle="Data master sesuai ID alat. N/A dan X ditampilkan sebagaimana tercatat, bukan dianggap nol." />
+    <SectionTitle title="Spesifikasi alat" subtitle="Data master sesuai ID alat. Parameter tanpa data ditandai belum tersedia dan tidak dianggap nol." />
     {master.error && <p className="crit-text" role="alert">Gagal memuat spesifikasi: {master.error.message}</p>}
     {!master.data && !master.error && <p className="muted" role="status">Memuat spesifikasi…</p>}
     {master.data && (specs ? <div className="table-wrap"><table className="schedule-table"><tbody>{specs.map(spec => <tr key={spec.key}><th scope="row">{spec.label}</th><td>{spec.value}</td></tr>)}</tbody></table></div> : <p className="muted">Spesifikasi untuk ID {asset.asset_id} belum tersedia di master.</p>)}

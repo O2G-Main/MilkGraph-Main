@@ -139,8 +139,8 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
 
     {panel === "batch" && canCreate && <ProductionBatchForm date={date} role={role} onClose={() => setPanel(null)}
       onSaved={() => { setPanel(null); setSaved(true); setDetailOpen(true); requestAnimationFrame(() => detailHeading.current?.focus()); }} />}
-    {panel === "tools" && <Modal title="PO & versi jadwal" className={styles.toolsDialog} onClose={() => setPanel(null)}>{tools}</Modal>}
-    {panel === "targets" && <Modal title="Target & alokasi mingguan" className={styles.targetsDialog} onClose={() => setPanel(null)}>
+    {panel === "tools" && <Modal title="PO & versi jadwal" className="schedule-tools-dialog" onClose={() => setPanel(null)}>{tools}</Modal>}
+    {panel === "targets" && <Modal title="Target & alokasi mingguan" onClose={() => setPanel(null)}>
       {weekly.error ? <p className="crit-text" role="alert">Gagal memuat usulan: {weekly.error.message}</p>
       : !targetsReady ? <p role="status">Memuat usulan…</p>
       : !plans.length ? <p className="muted">Belum ada usulan pada minggu ini.</p>

@@ -10,6 +10,8 @@ import type { Block, Tone } from "@/mock/types";
 import { time } from "@/lib/format";
 import Link from "next/link";
 import { useDemo } from "@/lib/demo";
+import { displayText } from "@/lib/display-text";
+import { readableModalContent, ModalDisplayContext } from "./modal-content";
 import { findNav } from "@/lib/nav";
 import { canSee } from "@/lib/roles";
 
@@ -43,8 +45,8 @@ export function Modal({ title, onClose, children, className = "" }: { title: str
     document.body.style.overflow = "hidden";
     return () => { element?.close(); document.body.style.overflow = overflow; active?.focus(); };
   }, []);
-  return <dialog ref={dialog} className={`modal ${className}`} aria-label={title} onCancel={event => { event.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-    <div className="modal-body"><div className="section-heading"><h2>{title}</h2><button className="icon-button" aria-label="Tutup dialog" onClick={onClose}><Icon icon={X} /></button></div>{children}</div>
+  return <dialog ref={dialog} className={`modal ${className}`} aria-label={displayText(title)} onCancel={event => { event.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-body"><div className="section-heading"><h2>{displayText(title)}</h2><button className="icon-button" aria-label="Tutup dialog" onClick={onClose}><Icon icon={X} /></button></div><ModalDisplayContext.Provider value={true}>{readableModalContent(children)}</ModalDisplayContext.Provider></div>
   </dialog>;
 }
 export function SourceButton({ id, onSelect, onHighlight, compact = false }: { id: string; onSelect: (id: string) => void; onHighlight?: (id: string | null) => void; compact?: boolean }) {
