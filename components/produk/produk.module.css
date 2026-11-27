@@ -1,3 +1,16 @@
+.page :global(.page-heading p),
+.page :global(.section-heading p) {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.page :global(.badge) { font-size: 12px; }
+.page :global(.button) { font-size: 14px; }
+.page :global(.rules-table) { font-size: 14px; line-height: 1.5; }
+.page :global(.rules-table th) { font-size: 12px; font-weight: 500; }
+.page :global(.rules-table td) { font-size: 14px; }
+.page :global(.rules-table td::before) { font-size: 12px; }
+.page :global(.rules-table td.mono) { font-size: 13px; }
+.summary { font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -10,6 +23,7 @@
   gap: 8px;
   flex: 1 1 220px;
 }
+.field :global(.small) { font-size: 13px; }
 .detail {
   display: grid;
   gap: 20px;
@@ -20,6 +34,7 @@
   gap: 16px;
   margin: 0;
 }
-.facts dt { margin-bottom: 4px; }
-.facts dd { margin: 0; overflow-wrap: anywhere; }
+.facts dt { margin-bottom: 4px; font-size: 13px; }
+.facts dd { margin: 0; overflow-wrap: anywhere; font-size: 14px; }
+.facts dd:global(.mono) { font-size: 13px; }
 .sku { overflow-wrap: anywhere; }
