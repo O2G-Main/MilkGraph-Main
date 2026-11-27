@@ -4,4 +4,6 @@
 !.env.example
 *.log
 graphify-out
-docs
+docs/*
+!docs/embed.go
+!docs/openapi.yaml
