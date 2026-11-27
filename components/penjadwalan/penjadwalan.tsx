@@ -18,7 +18,7 @@ const RATES = Object.fromEntries(fillers.map(f => [f.id, f.target]));
 const SKUS = demandPlan.map(d => d.sku);
 const EMPTY: Omit<ScheduleItem, "id"> = { line: "F1", sku: SKUS[0], packs: 0, start: SHIFT.start, end: SHIFT.end };
 
-export function Penjadwalan() {
+export function Penjadwalan({ initialDate }: { initialDate: string }) {
   const demo = useDemo();
   const allowed = can(demo.role, "schedule.edit");
   const [editing, setEditing] = useState<(Omit<ScheduleItem, "id"> & { id?: string }) | null>(null);
@@ -29,7 +29,7 @@ export function Penjadwalan() {
   const mine = assigned;
   const [running, setRunning] = useState<{ item: ScheduleItem; action: "mulai" | "selesai" } | null>(null);
   // Mode API: PO dan jadwal dari Backend (model liter), bukan order lokal per lini per shift.
-  if (API_MODE) return <PenjadwalanApi role={demo.role} />;
+  if (API_MODE) return <PenjadwalanApi role={demo.role} initialDate={initialDate} />;
   const items = [...demo.schedule].filter(i => !mine || assigned.includes(i.line)).sort((a, b) => a.line.localeCompare(b.line, "id", { numeric: true }) || toMinutes(a.start) - toMinutes(b.start));
   const runs = demo.operation.runs;
   const done = items.filter(i => runState(runs[i.id]) === "selesai");

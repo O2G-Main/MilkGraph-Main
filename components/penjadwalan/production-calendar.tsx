@@ -1,0 +1,86 @@
+"use client";
+
+// Adapted from Wensity Calendar on 21st.dev (MIT).
+// Source: https://github.com/ksparth12/wensity-shadcn-registry/blob/37e75764e2326eeda9533a73bb7434edb7374e82/calendar.json
+// Original license: docs/licenses/wensity-calendar-LICENSE.txt.
+// Single-date selection, MilkGraph tokens, WIB dates, and production-week indicators.
+import { useRef, type KeyboardEvent } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { Icon } from "@/components/ui";
+import { moveDate, productionWeek } from "@/lib/scheduling";
+import styles from "./scheduling.module.css";
+
+const asDate = (value: string) => new Date(`${value}T00:00:00Z`);
+const iso = (value: Date) => value.toISOString().slice(0, 10);
+const label = (value: string) => asDate(value).toLocaleDateString("id-ID", {
+  timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric",
+});
+
+export function ProductionCalendar({ date, today, scheduledDates, onMonthChange, onSelect }: {
+  date: string; today: string; scheduledDates: string[];
+  onMonthChange: (date: string) => void; onSelect: (date: string) => void;
+}) {
+  const grid = useRef<HTMLDivElement>(null);
+  const reducedMotion = useReducedMotion();
+  const month = date.slice(0, 7);
+  const first = `${month}-01`;
+  // Wensity's fixed six-week grid keeps month transitions stable.
+  const start = productionWeek(first)[0];
+  const cells = Array.from({ length: 42 }, (_, index) => moveDate(start, index));
+  const selectedWeek = productionWeek(date);
+  const monthLabel = asDate(first).toLocaleDateString("id-ID", { timeZone: "UTC", month: "long", year: "numeric" });
+  function nextMonth(delta: number) {
+    const target = asDate(first);
+    target.setUTCMonth(target.getUTCMonth() + delta);
+    onMonthChange(iso(target));
+  }
+  function focusDay(target: string) {
+    if (target.slice(0, 7) !== month) onMonthChange(target);
+    requestAnimationFrame(() => grid.current?.querySelector<HTMLButtonElement>(`[data-date="${target}"]`)?.focus());
+  }
+  function navigate(event: KeyboardEvent<HTMLDivElement>) {
+    const current = (event.target as HTMLElement).dataset.date;
+    if (!current) return;
+    const deltas: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+    let target: string;
+    if (event.key in deltas) target = moveDate(current, deltas[event.key]);
+    else if (event.key === "Home" || event.key === "End") target = productionWeek(current)[event.key === "Home" ? 0 : 6];
+    else if (event.key === "PageUp" || event.key === "PageDown") {
+      const next = asDate(current), day = next.getUTCDate();
+      next.setUTCDate(1);
+      next.setUTCMonth(next.getUTCMonth() + (event.key === "PageUp" ? -1 : 1));
+      const last = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+      next.setUTCDate(Math.min(day, last));
+      target = iso(next);
+    } else return;
+    event.preventDefault();
+    focusDay(target);
+  }
+  return <div className={styles.calendar}>
+    <header className={styles.calendarHeader}>
+      <h2 aria-live="polite">{monthLabel}</h2>
+      <div className={styles.actions}>
+        <button className="icon-button" aria-label="Bulan sebelumnya" onClick={() => nextMonth(-1)}><Icon icon={ChevronLeft} /></button>
+        <button className="icon-button" aria-label="Bulan berikutnya" onClick={() => nextMonth(1)}><Icon icon={ChevronRight} /></button>
+      </div>
+    </header>
+    <div className={styles.weekdays} aria-hidden="true">{["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(day => <span key={day}>{day}</span>)}</div>
+    <motion.div key={month} initial={{ opacity: reducedMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+      <div role="grid" aria-label={monthLabel} ref={grid} onKeyDown={navigate}>
+        {Array.from({ length: 6 }, (_, week) => <div key={week} role="row" className={styles.calendarWeek}>
+          {cells.slice(week * 7, week * 7 + 7).map(day => <div role="gridcell" key={day} aria-selected={day === date}>
+            <button data-date={day} type="button" tabIndex={day === date ? 0 : -1}
+              aria-label={label(day)} aria-current={day === today ? "date" : undefined}
+              className={`${styles.calendarDay} ${day.slice(0, 7) !== month ? styles.outside : ""} ${selectedWeek.includes(day) ? styles.activeWeek : ""} ${day === date ? styles.activeDay : ""}`}
+              onClick={() => onSelect(day)}>
+              <span>{asDate(day).getUTCDate()}</span>
+              {scheduledDates.includes(day) && <span className={styles.eventDot} aria-label="Ada jadwal produksi" />}
+            </button>
+          </div>)}
+        </div>)}
+      </div>
+    </motion.div>
+    <p className="small muted">Pilih tanggal untuk membuka detail. Indikator jadwal ditampilkan untuk minggu terpilih.</p>
+  </div>;
+}

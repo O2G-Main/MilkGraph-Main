@@ -1,5 +1,7 @@
 "use client";
 
+import type { ProductionSession } from "@/lib/api/production";
+import { SchedulingWorkspace } from "./scheduling-workspace";
 import { useState, type FormEvent } from "react";
 import { CalendarPlus, Play, RefreshCw, Sparkles, TriangleAlert } from "lucide-react";
 import { apiSend, type ApiError } from "@/lib/api/client";
@@ -15,10 +17,6 @@ import { Select } from "@/components/ui/fields";
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
 const POS = "/pos";
 const LATEST = "/schedules/latest";
-/** Generate dan triggers digerbang permission plan.decide di server: planner dan superadmin. */
-const canPlan = (role: string) => role === "planner" || role === "superadmin";
-/** Import CSV PO digerbang plan.decide ATAU import.csv di server: planner, supervisor, manager, superadmin. Supervisor dan Manager lolos lewat import.csv saja, tanpa memegang plan.decide. */
-const canImportPo = (role: string) => ["planner", "supervisor", "manager", "superadmin"].includes(role);
 const statusOf = (e: Error | null) => (e as ApiError | null)?.status;
 
 interface SkuRow { finished_sku_id: string; sku_name: string }
@@ -27,7 +25,13 @@ interface SkuRow { finished_sku_id: string; sku_name: string }
  * Penjadwalan mode API: PO, jadwal, fulfilment, dan warnings semuanya dari Backend.
  * Modelnya PO dalam liter dengan due_datetime, bukan order per lini per shift dalam pak.
  */
-export function PenjadwalanApi({ role }: { role: string }) {
+export function PenjadwalanApi({ role, initialDate }: { role: string; initialDate: string }) {
+  return <SchedulingWorkspace role={role} initialDate={initialDate} tools={<ScheduleTools role={role} />} />;
+}
+
+function ScheduleTools({ role }: { role: string }) {
+  const session = useResource<ProductionSession>("/session");
+  const permissions = session.data?.role === role ? session.data.permissions : [];
   const posRes = useResource<BePo[]>(POS);
   const schRes = useResource<BeSchedule>(LATEST);
   const skuRes = useResource<SkuRow[]>("/master/finished-skus");
@@ -36,7 +40,7 @@ export function PenjadwalanApi({ role }: { role: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [narasi, setNarasi] = useState<BeScheduleNarrate | null>(null);
-  const write = canPlan(role);
+  const write = permissions.includes("plan.decide");
 
   const pos = posRes.data ?? [];
   const noSchedule = statusOf(schRes.error) === 404;
@@ -73,7 +77,7 @@ export function PenjadwalanApi({ role }: { role: string }) {
 
   return (
     <div className="page-enter penjadwalan-page">
-      <PageHeading title="Penjadwalan" subtitle="Target produksi berupa PO dalam liter. Jadwal, status pencapaian, dan peringatan dihitung Backend, bukan di halaman ini.">
+      <PageHeading title="PO & versi jadwal" subtitle="Daftar PO dan generator global dari semua PO aktif. Versinya terpisah dari urutan batch harian.">
         {write && <button className="button primary" onClick={() => setAdding(true)}><Icon icon={CalendarPlus} size={16} />Tambah PO</button>}
       </PageHeading>
       {error && <p className="crit-text" role="alert">{error}</p>}
@@ -108,7 +112,7 @@ export function PenjadwalanApi({ role }: { role: string }) {
         templateName="template-po.csv"
         importPath="/pos/import"
         role={role}
-        canImport={canImportPo(role)}
+        canImport={permissions.includes("plan.decide") || permissions.includes("import.csv")}
         gateNote="Import PO untuk Planner, Manager, dan Supervisor lewat permission plan.decide atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca daftar PO di atas."
         invalidate={[POS, LATEST, "/schedules", "/dashboard/executive"]}
         rowKey={r => r.po_id}

@@ -1917,3 +1917,10 @@ html:has(.login-page) { background: var(--color-canvas); }
 .tour-offer-copy span { font-size: 12.5px; line-height: 1.5; color: var(--color-on-surface-muted); }
 .tour-offer-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 @media (max-width: 640px) { .tour-offer { left: 12px; right: 12px; bottom: 12px; width: auto; } }
+
+/* Scheduling batch details reuse the existing dialog with a wider reading area. */
+.schedule-detail { width: min(640px, calc(100vw - 32px)); }
+.scheduling-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md); margin-block: var(--spacing-md); }
+.scheduling-facts dt { font-size: 12px; color: var(--color-on-surface-muted); }
+.scheduling-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.scheduling-note { margin-block: var(--spacing-md); }

@@ -18,6 +18,8 @@ export function ProductionBatchForm({ date, role, onClose, onSaved }: {
   const tanks = available.filter(asset => asset.asset_type === "Aseptic Tank");
   const sterilizers = available.filter(asset => asset.asset_type === "Sterilizer");
   const nextLine = useRef(1);
+  const lock = useRef(false);
+  const edited = useRef(false);
   const [lineKeys, setLineKeys] = useState([0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,12 +27,14 @@ export function ProductionBatchForm({ date, role, onClose, onSaved }: {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (lock.current) return;
     const form = new FormData(event.currentTarget);
     const value = (name: string) => String(form.get(name) ?? "").trim();
     const lines = lineKeys.map(key => {
+      const order = value(`order-${key}`);
       const tank = value(`tank-${key}`), sterilizer = value(`sterilizer-${key}`), packCount = value(`packs-${key}`);
       return {
+        ...(order && { production_order_id: order }),
         finished_sku_id: value(`sku-${key}`),
         filling_line_id: value(`filling-${key}`),
         target_volume_l: Number(value(`volume-${key}`)),
@@ -39,25 +43,31 @@ export function ProductionBatchForm({ date, role, onClose, onSaved }: {
         ...(packCount && { target_packs: Number(packCount) }),
       };
     });
+    lock.current = true;
     setSaving(true);
     setError(null);
     try {
       await apiSend("POST", "/production/batches", { production_date: date, lines }, role);
-      invalidateResources(["/production/daily", "/production/schedule"]);
+      invalidateResources(["/production/daily", "/production/schedule", "/production/plans"]);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Batch gagal dibuat.");
     } finally {
+      lock.current = false;
       setSaving(false);
     }
   }
 
-  return <Modal title="Buat batch produksi" onClose={onClose}>
+  const close = () => {
+    if (!lock.current && (!edited.current || window.confirm("Tutup dan batalkan perubahan batch?"))) onClose();
+  };
+
+  return <Modal title="Buat batch produksi" onClose={close}>
     <p className="small muted">Tanggal produksi {date} (WIB). Kode batch dibuat oleh backend.</p>
     {loadError ? <p className="crit-text" role="alert">Gagal memuat katalog: {loadError.message}</p>
     : !catalog.data || !assets.data ? <p className="muted" role="status">Memuat SKU dan lini…</p>
     : !skuOptions.length || !filling.length ? <p className="muted">Katalog SKU atau lini filling belum tersedia.</p>
-    : <form className="schedule-form production-entry-form" onSubmit={submit}>
+    : <form className="schedule-form production-entry-form" onSubmit={submit} onChange={() => { edited.current = true; }}>
       {lineKeys.map((key, index) => <fieldset key={key} className="production-batch-line" disabled={saving}>
         <legend>Baris {index + 1}</legend>
         <div className="production-settings-grid">
@@ -78,6 +88,7 @@ export function ProductionBatchForm({ date, role, onClose, onSaved }: {
             {sterilizers.map(asset => <option key={asset.asset_id}>{asset.asset_id}</option>)}
           </select></label>
           <label><span className="field-label">Target volume (L)</span><input name={`volume-${key}`} type="number" inputMode="decimal" min={0.01} step="any" required /></label>
+          <label><span className="field-label">PO terkait (opsional)</span><input name={`order-${key}`} /></label>
           <label><span className="field-label">Target pak (opsional)</span><input name={`packs-${key}`} type="number" inputMode="numeric" min={1} /></label>
         </div>
         {lineKeys.length > 1 && <button type="button" className="text-link" onClick={() => setLineKeys(keys => keys.filter(id => id !== key))}>
@@ -85,12 +96,13 @@ export function ProductionBatchForm({ date, role, onClose, onSaved }: {
         </button>}
       </fieldset>)}
       <button type="button" className="text-link" disabled={saving} onClick={() => {
+        edited.current = true;
         const key = nextLine.current++;
         setLineKeys(keys => [...keys, key]);
       }}><Icon icon={Plus} size={14} />Tambah baris</button>
       {error && <p className="crit-text" role="alert">Gagal membuat batch: {error}</p>}
       <div className="dialog-actions">
-        <button type="button" className="button secondary" onClick={onClose} disabled={saving}>Batal</button>
+        <button type="button" className="button secondary" onClick={close} disabled={saving}>Batal</button>
         <button type="submit" className="button primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan batch"}</button>
       </div>
     </form>}
