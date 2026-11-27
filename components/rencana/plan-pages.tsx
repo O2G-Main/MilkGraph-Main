@@ -45,8 +45,8 @@ function DemoRencanaAlur() {
 }
 
 /** Langkah 2: Rekomendasi upgrade (poin 10). Upgrade diterapkan di sini, efeknya langsung terlihat tanpa pindah halaman. */
-export function RencanaUpgrade() {
-  return API_MODE ? <ApiPlanning page="recommendations" /> : <DemoRencanaUpgrade />;
+export function RencanaUpgrade({ initial }: { initial?: { date: string; batch: string; prediction?: number } } = {}) {
+  return API_MODE ? <ApiPlanning page="recommendations" initial={initial} /> : <DemoRencanaUpgrade />;
 }
 
 function DemoRencanaUpgrade() {
