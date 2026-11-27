@@ -1,6 +1,6 @@
 # Operasional — Status Pemenuhan
 
-`/operasional/prediksi` adds an Operational submenu for date-scoped, backend-based fulfillment status. Default date is today in WIB; optional `date` deep links are strictly validated. Production remains under Master and shares the same prediction component without duplicating the data model.
+The Prediksi pemenuhan tab at `/produksi?tab=prediksi` under Operational provides date-scoped, backend-based fulfillment status. `/operasional/prediksi` redirects to this tab. Default date is today in WIB; optional `date` deep links are strictly validated. Production now groups factory conditions, process management and fulfillment prediction under Operational; Master contains equipment and products. The tabs share the selected date and retain batch context without duplicating the data model.
 
 Each assessed batch displays its latest backend status, target, predicted shortage, reference asset, assessment time, and collapsible input comparison. Missing assessments appear separately as Belum dihitung after valid daily and prediction responses. Loading or failures do not become an empty/zero assessment. Status uses both text and colored icons. On mobile, cards stack.
 

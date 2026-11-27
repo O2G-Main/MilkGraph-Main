@@ -23,7 +23,7 @@ await page.route('**/api/v1/**',async route=>{
 });
 try{
  await page.goto(base+'/operasional/prediksi?date=2026-11-01');
- await expect(page.getByRole('heading',{name:'Status Pemenuhan',exact:true})).toBeVisible();await expect(page.locator('#desktop-navigation .nav-item.active')).toHaveAttribute('aria-label','Operasional');
+ await expect(page.getByRole('heading',{name:'Produksi',exact:true})).toBeVisible();await expect(page.locator('#desktop-navigation .nav-item.active')).toHaveAttribute('aria-label','Operasional');
  await expect(page.getByText('Dipilih AI',{exact:true})).toBeVisible();await expect(page.getByText('Dipilih aturan BE',{exact:true})).toBeVisible();await expect(page.getByText('Belum dihitung',{exact:true})).toBeVisible();
  await expect(page.getByText('Upgrade kapasitas',{exact:true})).toHaveCount(0);
  const link=page.getByRole('link',{name:'Tinjau rekomendasi untuk batch MG1',exact:true});

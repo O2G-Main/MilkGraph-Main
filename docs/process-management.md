@@ -1,6 +1,6 @@
 # Manajemen proses — Produksi
 
-Tab **Manajemen proses** di `/produksi` mengelompokkan tiga kebutuhan:
+Tab **Manajemen proses** di **Operasional → Produksi** (`/produksi?tab=proses`) mengelompokkan tiga kebutuhan:
 
 1. **Batas operasional** — form bersama dengan halaman Alat, bersumber dari `GET /limits` dan `GET /limits/schema`. Pengguna dengan izin `constraint.edit` pada sesi backend yang sesuai dapat menyimpan melalui `PUT /limits`. Batas berlaku global untuk perencanaan; tidak mengubah spesifikasi satu alat, tanggal tertentu, atau jadwal yang sudah dibuat.
 2. **Alat & rute** — pilihan alat, spesifikasi, dan rute yang memiliki ID alat yang sama dari `GET /master/topology`. Nilai nol dipertahankan, nilai kosong ditulis “Belum tersedia”. Tautan ke katalog/status alat serta Kondisi Pabrik tersedia sesuai akses halaman.

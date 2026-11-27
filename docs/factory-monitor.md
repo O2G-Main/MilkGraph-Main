@@ -1,6 +1,6 @@
 # Kondisi Pabrik
 
-Halaman `/kondisi-pabrik` berada di Operasional, di samping Penjadwalan. Produksi tetap berada di Master.
+Kondisi pabrik sekarang merupakan tab awal di **Operasional → Produksi** (`/produksi?tab=kondisi`). Tab Manajemen proses dan Prediksi pemenuhan berada pada halaman yang sama. Produksi dihapus dari kelompok Master; `/kondisi-pabrik` mengalihkan ke halaman gabungan dengan tanggal/batch tetap dipertahankan.
 
 ## Sumber dan batas data
 
