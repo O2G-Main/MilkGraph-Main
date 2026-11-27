@@ -21,6 +21,9 @@ const eventLock int64 = 728531791
 
 type DB struct {
 	Pool *pgxpool.Pool
+	// RecommendationChooser optionally picks a recommendation type through
+	// the AI service (Jev). Nil keeps the deterministic rule fallback.
+	RecommendationChooser RecommendationChooser
 }
 
 type Tx struct {

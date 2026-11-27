@@ -195,6 +195,43 @@ func (c *Client) Explain(ctx context.Context, req ExplainRequest) (*ExplainRespo
 	return &out, nil
 }
 
+// RecommendationCandidate is one solution candidate the Backend ranked for
+// a shortfall prediction (contract: kandidat).
+type RecommendationCandidate struct {
+	Kode      string  `json:"kode"`
+	Deskripsi string  `json:"deskripsi"`
+	SkorBE    float64 `json:"skor_be"`
+}
+
+// RecommendationChoiceRequest is the POST /ai/recommendation/choose payload.
+type RecommendationChoiceRequest struct {
+	BatchID        string                    `json:"batch_id"`
+	ProductionDate string                    `json:"production_date"`
+	Fakta          []string                  `json:"fakta"`
+	Kandidat       []RecommendationCandidate `json:"kandidat"`
+	LabelData      string                    `json:"label_data"`
+}
+
+// RecommendationChoiceResponse mirrors the AI service choice response.
+type RecommendationChoiceResponse struct {
+	BatchID         string          `json:"batch_id"`
+	Pilihan         string          `json:"pilihan"`
+	Sumber          string          `json:"sumber"`
+	LabelData       string          `json:"label_data"`
+	Jev             json.RawMessage `json:"jev"`
+	SelisihDenganBE bool            `json:"selisih_dengan_be"`
+}
+
+// ChooseRecommendation asks Jev to pick the best solution candidate for a
+// shortfall prediction. Callers fall back to the Backend ranking on error.
+func (c *Client) ChooseRecommendation(ctx context.Context, req RecommendationChoiceRequest) (*RecommendationChoiceResponse, error) {
+	var out RecommendationChoiceResponse
+	if err := c.post(ctx, "/ai/recommendation/choose", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) post(ctx context.Context, path string, payload, out any) error {
 	if !c.Enabled() {
 		return errors.New("ai: token layanan belum dikonfigurasi")

@@ -735,6 +735,45 @@ type RecommendationRow struct {
 	Status             string          `json:"status"`
 }
 
+// RecommendationCandidate is one solution candidate ranked by the Backend.
+type RecommendationCandidate struct {
+	Code        string
+	Description string
+	Score       float64
+}
+
+// RecommendationChoiceInput carries the prediction facts for one shortfall.
+type RecommendationChoiceInput struct {
+	BatchID        string
+	ProductionDate string
+	Facts          []string
+	Candidates     []RecommendationCandidate
+}
+
+// RecommendationChoiceResult is the chosen recommendation type. Source is
+// "jev" when the AI service picked it and "template" for the rule fallback.
+type RecommendationChoiceResult struct {
+	Code   string
+	Source string
+	Jev    json.RawMessage
+}
+
+// RecommendationChooser picks one candidate code. Errors fall back to rules.
+type RecommendationChooser func(ctx context.Context, in RecommendationChoiceInput) (RecommendationChoiceResult, error)
+
+func recommendationCandidates(shortage float64, hasLine bool) []RecommendationCandidate {
+	lineScore := 40.0
+	if hasLine {
+		lineScore = 60
+	}
+	return []RecommendationCandidate{
+		{Code: "geser_jadwal", Description: "Geser jadwal batch ke waktu pasokan tersedia", Score: 90},
+		{Code: "naikkan_speed", Description: "Naikkan speed alat pada lini bottleneck", Score: lineScore},
+		{Code: "upgrade_kapasitas", Description: "Upgrade kapasitas alat pada lini bottleneck", Score: 40},
+		{Code: "pindahkan_alat", Description: "Pindahkan batch ke alat atau lini lain yang tersedia", Score: 20},
+	}
+}
+
 // RunFulfillmentPrediction evaluates batch demand against opening_inventory, supply plans, and asset speed/capacity,
 // persists fulfillment_predictions, and generates structured recommendations without inventing missing numbers.
 func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string) ([]FulfillmentPredictionRow, error) {
@@ -744,7 +783,19 @@ func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string
 		date = DefaultOperationalDate
 	}
 
+	type pendingRecommendation struct {
+		batchID         string
+		predictionID    int64
+		shortage        *float64
+		bottleneck      *string
+		demand          float64
+		availableStockL float64
+		plannedSupplyL  float64
+		futureSupplyL   float64
+		rtSupplyL       float64
+	}
 	var results []FulfillmentPredictionRow
+	var pending []pendingRecommendation
 	err := pgx.BeginFunc(ctx, db.Pool, func(tx pgx.Tx) error {
 		// Check opening inventory availability on or before date
 		var availableStockL float64
@@ -854,29 +905,65 @@ func (db *DB) RunFulfillmentPrediction(ctx context.Context, date, batchID string
 			results = append(results, pred)
 
 			if status == "tidak_terpenuhi" || status == "berisiko" {
-				recFacts, _ := json.Marshal(map[string]any{
-					"shortage_l":       shortage,
-					"bottleneck_asset": bottleneck,
-					"opening_stock_l":  availableStockL,
-					"planned_supply_l": plannedSupplyL,
-					"future_supply_l":  futureSupplyL,
-					"rt_supply_l":      rtSupplyL,
-					"batch_demand_l":   bd.demand,
+				pending = append(pending, pendingRecommendation{
+					batchID: bd.id, predictionID: pred.ID, shortage: shortage,
+					bottleneck: bottleneck, demand: bd.demand,
+					availableStockL: availableStockL, plannedSupplyL: plannedSupplyL,
+					futureSupplyL: futureSupplyL, rtSupplyL: rtSupplyL,
 				})
-				if _, err := tx.Exec(ctx,
-					`INSERT INTO milkgraph.recommendations
-					 (production_date, batch_id, prediction_id, recommendation_type, target_asset_id, expected_gain, reason_facts, status)
-					 VALUES ($1::date, $2, $3, 'geser_jadwal', $4, $5, $6, 'draft')`,
-					date, bd.id, pred.ID, bottleneck, shortage, recFacts,
-				); err != nil {
-					return err
-				}
 			}
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Rekomendasi dipilih sesudah transaksi prediksi selesai, supaya
+	// panggilan layanan AI tidak menahan transaksi database.
+	for _, p := range pending {
+		candidates := recommendationCandidates(*p.shortage, p.bottleneck != nil)
+		choice := RecommendationChoiceResult{Code: candidates[0].Code, Source: "template"}
+		if db.RecommendationChooser != nil {
+			facts := []string{
+				fmt.Sprintf("Kebutuhan batch %.1f L, stok awal %.1f L, pasokan rencana %.1f L, pasokan masa depan %.1f L, kedatangan RT %.1f L, kekurangan %.1f L", p.demand, p.availableStockL, p.plannedSupplyL, p.futureSupplyL, p.rtSupplyL, *p.shortage),
+			}
+			if p.bottleneck != nil {
+				facts = append(facts, "Lini bottleneck: "+*p.bottleneck)
+			}
+			if chosen, err := db.RecommendationChooser(ctx, RecommendationChoiceInput{
+				BatchID: p.batchID, ProductionDate: date, Facts: facts, Candidates: candidates,
+			}); err == nil {
+				for _, c := range candidates {
+					if chosen.Code == c.Code {
+						choice = chosen
+						break
+					}
+				}
+			}
+		}
+		recFactsMap := map[string]any{
+			"shortage_l":       p.shortage,
+			"bottleneck_asset": p.bottleneck,
+			"opening_stock_l":  p.availableStockL,
+			"planned_supply_l": p.plannedSupplyL,
+			"future_supply_l":  p.futureSupplyL,
+			"rt_supply_l":      p.rtSupplyL,
+			"batch_demand_l":   p.demand,
+			"sumber_pilihan":   choice.Source,
+		}
+		if len(choice.Jev) > 0 {
+			recFactsMap["jev"] = json.RawMessage(choice.Jev)
+		}
+		recFacts, _ := json.Marshal(recFactsMap)
+		if _, err := db.Pool.Exec(ctx,
+			`INSERT INTO milkgraph.recommendations
+			 (production_date, batch_id, prediction_id, recommendation_type, target_asset_id, expected_gain, reason_facts, status)
+			 VALUES ($1::date, $2, $3, $4, $5, $6, $7, 'draft')`,
+			date, p.batchID, p.predictionID, choice.Code, p.bottleneck, p.shortage, recFacts,
+		); err != nil {
+			return results, err
+		}
 	}
 	return results, nil
 }

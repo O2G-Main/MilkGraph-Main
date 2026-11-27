@@ -70,6 +70,22 @@ func run(cfg config, log *slog.Logger) error {
 		AI: ai.New(cfg.AIServiceURL, cfg.AIServiceToken)}
 	if srv.AI.Enabled() {
 		log.Info("layanan AI aktif", "url", cfg.AIServiceURL)
+		db.RecommendationChooser = func(ctx context.Context, in store.RecommendationChoiceInput) (store.RecommendationChoiceResult, error) {
+			kandidat := make([]ai.RecommendationCandidate, 0, len(in.Candidates))
+			for _, c := range in.Candidates {
+				kandidat = append(kandidat, ai.RecommendationCandidate{Kode: c.Code, Deskripsi: c.Description, SkorBE: c.Score})
+			}
+			callCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+			defer cancel()
+			resp, err := srv.AI.ChooseRecommendation(callCtx, ai.RecommendationChoiceRequest{
+				BatchID: in.BatchID, ProductionDate: in.ProductionDate,
+				Fakta: in.Facts, Kandidat: kandidat, LabelData: "historis",
+			})
+			if err != nil {
+				return store.RecommendationChoiceResult{}, err
+			}
+			return store.RecommendationChoiceResult{Code: resp.Pilihan, Source: resp.Sumber, Jev: resp.Jev}, nil
+		}
 	}
 	if err := srv.Bootstrap(ctx); err != nil {
 		return fmt.Errorf("bootstrap: %w", err)

@@ -100,3 +100,31 @@ func TestNarrateRootCauseStatusBukan200(t *testing.T) {
 		t.Fatal("status 503 dari layanan AI harus menjadi error")
 	}
 }
+
+func TestChooseRecommendationMengirimKandidatDanMemparsingPilihan(t *testing.T) {
+	var gotBody RecommendationChoiceRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/ai/recommendation/choose" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"batch_id":"B1","pilihan":"naikkan_speed","sumber":"jev","label_data":"historis","jev":{"pilihan":"naikkan_speed","confidence":0.7},"selisih_dengan_be":true}`))
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "token-uji")
+	resp, err := c.ChooseRecommendation(context.Background(), RecommendationChoiceRequest{
+		BatchID: "B1", ProductionDate: "2026-11-01", LabelData: "historis",
+		Fakta:    []string{"Kekurangan 30000 L"},
+		Kandidat: []RecommendationCandidate{{Kode: "geser_jadwal", Deskripsi: "Geser jadwal", SkorBE: 90}},
+	})
+	if err != nil {
+		t.Fatalf("ChooseRecommendation error: %v", err)
+	}
+	if resp.Pilihan != "naikkan_speed" || resp.Sumber != "jev" || !resp.SelisihDenganBE {
+		t.Errorf("respons tidak utuh: %+v", resp)
+	}
+	if len(gotBody.Kandidat) != 1 || gotBody.Kandidat[0].Kode != "geser_jadwal" {
+		t.Errorf("kandidat tidak terkirim: %+v", gotBody)
+	}
+}
