@@ -1,6 +1,6 @@
 # Penjadwalan: calendar and daily batches
 
-The API-mode entry screen shows a monthly calendar and the selected Sunday–Saturday production week. Dates open daily batches grouped by filling line. Returning to the calendar restores keyboard focus to the selected date. The initial production date uses Asia/Jakarta.
+The API-mode entry screen shows a monthly calendar and the selected Sunday–Saturday production week. Hovering a date (mouse, after 200 ms), keyboard focus, or selecting a date previews that production week without entering daily detail. The visible month stays stable during hover, including adjacent-month dates. The explicitly labelled Detail rows open daily batches grouped by filling line. Returning to the calendar restores keyboard focus to the selected date. The initial production date uses Asia/Jakarta.
 
 ## Component source
 
@@ -25,6 +25,6 @@ No documented endpoint currently supports modifying saved batches, sequence chan
 
 - TypeScript typecheck, ESLint, 177 Node tests and production build passed.
 - Browser checks at 320, 768, 1024 and 1440 pixels: calendar and daily detail have no page overflow.
-- Keyboard date selection, daily navigation, return focus and batch detail verified.
+- Keyboard date selection, hover preview, date-click preview, stable month at boundaries, daily navigation, return focus and batch detail verified.
 - Intercepted API fixtures verified: default WIB date, weekly filters, partial read errors/retry, empty schedules, permissions, batch validation failure, successful creation/refetch and confirmation before discarding changes.
 - Read-only live API checks verified the November 1, 2026 week (88 proposals) and daily batches.

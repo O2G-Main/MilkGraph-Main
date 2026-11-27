@@ -28,6 +28,7 @@ const dayNumber = (value: string) => new Date(`${value}T00:00:00Z`).toLocaleDate
 
 export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate: string; role: string; tools: ReactNode }) {
   const [date, setDate] = useState(initialDate);
+  const [calendarMonth, setCalendarMonth] = useState(initialDate.slice(0, 7));
   const [panel, setPanel] = useState<"batch" | "tools" | "targets" | null>(null);
   const [saved, setSaved] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -50,7 +51,7 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
   const actual = history.data && !history.error && !history.loading
     ? (outputGroups ?? []).reduce((sum, group) => sum + group.total.pengisian_l, 0) : null;
   const targetsReady = weekly.data && !weekly.error && !weekly.loading;
-  const choose = (value: string) => { if (value) { setDate(value); setSaved(false); } };
+  const choose = (value: string) => { if (value) { setDate(value); setCalendarMonth(value.slice(0, 7)); setSaved(false); } };
 
   const openDay = (day: string) => {
     choose(day); setDetailOpen(true);
@@ -105,11 +106,12 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
         loading={selected.loading || !selected.data} onRetry={() => void selected.reload()} />
     </> : <Card className={styles.calendarPanel}>
       <div ref={calendarReturn}>
-        <ProductionCalendar date={date} today={dateInWib()} onMonthChange={choose} onSelect={openDay}
+        <ProductionCalendar date={date} month={calendarMonth} today={dateInWib()} onMonthChange={choose} onSelect={choose}
+          onPreview={day => { setDate(day); setSaved(false); }}
           scheduledDates={days.filter((_, dayIndex) => { const resource = resources[dayIndex]; return !resource.loading && !resource.error && !!resource.data?.items.length; })} />
       </div>
       <div className={styles.weekOverview}>
-      <h2>Jadwal minggu terpilih</h2>
+      <h2>Pratinjau jadwal mingguan</h2>
       <p className="small muted">{weekLabel(start, end)}</p>
       <nav className={styles.days} aria-label="Hari produksi">
       {days.map((day, dayIndex) => {
@@ -117,7 +119,7 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
         const volume = resource.data && !resource.error && !resource.loading ? scheduledVolume(resource.data.items) : null;
         return <button key={day} className={day === date ? styles.selected : ""} aria-current={day === date ? "date" : undefined}
           onClick={() => openDay(day)}><span>{dayName(day)}</span><strong>{dayNumber(day)}</strong>
-          <small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small></button>;
+          <small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><span className={styles.detailLink}>Detail<Icon icon={ChevronRight} size={14} /></span></button>;
       })}
       </nav>
       </div>

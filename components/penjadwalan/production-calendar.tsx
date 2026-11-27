@@ -4,7 +4,7 @@
 // Source: https://github.com/ksparth12/wensity-shadcn-registry/blob/37e75764e2326eeda9533a73bb7434edb7374e82/calendar.json
 // Original license: docs/licenses/wensity-calendar-LICENSE.txt.
 // Single-date selection, MilkGraph tokens, WIB dates, and production-week indicators.
-import { useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Icon } from "@/components/ui";
@@ -17,13 +17,18 @@ const label = (value: string) => asDate(value).toLocaleDateString("id-ID", {
   timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric",
 });
 
-export function ProductionCalendar({ date, today, scheduledDates, onMonthChange, onSelect }: {
-  date: string; today: string; scheduledDates: string[];
-  onMonthChange: (date: string) => void; onSelect: (date: string) => void;
+export function ProductionCalendar({ date, month, today, scheduledDates, onMonthChange, onSelect, onPreview }: {
+  date: string; month: string; today: string; scheduledDates: string[];
+  onMonthChange: (date: string) => void; onSelect: (date: string) => void; onPreview: (date: string) => void;
 }) {
   const grid = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
-  const month = date.slice(0, 7);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPreview = () => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = null;
+  };
+  useEffect(() => () => { if (previewTimer.current) clearTimeout(previewTimer.current); }, []);
   const first = `${month}-01`;
   // Wensity's fixed six-week grid keeps month transitions stable.
   const start = productionWeek(first)[0];
@@ -73,7 +78,14 @@ export function ProductionCalendar({ date, today, scheduledDates, onMonthChange,
             <button data-date={day} type="button" tabIndex={day === date ? 0 : -1}
               aria-label={label(day)} aria-current={day === today ? "date" : undefined}
               className={`${styles.calendarDay} ${day.slice(0, 7) !== month ? styles.outside : ""} ${selectedWeek.includes(day) ? styles.activeWeek : ""} ${day === date ? styles.activeDay : ""}`}
-              onClick={() => onSelect(day)}>
+              onPointerEnter={event => {
+                if (event.pointerType !== "mouse") return;
+                clearPreview();
+                previewTimer.current = setTimeout(() => onPreview(day), 200);
+              }}
+              onPointerLeave={clearPreview}
+              onFocus={() => { clearPreview(); onPreview(day); }}
+              onClick={() => { clearPreview(); onSelect(day); }}>
               <span>{asDate(day).getUTCDate()}</span>
               {scheduledDates.includes(day) && <span className={styles.eventDot} aria-label="Ada jadwal produksi" />}
             </button>
@@ -81,6 +93,6 @@ export function ProductionCalendar({ date, today, scheduledDates, onMonthChange,
         </div>)}
       </div>
     </motion.div>
-    <p className="small muted">Pilih tanggal untuk membuka detail. Indikator jadwal ditampilkan untuk minggu terpilih.</p>
+    <p className="small muted">Arahkan kursor atau pilih tanggal untuk melihat ringkasan minggu. Buka detail harian melalui daftar jadwal.</p>
   </div>;
 }
