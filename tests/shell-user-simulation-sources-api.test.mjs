@@ -6,8 +6,10 @@ const read = path => readFileSync(new URL(`../components/${path}`, import.meta.u
 
 test('shell resolves backend resources in API mode; Manajemen akun memakai akun dan PIC lokal', () => {
   const shell = read('shell/app-shell.tsx'), user = read('pengguna/pengguna.tsx');
-  for (const path of ['/meta', '/session', '/shifts', '/notifications'])
+  for (const path of ['/meta', '/session', '/notifications'])
     assert.ok(shell.includes(`"${path}"`), `shell missing ${path}`);
+  assert.match(shell, /<LiveClock \/>/);
+  assert.doesNotMatch(shell, /"\/shifts"/);
   assert.match(shell, /logout\(\)/);
   assert.match(shell, /await resetDemo\(/);
   // Manajemen akun sengaja memakai akun + PIC dari state aplikasi di kedua mode,

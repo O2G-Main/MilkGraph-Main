@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bell, ChevronDown, Menu, X, CircleHelp, ArrowRight, Clock3, RotateCcw, ArrowLeft, LogOut, Compass } from "lucide-react";
 import { findNav, isDetail, pageTitle, visibleNav } from "@/lib/nav";
 import { BranchedNav } from "@/components/shell/branched-nav";
+import { LiveClock } from "@/components/shell/live-clock";
 import { scenario } from "@/lib/data";
 import { Badge, Icon, Modal, SourceModal } from "@/components/ui";
 import { initialsOf, isSignedIn, logout, resetDemo, useDemo } from "@/lib/demo";
@@ -31,15 +32,6 @@ interface Session {
   user: { name: string; role: string; initials: string; shift: string };
   role: RoleId;
   permissions: string[];
-}
-
-interface Shift {
-  id: string;
-  label: string;
-  window: string;
-  date: string;
-  selected: boolean;
-  available: boolean;
 }
 
 interface Notification {
@@ -77,7 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const fromMenu = () => setTrail(t => ({ ...t, viaMenu: true }));
   const prev = trail.stack.at(-1);
   const [drawer, setDrawer] = useState(false);
-  const [panel, setPanel] = useState<"shift" | "notifications" | "profile" | "help" | null>(null);
+  const [panel, setPanel] = useState<"notifications" | "profile" | "help" | null>(null);
   const [source, setSource] = useState<string | null>(null);
   // Panduan halaman: tombol membuka popup singkat, lalu langkah panduan berjalan setelah "Mulai panduan".
   const [tourRun, setTourRun] = useState(0);
@@ -93,7 +85,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const tabLabel = demo.role === "manager" && current.tab.href === "/" ? "Executive Dashboard" : current.tab.label;
 
   const metaRes = useResource<Meta>(API_MODE ? "/meta" : null);
-  const shiftsRes = useResource<Shift[]>(API_MODE ? "/shifts" : null);
   const notificationsRes = useResource<Notification[]>(API_MODE ? "/notifications" : null);
   const sessionRes = useResource<Session>(API_MODE ? "/session" : null);
 
@@ -129,11 +120,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const broken = violations(scenario.plans[0], "before", demo.limits);
 
-  const shifts = API_MODE ? (shiftsRes.data ?? []) : null;
-  const selectedShift = shifts?.find(s => s.selected) ?? shifts?.[0];
-  const shiftButtonLabel = selectedShift ? selectedShift.label : "Shift Siang";
-  const shiftButtonDate = selectedShift ? `, ${selectedShift.date}` : ", Rab 14 Okt";
-
   const notifications = API_MODE ? (notificationsRes.data ?? []) : null;
   const { readIds: readNotifs, mark: markRead } = useNotifRead(demo.account ?? "");
   // Backend belum mengirim jam per notifikasi; FE memakai waktu snapshot meta agar baris tetap punya jam.
@@ -151,8 +137,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   const snapshotFooter = API_MODE && metaRes.data ? metaRes.data.snapshotLabel : "Snapshot 14.42 WIB";
-  const scenarioDate = API_MODE && metaRes.data ? metaRes.data.date : scenario.date;
-
 
   useEffect(() => {
     if (!drawer) return;
@@ -209,13 +193,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="topbar-actions">
           
-          <button className="shift-button" data-tour="tour-button" onClick={() => setTourOffer(true)} aria-label="Buka panduan halaman">
+          <button className="topbar-pill topbar-guide" data-tour="tour-button" onClick={() => setTourOffer(true)} aria-label="Buka panduan halaman">
             <Icon icon={Compass} size={16} /><span>Panduan halaman</span>
           </button>
-          <button className="shift-button" data-tour="topbar" onClick={() => setPanel("shift")}>
-            <Icon icon={Clock3} size={16} /><span>{shiftButtonLabel}<span className="shift-date">{shiftButtonDate}</span></span>
-            <Icon icon={ChevronDown} size={14} />
-          </button>
+          <LiveClock />
           <button className="icon-button notification" aria-label={`Notifikasi, ${notifCount} belum dibaca`} onClick={() => setPanel("notifications")}><Icon icon={Bell} />{notifCount > 0 && <span>{notifCount}</span>}</button>
           <button className="avatar top-avatar" aria-label={`Keluar dari akun ${me.user}`} onClick={() => setPanel("profile")}>{me.initials}</button>
         </div>
@@ -231,37 +212,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <ProductTour runId={tourRun} role={demo.role} pathname={pathname} onDone={() => {}} />
     {tourOffer && <TourOffer onAccept={() => { markPanduanSeen(); setTourOffer(false); setTourRun(r => r + 1); }} onDecline={() => { markPanduanSeen(); setTourOffer(false); }} />}
     {drawer && <dialog ref={drawerRef} id="mobile-navigation" aria-label="Menu navigasi" className="mobile-drawer" onCancel={() => setDrawer(false)} onClick={e => { if (e.target === e.currentTarget) setDrawer(false); }}><div className="drawer-content">{renderNavigation(true)}</div></dialog>}
-    {panel && <Modal title={{ shift: "Pilih shift", notifications: "Notifikasi operasional", profile: "Yakin ingin keluar?", help: "Panduan demo" }[panel]} onClose={() => setPanel(null)}>
-      {panel === "shift" && (
-        <>
-          <p className="muted">Skenario tersedia untuk {scenarioDate}.</p>
-          {API_MODE && shiftsRes.loading && !shifts && (
-            <p className="muted" role="status">Memuat data shift…</p>
-          )}
-          {API_MODE && shiftsRes.error && (
-            <p className="crit-text" role="alert">Gagal memuat shift: {shiftsRes.error.message}</p>
-          )}
-          {API_MODE && shifts && shifts.length === 0 && (
-            <p className="muted">Tidak ada data shift.</p>
-          )}
-          {shifts ? (
-            shifts.map(s => (
-              <button key={s.id} className="shift-choice" onClick={() => setPanel(null)} disabled={!s.available}>
-                <strong>{s.label}</strong>
-                <span>{s.window}</span>
-                {s.selected && <Badge tone="ok">Dipilih</Badge>}
-              </button>
-            ))
-          ) : (
-            <button className="shift-choice" onClick={() => setPanel(null)}>
-              <strong>Shift Siang</strong>
-              <span>Pukul 14.00 - 22.00, snapshot pukul 14.42</span>
-              <Badge tone="ok">Dipilih</Badge>
-            </button>
-          )}
-          <p className="small muted">Shift lain belum tersedia di mockup.</p>
-        </>
-      )}
+    {panel && <Modal title={{ notifications: "Notifikasi operasional", profile: "Yakin ingin keluar?", help: "Panduan demo" }[panel]} onClose={() => setPanel(null)}>
       {panel === "notifications" && (
         <>
           {API_MODE && notificationsRes.loading && !notifications && (
