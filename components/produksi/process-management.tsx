@@ -65,7 +65,7 @@ function ProcessEquipment({ role }: { role: RoleId }) {
         </tr>)}</tbody></table></div>}
       </>}
       <div className={styles.links}>
-        {canSee(role, "/alat") && <Link className="button secondary" href="/alat">Buka katalog & pencatatan status</Link>}
+        {canSee(role, "/alat") && <Link className="button secondary" href="/alat?tab=status">Buka status & pencatatan alat</Link>}
         {canSee(role, "/kondisi-pabrik") && <Link className="button secondary" href="/produksi?tab=kondisi">Pantau kondisi & penugasan</Link>}
       </div>
     </>}

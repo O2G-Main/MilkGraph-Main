@@ -6,7 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** `match`: halaman detail tanpa menu sendiri yang tetap menyorot tab ini (mis. /tangki di bawah Kondisi Alat). */
+/** `match`: halaman detail tanpa menu sendiri yang tetap menyorot tab ini (mis. /tangki di bawah Alat). */
 export type NavTab = { label: string; href: string; icon?: LucideIcon; match?: string[] };
 export type NavItem = { label: string; hint: string; icon: LucideIcon; tabs: NavTab[] };
 

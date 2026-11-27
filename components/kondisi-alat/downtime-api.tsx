@@ -31,11 +31,11 @@ interface LinesRes { dedications: { line_id: string }[] }
  * dari Backend. Riwayat downtime di server memang mulai kosong (tidak ada seed
  * yang kredibel), jadi keadaan kosong di sini jujur, bukan data hilang.
  */
-export function DowntimeApi({ role, machines }: { role: string; machines: { id: string; status?: string }[] }) {
+export function DowntimeApi({ role, machines, initialResource="" }: { role: string; machines: { id: string; status?: string }[]; initialResource?:string }) {
   const eventsRes = useResource<BeDowntimeEvent[]>(EVENTS);
   const linesRes = useResource<LinesRes>("/master/lines");
   const [formOpen, setFormOpen] = useState(false);
-  const [resource, setResource] = useState("");
+  const [resource, setResource] = useState(initialResource);
   const [durationHours, setDurationHours] = useState(4);
   const [intervalDraft, setIntervalDraft] = useState("");
   const [interval, setInterval] = useState("");

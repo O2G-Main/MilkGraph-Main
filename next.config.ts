@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/alur", destination: "/produksi", permanent: true },
-      { source: "/kondisi-alat", destination: "/alat", permanent: true },
     ];
   },
   experimental: {

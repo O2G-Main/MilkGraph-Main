@@ -1,4 +1,5 @@
 import type { ProductionAsset, ProductionList, ProductionSession } from "./production.ts";
+import { displayText } from "../display-text.ts";
 import type { Asset } from "../assets.ts";
 
 export type EquipmentMaster = { asset_id: string; [key: string]: string | number | null | undefined };
@@ -13,7 +14,7 @@ export function filterEquipment(assets: ProductionAsset[], search: string, type:
   const query = search.trim().toLowerCase();
   return assets.filter(asset => (!type || asset.asset_type === type)
     && (!status || (status === MISSING_STATUS ? !asset.current_status : asset.current_status === status))
-    && `${asset.asset_id} ${asset.asset_name} ${asset.asset_type} ${asset.current_status ?? ""}`.toLowerCase().includes(query));
+    && `${asset.asset_id} ${asset.asset_name} ${asset.asset_type} ${asset.current_status ?? ""} ${displayText(asset.current_status ?? "")}`.toLowerCase().includes(query));
 }
 
 const SPEC_FIELDS = [

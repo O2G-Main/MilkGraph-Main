@@ -269,9 +269,9 @@ tbody tr:hover { background: color-mix(in oklab, var(--color-surface) 70%, trans
 .collapsed .sidebar:not(:hover, :has(:focus-visible)) .brand-row { margin-left: 0; }
 .collapsed .sidebar:not(:hover, :has(:focus-visible)) .nav-item { width: 54px; padding: 0; justify-content: center; }
 .collapsed .sidebar:not(:hover, :has(:focus-visible)) .account { padding: 4px; }
-.modal { border: 0; padding: 0; width: min(520px,calc(100vw - 32px)); max-height: calc(100dvh - 48px); background: var(--glass-strong); -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5); color: var(--color-on-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); margin: auto; }
+dialog.modal { border: 0; padding: 0; width: min(720px,calc(100vw - 32px)); max-width: calc(100vw - 32px); overflow: auto; scrollbar-gutter: stable; max-height: calc(100dvh - 48px); background: var(--color-surface); -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5); color: var(--color-on-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-overlay); margin: auto; }
 .modal::backdrop, .mobile-drawer::backdrop { background: color-mix(in srgb,var(--color-on-surface) 40%,transparent); backdrop-filter: blur(4px); }
-.modal-body { padding: 28px; }
+.modal-body { padding: 24px; }
 .modal .section-heading { margin-bottom: 20px; }
 .modal p + p { margin-top: 12px; }
 .source-title { font-size: 22px; margin: 20px 0 8px; letter-spacing: -.02em; }
@@ -475,7 +475,6 @@ tbody tr:hover { background: color-mix(in oklab, var(--color-surface) 70%, trans
 .react-flow .react-flow__controls { box-shadow: none; border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow: hidden; }
 .react-flow .react-flow__controls-button { width: 44px; height: 44px; }
 .react-flow .react-flow__edge-text { font-size: 10px; }
-.graph-modal { width: min(1150px,calc(100vw - 32px)); }
 .graph-modal .graph-canvas { height: min(72dvh,720px); }
 .scenario-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
 .scenario-bar > span { display: flex; align-items: center; gap: 6px; }
@@ -654,8 +653,8 @@ textarea { width: 100%; resize: vertical; min-height: 110px; border: 1px solid v
   .drawer-content .brand-row { margin-bottom: 24px; }
   .drawer-content .nav-item { font-size: 16px; }
   .drawer-content .account-copy strong { font-size: 12px; }
-  .modal-body { padding: 20px; }
-  .modal { max-height: calc(100dvh - 32px); }
+  .modal-body { padding: 16px; }
+  dialog.modal { max-height: calc(100dvh - 32px); }
   .modal .section-heading h2 { font-size: 18px; }
   .modal p { font-size: 14px; }
   .modal p.small { font-size: 12px; }
@@ -991,7 +990,6 @@ button.recommendation-saving { min-height: 36px; }
 .handoff-chain li.gap .handoff-dot { background: var(--color-primary); color: var(--color-on-primary); }
 .handoff-chain .badge, .handoff-chain .source-chip { align-self: flex-start; }
 .report-title { margin: 20px 0 8px; font-size: 13px; }
-.report-modal { width: min(640px, calc(100vw - 32px)); }
 .dept-flow { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr); align-items: center; gap: 12px; margin-bottom: 16px; }
 .dept { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: var(--radius-lg); background: var(--glass); box-shadow: var(--glass-rim), var(--shadow-soft); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
 .dept small { font-size: 11px; color: var(--color-on-surface-muted); }
@@ -1676,7 +1674,6 @@ html:has(.login-page) { background: var(--color-canvas); }
 .tank-room .tank-bar > span.crit { background: var(--color-status-crit); }
 
 /* Input hasil lab */
-.lab-entry-modal { width: min(620px, calc(100vw - 32px)); }
 .lab-entry-list { display: grid; gap: 10px; max-height: min(52dvh, 460px); overflow-y: auto; padding-right: 4px; }
 .lab-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 8px; margin: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
 .lab-entry-row legend { float: left; grid-column: 1 / -1; width: 100%; padding: 0; margin-bottom: 2px; font-size: 13px; font-weight: 600; }
@@ -1923,8 +1920,16 @@ html:has(.login-page) { background: var(--color-canvas); }
 @media (max-width: 640px) { .tour-offer { left: 12px; right: 12px; bottom: 12px; width: auto; } }
 
 /* Scheduling batch details reuse the existing dialog with a wider reading area. */
-.schedule-detail { width: min(640px, calc(100vw - 32px)); }
 .scheduling-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md); margin-block: var(--spacing-md); }
 .scheduling-facts dt { font-size: 12px; color: var(--color-on-surface-muted); }
 .scheduling-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }
 .scheduling-note { margin-block: var(--spacing-md); }
+
+/* Shared reading width and resilient layout for every content dialog. */
+.modal-body > .section-heading:first-child { position: sticky; top: 0; z-index: 3; padding-block: 4px; background: var(--color-surface); }
+.modal-body > .section-heading:first-child h2 { min-width: 0; overflow-wrap: anywhere; }
+.modal-body > .section-heading:first-child > .icon-button { flex-shrink: 0; }
+.modal-body { min-width: 0; overflow-wrap: anywhere; }
+.modal-body .table-wrap { max-width: 100%; }
+.modal-body .dialog-actions { flex-wrap: wrap; }
+.modal-body .button { max-width: 100%; white-space: normal; }

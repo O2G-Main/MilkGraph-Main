@@ -60,7 +60,7 @@ const DEMO_NOTIFICATIONS: Notification[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const trailPath = ["/kondisi-pabrik", "/operasional/prediksi"].includes(pathname) ? "/produksi" : pathname;
+  const trailPath = ["/kondisi-pabrik", "/operasional/prediksi"].includes(pathname) ? "/produksi" : pathname === "/kondisi-alat" ? "/alat" : pathname;
   // Riwayat pindah halaman di dalam aplikasi, untuk tombol Kembali. Pindah lewat sidebar atau breadcrumb mengosongkannya.
   const [trail, setTrail] = useState<{ at: string; stack: string[]; viaMenu: boolean }>({ at: trailPath, stack: [], viaMenu: false });
   if (trail.at !== trailPath) {
