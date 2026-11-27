@@ -1083,6 +1083,15 @@ main .icon-button { box-shadow: inset 0 0 0 1px var(--color-border); color: var(
 .module-big { font-size: 28px; letter-spacing: -.03em; color: var(--color-on-surface-muted); margin: 4px 0 6px; }
 .module-big strong { color: var(--color-on-surface); font-weight: 650; }
 
+.production-stack, .production-settings-grid { display: grid; gap: var(--spacing-md); }
+.production-stack { grid-template-columns: minmax(0, 1fr); }
+.production-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.production-date { display: flex; flex-wrap: wrap; align-items: end; gap: var(--spacing-md); }
+.production-date .schedule-form { gap: 0; }
+@media (max-width: 640px) {
+  .production-settings-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Alur Produksi: canvas alat per tahap (React Flow) */
 .flow-card { padding: 20px; }
 .flow-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
