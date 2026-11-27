@@ -6,6 +6,7 @@ import { ArrowRight, Save } from "lucide-react";
 import { Card, Icon, SectionTitle } from "@/components/ui";
 import { API_MODE, apiGet } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
+import type { ProductionSession } from "@/lib/api/production";
 import { setLimits, useDemo } from "@/lib/demo";
 import { can, canOpen, type RoleId } from "@/lib/roles";
 import { type Limits } from "@/lib/rules";
@@ -32,7 +33,10 @@ export function ProductionSettings({ role }: { role: RoleId }) {
   const saved = useResource<Limits>(API_MODE ? "/limits" : null);
   const schema = useResource<LimitsSchema>(API_MODE ? "/limits/schema" : null);
   const current = API_MODE ? saved.data : demoLimits;
-  const allowed = can(role, "constraint.edit");
+  const session = useResource<ProductionSession>(API_MODE ? "/session" : null);
+  const allowed = API_MODE
+    ? session.data?.role === role && session.data.permissions.includes("constraint.edit")
+    : can(role, "constraint.edit");
   const availableTools = tools.filter(tool => canOpen(role, tool.href, tool.tab ?? tool.href));
   const ranges = schema.data?.flatMap(group => group.params) ?? [];
   const fields = numericSettings.flatMap(setting => {
