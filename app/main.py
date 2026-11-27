@@ -4,7 +4,7 @@ import secrets
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 
-from . import jev, layanan, llm
+from . import jev, layanan, llm, telemetry
 from .schemas import (
     ChatRequest,
     ChatResponse,
@@ -17,7 +17,10 @@ from .schemas import (
 
 log = logging.getLogger("milkgraph-ai")
 
+telemetry.init_sentry()
+
 app = FastAPI(title="milkgraph-ai", version="1.1.0")
+telemetry.init_otel(app)
 
 
 @app.on_event("startup")
