@@ -106,12 +106,20 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
       <Card><h3>Kondisi produksi harian</h3><DayConditionSummary date={date} detailed fetchOnMount /></Card>
       <SchedulingBoard key={date} role={role} rows={selected.data?.items ?? []} date={date} error={selected.error}
         loading={selected.loading || !selected.data} onRetry={() => void selected.reload()} />
-    </> : <Card className={styles.calendarPanel}>
-      <div ref={calendarReturn}>
-        <ProductionCalendar date={date} month={calendarMonth} today={dateInWib()} onMonthChange={choose} onSelect={choose}
-          onPreview={day => { setDate(day); setSaved(false); }} />
+    </> : <div className={styles.calendarPanel}>
+      <div className={styles.calendarColumn}>
+        <Card>
+          <div ref={calendarReturn}>
+            <ProductionCalendar date={date} month={calendarMonth} today={dateInWib()} onMonthChange={choose} onSelect={choose}
+              onPreview={day => { setDate(day); setSaved(false); }} />
+          </div>
+        </Card>
+        <Card className={styles.selectedCondition} aria-label="Kondisi tanggal terpilih" aria-live="polite">
+          <h3>{dayName(date)}, {dayNumber(date)}</h3>
+          <DayConditionSummary date={date} detailed />
+        </Card>
       </div>
-      <div className={styles.weekOverview}>
+      <Card className={styles.weekOverview}>
       <h2>Pratinjau jadwal mingguan</h2>
       <p className="small muted">{weekLabel(start, end)}</p>
       <nav className={styles.days} aria-label="Hari produksi">
@@ -123,12 +131,8 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
           <span className={styles.rowSummary}><small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><DayConditionSummary date={day} /></span><span className={styles.detailLink}>Detail<Icon icon={ChevronRight} size={14} /></span></button>;
       })}
       </nav>
-      <section className={styles.selectedCondition} aria-label="Kondisi tanggal terpilih" aria-live="polite">
-        <h3>{dayName(date)}, {dayNumber(date)}</h3>
-        <DayConditionSummary date={date} detailed />
-      </section>
-      </div>
-    </Card>}
+      </Card>
+    </div>}
     <p className={styles.footnote}>Jam produksi dan kapasitas tersisa belum tersedia untuk jadwal batch ini. Sisa realisasi dan pemindahan target ke hari berikutnya mengikuti perhitungan serta dukungan penyimpanan dari layanan penjadwalan.</p>
 
     {panel === "batch" && canCreate && <ProductionBatchForm date={date} role={role} onClose={() => setPanel(null)}

@@ -48,9 +48,9 @@
   .batch > svg { grid-column: 3; grid-row: 1 / span 2; }
 }
 
-.calendarPanel { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-.calendarPanel > div { min-width: 0; }
-.calendarPanel > div + div { border-left: 1px solid var(--color-border); padding-left: 24px; }
+.calendarPanel { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--spacing-md); align-items: start; }
+.calendarPanel > * { min-width: 0; }
+.calendarColumn { display: grid; gap: var(--spacing-md); align-content: start; }
 .calendar h2, .weekOverview h2, .dayHeading h2 { font-size: 18px; font-weight: 600; margin: 0; }
 .calendarHeader, .dayHeading { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; }
 .calendarWeek, .weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -67,7 +67,6 @@
 .dayHeading { margin-bottom: 0; }
 @media (max-width: 900px) {
   .calendarPanel { grid-template-columns: minmax(0, 1fr); }
-  .calendarPanel > div + div { border-left: 0; padding-left: 0; border-top: 1px solid var(--color-border); padding-top: 16px; }
 }
 
 .days .detailLink { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); font-size: 12px; }
@@ -85,7 +84,6 @@
 .conditionMarker { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); display: flex; }
 .calendarDay { padding-bottom: 8px; }
 .activeWeek { box-shadow: inset 0 0 0 1px var(--color-border); }
-.selectedCondition { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--color-border); }
 .selectedCondition h3 { font-size: 14px; margin-bottom: 8px; }
 .conditionLegend { display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 0; margin: 16px 0 0; list-style: none; }
 .legendItem { display: inline-flex; align-items: center; gap: 4px; color: var(--condition-text); font-size: 12px; }
