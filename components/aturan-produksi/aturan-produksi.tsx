@@ -52,7 +52,7 @@ export function AturanProduksi() {
         </div>
         <p className="small muted">Standar SOP changeover [asumsi] sama dengan matriks di halaman Lini Filling. Ganti ukuran kemasan butuh penggantian format; ganti rasa butuh bilas produk.</p>
       </Card>
-      <Card>
+      <Card className="rules-card">
         <SectionTitle title="Durasi CIP per kelompok alat" subtitle="Lama satu siklus cleaning in place sampai alat siap dipakai lagi." />
         <div className="table-wrap">
           <table className="rules-table">
