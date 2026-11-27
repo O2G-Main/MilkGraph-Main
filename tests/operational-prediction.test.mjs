@@ -62,3 +62,37 @@ test('BE prediction inputs preserve liter units, zero planned supply and small d
  assert.ok(predictionInputs(null).every(field=>field.value==='Tidak disertakan pada hasil ini'));
  assert.equal(predictionInputs({opening_stock_l:'210000'})[1].value,'Tidak disertakan pada hasil ini');
 });
+
+const { volumeComparison } = await import('../lib/operational-prediction.ts');
+test('volume chart compares known BE inputs on one scale without allocating stock or deriving a verdict',()=>{
+ const facts={opening_stock_l:5000,planned_supply_l:1000,batch_demand_l:8000,opening_inventory_rows:2};
+ const result=volumeComparison(facts);
+ assert.equal(result.reference,6000);
+ assert.equal(result.demandWidth,100);
+ assert.equal(result.stockWidth,62.5);
+ assert.equal(result.supplyWidth,12.5);
+ assert.equal('fulfill_status' in result,false);
+ assert.equal('remaining_stock_l' in result,false);
+ assert.equal(volumeComparison({...facts,opening_inventory_rows:0}),null);
+ assert.equal(volumeComparison({...facts,planned_supply_l:null}),null);
+ assert.equal(volumeComparison({...facts,opening_stock_l:-1}),null);
+ assert.equal(volumeComparison(null),null);
+});
+test('volume chart preserves zero supply and tiny positive demand without division by zero',()=>{
+ const tiny=volumeComparison({opening_stock_l:210000,planned_supply_l:0,batch_demand_l:0.01});
+ assert.equal(tiny.supplyWidth,0);
+ assert.ok(tiny.demandWidth>0&&tiny.demandWidth<1);
+ const zero=volumeComparison({opening_stock_l:0,planned_supply_l:0,batch_demand_l:0,opening_inventory_rows:1});
+ assert.equal(zero.stockWidth,0);
+ assert.equal(zero.demandWidth,0);
+});
+
+const { predictionExplanation } = await import('../lib/operational-prediction.ts');
+test('input explanation is qualified and never invents capacity constraints or overwrites a BE reason',()=>{
+ const sufficient={...first,fulfill_status:'terpenuhi',risk_reason:'',input_facts:{opening_stock_l:10000,planned_supply_l:0,batch_demand_l:8000,opening_inventory_rows:1}};
+ assert.match(predictionExplanation(sufficient),/^Perbandingan input:/);
+ assert.match(predictionExplanation(sufficient),/batch lain belum diperhitungkan/);
+ assert.equal(predictionExplanation({...sufficient,risk_reason:'Alasan resmi server'}),'Alasan resmi server');
+ assert.match(predictionExplanation({...sufficient,input_facts:null}),/Alasan rinci tidak disertakan/);
+ assert.match(predictionExplanation({...sufficient,fulfill_status:'tidak_terpenuhi'}),/Alasan rinci tidak disertakan/);
+});

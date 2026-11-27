@@ -18,6 +18,7 @@ export function EquipmentAdjustmentRules() {
   return <>
     <Card>
       <SectionTitle title="Rules penyesuaian alat" subtitle="Tinjau batas operasional dan kompatibilitas sebelum memutuskan rekomendasi." />
+      <p className="small muted">Prediksi volume saat ini belum menghitung kapasitas dan speed alat. Batas dan kompatibilitas berikut merupakan referensi konfigurasi untuk meninjau penyesuaian.</p>
       <p className="small muted">Upgrade kapasitas, perubahan speed, dan pemindahan alat perlu memenuhi batas yang diizinkan, kecocokan produk/kemasan, sumber tangki, serta jalur alat. Kelayakan akhir memerlukan validasi server.</p>
       <button className="button secondary" aria-expanded={open} aria-controls="equipment-adjustment-rules" onClick={() => setOpen(!open)}>{open ? "Tutup rules" : "Lihat rules dari server"}</button>
       {open && <div id="equipment-adjustment-rules">

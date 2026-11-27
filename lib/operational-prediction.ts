@@ -66,3 +66,30 @@ export function predictionInputs(facts: Record<string, unknown> | null) {
       ? `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 10 }).format(value)} L` : "Tidak disertakan pada hasil ini" };
   });
 }
+
+/** Visualization of the documented BE input comparison; never a stock reservation or a fulfillment verdict. */
+export function volumeComparison(facts: Record<string, unknown> | null) {
+  const read = (key: string) => {
+    const value = facts?.[key];
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+  };
+  const stock = read("opening_stock_l"), supply = read("planned_supply_l"), demand = read("batch_demand_l");
+  if (stock === null || supply === null || demand === null || facts?.opening_inventory_rows === 0) return null;
+  const reference = stock + supply;
+  if (!Number.isFinite(reference)) return null;
+  const scale = Math.max(reference, demand);
+  return { stock, supply, demand, reference, stockWidth: scale > 0 ? stock / scale * 100 : 0,
+    supplyWidth: scale > 0 ? supply / scale * 100 : 0, demandWidth: scale > 0 ? demand / scale * 100 : 0 };
+}
+
+export function predictionExplanation(row: FulfillmentPrediction): string {
+  if (row.risk_reason?.trim()) return row.risk_reason;
+  const chart = volumeComparison(row.input_facts);
+  if (chart && row.fulfill_status === "terpenuhi" && chart.demand <= chart.reference) {
+    return "Perbandingan input: kebutuhan batch tidak melebihi acuan stok + pasokan. Penggunaan stok oleh batch lain belum diperhitungkan.";
+  }
+  if (chart && row.fulfill_status === "tidak_terpenuhi" && chart.demand > chart.reference) {
+    return "Perbandingan input: kebutuhan batch melebihi acuan stok + pasokan pada perhitungan ini.";
+  }
+  return "Alasan rinci tidak disertakan oleh server. Tinjau data sumber sebelum mengambil tindakan.";
+}

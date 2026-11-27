@@ -35,7 +35,7 @@ export function plansPath(filter: PlanFilter): string { return query("/productio
 
 export const recommendationStatuses: RecommendationStatus[] = ["draft", "accepted", "rejected", "applied"];
 export function canRunPrediction(permissions: string[]): boolean {
-  return permissions.includes("schedule.generate") || permissions.includes("plan.decide");
+  return permissions.includes("plan.decide");
 }
 export function canDecideRecommendation(permissions: string[]): boolean { return permissions.includes("plan.decide"); }
 

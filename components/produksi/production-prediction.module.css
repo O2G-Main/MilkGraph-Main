@@ -21,3 +21,20 @@
 .inputFacts { border-top: 1px solid var(--color-border); margin-top: 16px; padding-top: 16px; }
 .inputFacts h4 { font-size: 14px; font-weight: 600; }
 .inputFacts .facts { gap: 16px 24px; }
+
+.scope { display: grid; gap: 4px; padding: 12px 16px; margin-block: 16px; border-left: 3px solid var(--color-primary); background: var(--color-accent-soft); border-radius: var(--radius-sm); }
+.scope strong { font-size: 14px; }
+.scope p { font-size: 12px; color: var(--color-on-surface-muted); }
+.volumeChart { margin: 16px 0; display: grid; gap: 8px; }
+.barHeading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; font-size: 12px; }
+.barHeading strong { font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.volumeTrack { display: flex; height: 12px; border-radius: var(--radius-full); overflow: hidden; background: var(--color-border); margin-bottom: 8px; }
+.volumeTrack > span { height: 100%; flex: none; }
+.stockSegment { background: var(--color-primary); }
+.supplySegment { background: var(--color-status-ok); }
+.demandSegment { background: var(--color-status-info); }
+.volumeLegend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--color-on-surface-muted); }
+.volumeLegend > span { display: inline-flex; align-items: center; gap: 6px; }
+.volumeLegend i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.calculationDetails { margin-top: 16px; }
+.calculationDetails > summary { min-height: 44px; padding-block: 12px; font-size: 13px; color: var(--color-primary); cursor: pointer; }

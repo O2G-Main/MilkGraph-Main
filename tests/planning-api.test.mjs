@@ -73,12 +73,12 @@ test('all documented decision states round-trip without changing any planning qu
   }
 });
 
-test('schedule.generate can run predictions, but cannot decide recommendations', async t => {
-  const calls = mockFetch(t, [{}, { count: 0, items: [] }, { count: 0, items: [] }]);
-  assert.equal(planning.canRunPrediction(['schedule.generate']), true);
-  assert.equal(planning.canDecideRecommendation(['schedule.generate']), false);
-  await planning.runPlanningPrediction({ date: '2026-11-01' }, 'production', ['schedule.generate']);
-  assert.deepEqual(JSON.parse(calls[0].body), { production_date: '2026-11-01' });
+test('production prediction execution requires the exact plan.decide permission registered by BE', async t => {
+  const calls = mockFetch(t, []);
+  assert.equal(planning.canRunPrediction(['schedule.generate']), false);
+  assert.equal(planning.canRunPrediction(['plan.decide']), true);
+  await assert.rejects(planning.runPlanningPrediction({ date: '2026-11-01' }, 'production', ['schedule.generate']), /Izin/);
+  assert.equal(calls.length, 0);
 });
 
 test('missing exact target after PATCH cannot be mistaken for verified success', async t => {

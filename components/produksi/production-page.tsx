@@ -18,7 +18,7 @@ export function ProductionPage({ initialDate }: { initialDate: string }) {
   const [date, setDate] = useState(initialDate);
   const [view, setView] = useState<View>("daily");
   return <div className="page-enter">
-    <PageHeading title="Produksi" subtitle={API_MODE ? "Periksa prediksi pemenuhan berdasarkan data produksi dan tinjau solusi saat target berisiko." : "Tinjau produksi harian dan alur pabrik menggunakan data simulasi lokal."} />
+    <PageHeading title="Produksi" subtitle={API_MODE ? "Periksa kecukupan volume susu per batch dan tinjau rekomendasi berdasarkan data produksi." : "Tinjau produksi harian dan alur pabrik menggunakan data simulasi lokal."} />
     <div className="page-tabs production-tabs">
       <Toggle label="Bagian Produksi" value={view} onChange={setView} options={[
         { value: "daily", label: API_MODE ? "Prediksi pemenuhan" : "Produksi harian (demo)" },
