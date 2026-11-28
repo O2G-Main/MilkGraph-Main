@@ -1617,7 +1617,8 @@ html:has(.login-page) { background: var(--color-canvas); }
 .login-reveal:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .login-hint { margin: 0; font-size: 12px; color: var(--color-on-surface-muted); text-align: right; }
 .login-error { margin: 0; font-size: 12px; color: var(--color-status-crit); }
-.login-submit { margin: 8px 0 16px; font-size: 14px; }
+.login-submit { margin: 8px 0 16px; font-size: 14px; background: #1E3A5F; } /* biru dongker khusus tombol masuk, token primary tetap hijau */
+.login-submit:hover:not(:disabled) { background: #16293F; }
 .login-submit:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .login-submit:disabled { opacity: .7; cursor: progress; }
 .login-divider { width: 100%; display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 11px; color: var(--color-on-surface-muted); }
