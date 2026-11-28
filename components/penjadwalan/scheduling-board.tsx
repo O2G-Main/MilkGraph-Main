@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Card, Icon, SectionTitle } from "@/components/ui";
+import { Button, Card, Icon, SectionTitle } from "@/components/ui";
 import type { ProductionScheduleRow } from "@/lib/api/production";
 import { uniqueSchedule } from "@/lib/scheduling";
 import { SchedulingDetail } from "./scheduling-detail";
@@ -19,7 +19,7 @@ export function SchedulingBoard({ rows, loading, error, onRetry, date, role }: {
   }
   return <Card>
     <SectionTitle title="Jadwal harian" subtitle={`${date} WIB · Pilih batch untuk melihat alat dan pemenuhannya.`} />
-    {error ? <div role="alert"><p className="crit-text">Gagal memuat jadwal: {error.message}</p><button className="text-link" onClick={onRetry}>Coba lagi</button></div>
+    {error ? <div role="alert"><p className="crit-text">Gagal memuat jadwal: {error.message}</p><Button variant="text" onClick={onRetry}>Coba lagi</Button></div>
     : loading ? <p role="status" className={styles.empty}>Memuat jadwal produksi…</p>
     : !rows.length ? <div className={styles.empty}><h3>Belum ada jadwal pada tanggal ini</h3><p>Gunakan Susun jadwal untuk membuat batch pada tanggal terpilih.</p></div>
     : <div className={styles.lines}>{[...groups].map(([line, items]) => <section className={styles.line} key={line} aria-label={`Jadwal ${line}`}>

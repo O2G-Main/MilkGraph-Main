@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, X } from "lucide-react";
-import { Badge, Icon } from "@/components/ui";
+import { Badge, Button, Icon, buttonClass } from "@/components/ui";
 import { Equipment, KIND_LABEL } from "@/components/trace/equipment";
 import { LINKS, type Asset } from "@/lib/assets";
 
@@ -20,7 +20,7 @@ export function AssetInfo({ asset, assets, onPick, onClose }: { asset: Asset; as
     <header>
       <Equipment kind={asset.kind} size={44} />
       <div><h2>{asset.id}</h2><p>{KIND_LABEL[asset.kind] ?? asset.kind}</p></div>
-      <button className="icon-button" aria-label="Tutup info alat" onClick={onClose}><Icon icon={X} size={18} /></button>
+      <Button variant="icon" aria-label="Tutup info alat" onClick={onClose}><Icon icon={X} size={18} /></Button>
     </header>
     <Badge tone={asset.tone}>{asset.status}</Badge>
     <dl className="flow-facts">
@@ -29,6 +29,6 @@ export function AssetInfo({ asset, assets, onPick, onClose }: { asset: Asset; as
     </dl>
     <section><h3>Menerima dari</h3>{related(from, "Ini titik awal alur. Susu masuk dari road tanker.")}</section>
     <section><h3>Mengirim ke</h3>{related(to, "Ini titik akhir alur. Produk keluar ke gudang.")}</section>
-    <Link className="button secondary wide" href={asset.href}>Buka detail di {DETAIL[asset.href] ?? "Kondisi Alat"}<Icon icon={ArrowRight} size={16} /></Link>
+    <Link className={buttonClass("secondary", true)} href={asset.href}>Buka detail di {DETAIL[asset.href] ?? "Kondisi Alat"}<Icon icon={ArrowRight} size={16} /></Link>
   </aside>;
 }

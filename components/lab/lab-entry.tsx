@@ -8,7 +8,7 @@ import { scenario } from "@/lib/data";
 import type { LabParam, LabResult } from "@/mock/ops";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { invalidateResources } from "@/lib/api/resource";
-import { Modal } from "@/components/ui";
+import { Button, Input, Modal } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 type Verdict = "lulus" | "gagal" | "berjalan";
@@ -53,7 +53,7 @@ export function LabEntryDialog({ sample, role = "lab", onClose }: { sample: LabR
           {rows.map((r, i) => (
             <fieldset key={r.name} className="lab-entry-row">
               <legend>{r.name} <small>Batas {r.limit}</small></legend>
-              <input aria-label={`Nilai ${r.name}`} value={r.value === "Berjalan" ? "" : r.value} placeholder="Nilai hasil uji" onChange={e => set(i, { value: e.target.value })} />
+              <Input aria-label={`Nilai ${r.name}`} value={r.value === "Berjalan" ? "" : r.value} placeholder="Nilai hasil uji" onChange={e => set(i, { value: e.target.value })} />
               <Select label={`Hasil ${r.name}`} value={r.verdict} onChange={v => set(i, { verdict: v })} options={VERDICTS} />
             </fieldset>
           ))}
@@ -61,8 +61,8 @@ export function LabEntryDialog({ sample, role = "lab", onClose }: { sample: LabR
         {sample.kind !== "qc-fg" && <label className="check-row"><input type="checkbox" checked={retest} onChange={e => setRetest(e.target.checked)} />Perlu uji ulang sebelum diputuskan QA</label>}
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose} disabled={saving}>Batal</button>
-          <button type="submit" className="button primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan hasil"}</button>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan hasil"}</Button>
         </div>
       </form>
     </Modal>
@@ -120,22 +120,22 @@ export function NewSampleDialog({ kind = "penerimaan", samples, role = "lab", on
 
   return (
     <Modal title={kind === "qc-fg" ? "Buat sampel QC barang jadi" : "Buat sampel lab"} onClose={onClose}>
-      {!API_MODE && !waiting.length ? <><p className="muted">Semua RT di antrean sudah punya sampel.</p><div className="dialog-actions"><button className="button primary" onClick={onClose}>Tutup</button></div></> : (
+      {!API_MODE && !waiting.length ? <><p className="muted">Semua RT di antrean sudah punya sampel.</p><div className="dialog-actions"><Button variant="primary" onClick={onClose}>Tutup</Button></div></> : (
         <form className="schedule-form" onSubmit={submit} noValidate>
           {kind === "penerimaan" && waiting.length > 0 && (
             <label><span className="field-label">Pilih RT di antrean</span><Select label="RT yang belum disampel" value={rt} onChange={setRt} options={waiting.map(r => ({ value: r.id, label: r.id, hint: `${r.farm}, umur susu ${r.age}` }))} /></label>
           )}
           {API_MODE && (kind === "qc-fg" || waiting.length === 0) && (
             <>
-              <label><span className="field-label">{kind === "qc-fg" ? "Kode Lot Barang Jadi" : "Kode RT / Batch"}</span><input value={subject} onChange={e => setSubject(e.target.value)} placeholder={kind === "qc-fg" ? "Contoh: FG-1102-01" : "Contoh: RT-38"} required /></label>
-              <label><span className="field-label">Keterangan</span><input value={detail} onChange={e => setDetail(e.target.value)} placeholder="Contoh: UHT Plain 1000 ml" /></label>
+              <label><span className="field-label">{kind === "qc-fg" ? "Kode Lot Barang Jadi" : "Kode RT / Batch"}</span><Input value={subject} onChange={e => setSubject(e.target.value)} placeholder={kind === "qc-fg" ? "Contoh: FG-1102-01" : "Contoh: RT-38"} required /></label>
+              <label><span className="field-label">Keterangan</span><Input value={detail} onChange={e => setDetail(e.target.value)} placeholder="Contoh: UHT Plain 1000 ml" /></label>
             </>
           )}
           <p className="small muted">Semua parameter dimulai dari status berjalan. Isi hasilnya lewat tombol Masukkan/Perbarui hasil.</p>
           {error && <p className="small crit-text" role="alert">{error}</p>}
           <div className="dialog-actions">
-            <button type="button" className="button secondary" onClick={onClose} disabled={saving}>Batal</button>
-            <button type="submit" className="button primary" disabled={saving}>{saving ? "Membuat…" : "Buat sampel"}</button>
+            <Button variant="secondary" onClick={onClose} disabled={saving}>Batal</Button>
+            <Button type="submit" variant="primary" disabled={saving}>{saving ? "Membuat…" : "Buat sampel"}</Button>
           </div>
         </form>
       )}

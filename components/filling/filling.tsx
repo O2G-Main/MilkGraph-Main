@@ -11,7 +11,7 @@ import { Instructions } from "@/components/tangki/tangki";
 import type { Block, Tone } from "@/mock/types";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceButton, SourceModal, Timeline } from "@/components/ui";
+import { Badge, Button, Card, Icon, PageHeading, PageLink, SectionTitle, SourceButton, SourceModal, Table, Timeline } from "@/components/ui";
 import { useFlows } from "@/lib/flows";
 import { levelAfter, type FlowRow } from "@/lib/volume";
 import { useAssetVolume } from "@/lib/api/asset-volume";
@@ -292,28 +292,26 @@ export function Filling() {
           subtitle="Waktu minimum dalam menit [asumsi]."
           action={<PageLink className="text-link" href="/constraint">Batas changeover<Icon icon={ArrowRight} size={14} /></PageLink>}
         />
-        <div className="table-wrap">
-          <table className="matrix-table">
-            <thead>
-              <tr>
-                <th>Dari \ ke</th>
-                {changeoverMatrix.products.map(p => <th key={p} className="numeric">{p}</th>)}
+        <Table variant="matrix">
+          <thead>
+            <tr>
+              <th>Dari \ ke</th>
+              {changeoverMatrix.products.map(p => <th key={p} className="numeric">{p}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {changeoverMatrix.products.map((from, i) => (
+              <tr key={from}>
+                <td><strong>{from}</strong></td>
+                {changeoverMatrix.minutes[i]?.map((m, j) => (
+                  <td key={j} data-label={changeoverMatrix.products[j]} className="numeric">{m ? `${m} mnt` : "-"}</td>
+                ))}
               </tr>
-            </thead>
-            <tbody>
-              {changeoverMatrix.products.map((from, i) => (
-                <tr key={from}>
-                  <td><strong>{from}</strong></td>
-                  {changeoverMatrix.minutes[i]?.map((m, j) => (
-                    <td key={j} data-label={changeoverMatrix.products[j]} className="numeric">{m ? `${m} mnt` : "-"}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
         <p className="small muted">{changeoverMatrix.note}</p>
-        <button className="text-link" onClick={() => setSource("FILL-F1")}>Lihat jadwal F1<Icon icon={ArrowUpRight} size={14} /></button>
+        <Button variant="text" onClick={() => setSource("FILL-F1")}>Lihat jadwal F1<Icon icon={ArrowUpRight} size={14} /></Button>
       </Card>
       <SourceModal id={source} onClose={() => setSource(null)} />
     </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal } from "@/components/ui";
+import { Button, buttonClass, Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal, Table } from "@/components/ui";
 import { useDemo } from "@/lib/demo";
 import { useFlows } from "@/lib/flows";
 import { assetsOfStep, flowsFor } from "@/lib/volume";
@@ -60,13 +60,13 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
 
   return <div className="page-enter">
     <PageHeading title="Riwayat Produksi" subtitle="Pilih hasil produksi, lalu ikuti jalurnya dari asal susu sampai produk selesai.">
-      <Link className="button secondary" href="/graph">Context Graph<Icon icon={ArrowRight} size={16} /></Link>
+      <Link className={buttonClass("secondary")} href="/graph">Context Graph<Icon icon={ArrowRight} size={16} /></Link>
     </PageHeading>
     <OutputPicker outputs={allOutputs} filters={filters} setFilters={update} selected={output?.id ?? ""} onSelect={select}
       onExample={() => { update({ ...EMPTY, product: "UHT Stroberi 200 ml", time: "16:00" }); setPicked("FG-1012-11"); }} />
     {historyRes.error && <p className="small crit-text" role="alert">Gagal memuat daftar group historis: {historyRes.error.message}</p>}
 
-    {API_MODE && !historyRes.data ? <Card>{historyRes.error ? <button className="button secondary" onClick={() => void historyRes.reload()}>Coba lagi daftar produksi</button> : <p className="muted" role="status">Memuat daftar hasil produksi…</p>}</Card> : !output ? <Card className="rp-empty"><p>Tidak ada output yang cocok dengan pilihan ini.</p><button type="button" className="button secondary" onClick={() => update(EMPTY)}>Reset pilihan</button></Card> : histGroup ? <HistorisDetail group={histGroup} detail={backwardRes.data} loading={backwardRes.loading && !backwardRes.data} error={backwardRes.error} /> : <>
+    {API_MODE && !historyRes.data ? <Card>{historyRes.error ? <Button variant="secondary" onClick={() => void historyRes.reload()}>Coba lagi daftar produksi</Button> : <p className="muted" role="status">Memuat daftar hasil produksi…</p>}</Card> : !output ? <Card className="rp-empty"><p>Tidak ada output yang cocok dengan pilihan ini.</p><Button variant="secondary" onClick={() => update(EMPTY)}>Reset pilihan</Button></Card> : histGroup ? <HistorisDetail group={histGroup} detail={backwardRes.data} loading={backwardRes.loading && !backwardRes.data} error={backwardRes.error} /> : <>
       <Card className="rp-summary">
         <Equipment kind="Lot" size={52} />
         <div className="rp-summary-main"><span>Output terpilih</span><h2>{output.product}</h2><span className="mono">{output.id}</span></div>
@@ -93,7 +93,7 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
           </dl>
           {stepFlows.length > 0 && <p className="small">{stepFlows.length} transfer tercatat di alat tahap ini, selisih {number(stepFlows.reduce((s, f) => s + f.diff, 0))} L. <PageLink inline className="inline-link" href={`/transfer?alat=${assetsOfStep(step.to)[0] ?? ""}`}>Lihat riwayat transfer</PageLink></p>}
           {step.gap && <p className="small rp-note">Serah-terima di tahap ini tidak tercatat langsung; disambungkan dari irisan waktu dan level tangki.</p>}
-          {step.source ? <button type="button" className="button secondary wide" onClick={() => setSource(step.source)}>Lihat bukti proses<Icon icon={ArrowUpRight} size={16} /></button>
+          {step.source ? <Button variant="secondary" wide onClick={() => setSource(step.source)}>Lihat bukti proses<Icon icon={ArrowUpRight} size={16} /></Button>
             : <p className="small muted">Bukti proses belum tersedia.</p>}
         </aside>}
       </div>
@@ -101,11 +101,11 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
       <QualityCard output={output} onSource={setSource} />
       <Card className="rules-card">
         <SectionTitle title="Transfer & selisih di jalur batch" subtitle={`Transfer yang menyentuh ${chainAssets.join(", ")} atau batch di jalur ini, dari Traceability > Transfer & Volume.`} action={<PageLink className="text-link" href="/transfer">Buka Transfer & Volume<Icon icon={ArrowRight} size={14} /></PageLink>} />
-        <div className="table-wrap"><table className="schedule-table flow-table">
+        <Table variant="schedule" className="flow-table">
           <thead><tr><th>Transfer</th><th>Dari ke</th><th className="numeric">Keluar</th><th className="numeric">Diterima</th><th className="numeric">Selisih</th><th>Waktu</th><th>Sumber</th></tr></thead>
           <tbody>{chainFlows.map(f => <FlowLine key={f.id} f={f} />)}
             {!chainFlows.length && <tr><td colSpan={7} className="muted">Belum ada transfer tercatat di alat jalur ini.</td></tr>}</tbody>
-        </table></div>
+        </Table>
       </Card>
     </>}
     <SourceModal id={source} onClose={() => setSource(null)} />

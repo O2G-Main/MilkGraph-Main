@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import { ArrowUpRight, CalendarRange, ChevronRight, Droplets, Factory, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useResource } from "@/lib/api/resource";
 import { FULFILMENT_LABEL, FULFILMENT_TONE, fmtWaktu, pctText, type BeDowntimeEvent, type BeExecDashboard, type BeSchedule } from "@/lib/api/contract";
-import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
+import { Badge, Card, Icon, SectionTitle, Table } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 import { Bullets, C, Donut, ExecKpis, Legend, Tip, type ExecKpi } from "./executive";
 import { RadarJadwalChartCard, RadarJadwalTableCard } from "@/components/radar/radar-jadwal";
@@ -52,7 +52,7 @@ export function ExecutiveDetails() {
   return <>
     <Card className="home-menus"><SectionTitle title="Target dan jadwal harian" subtitle="Target per tanggal dari jadwal tergenerate terbaru di Backend." />
       {d.daily_schedule
-        ? <div className="table-wrap"><table className="schedule-table">
+        ? <Table variant="schedule">
           <thead><tr><th>Tanggal</th><th className="numeric">Jatuh tempo</th><th className="numeric">Terjadwal</th><th className="numeric">Terjadwal dari target</th></tr></thead>
           <tbody>{d.daily_schedule.targets.map(t => <tr key={t.date}>
             <td><strong>{t.date}</strong></td>
@@ -61,20 +61,20 @@ export function ExecutiveDetails() {
             <td className="numeric">{t.due_liter ? `${Math.round(t.scheduled_liter / t.due_liter * 100)}%` : "-"}</td>
           </tr>)}
           {!d.daily_schedule.targets.length && <tr><td colSpan={4} className="muted">Tidak ada target pada jadwal ini.</td></tr>}
-          </tbody></table></div>
+          </tbody></Table>
         : <p className="muted">Belum ada jadwal tergenerate, jadi target harian belum tersedia. Generate jadwal di halaman Penjadwalan.</p>}
     </Card>
 
     <Card className="home-menus"><SectionTitle title="Pasokan per farm dan penggunaan mesin" subtitle="Susu diterima hanya dari kedatangan RT berstatus Sudah Tiba. Utilisasi dihitung Backend dari jadwal terbaru dan jendela downtime." />
-      <div className="table-wrap"><table className="schedule-table">
+      <Table variant="schedule">
         <thead><tr><th>Farm</th><th className="numeric">Susu diterima</th></tr></thead>
         <tbody>{d.milk_received_l.by_farm.map(f => <tr key={f.farm_id}>
           <td><strong>{f.farm_name}</strong><span className="table-sub">{f.farm_id}</span></td>
           <td className="numeric">{fmt(f.total_l)} L</td>
         </tr>)}
         {!d.milk_received_l.by_farm.length && <tr><td colSpan={2} className="muted">Belum ada kedatangan RT berstatus Sudah Tiba.</td></tr>}
-        </tbody></table></div>
-      <div className="table-wrap"><table className="schedule-table">
+        </tbody></Table>
+      <Table variant="schedule">
         <thead><tr><th>Mesin filling</th><th className="numeric">Jam pakai</th><th className="numeric">Jam downtime</th><th className="numeric">Utilisasi</th></tr></thead>
         <tbody>{(d.machine_utilization ?? []).map(u => <tr key={u.fm_id}>
           <td><strong>{u.fm_id}</strong></td>
@@ -83,11 +83,11 @@ export function ExecutiveDetails() {
           <td className="numeric">{jam(u.pct)}%</td>
         </tr>)}
         {!(d.machine_utilization ?? []).length && <tr><td colSpan={4} className="muted">Belum ada jadwal, utilisasi belum bisa dihitung.</td></tr>}
-        </tbody></table></div>
+        </tbody></Table>
     </Card>
 
     {d.po_summary && <Card className="home-menus"><SectionTitle title="Rincian status PO" subtitle="Fulfilment per PO dari jadwal terbaru di Backend." />
-      <div className="table-wrap"><table className="schedule-table">
+      <Table variant="schedule">
         <thead><tr><th>PO</th><th>Status</th><th className="numeric">Terpenuhi</th><th>Rencana selesai</th><th>Akar masalah</th></tr></thead>
         <tbody>{d.po_summary.fulfilment.map(f => <tr key={f.po_id}>
           <td><strong className="mono">{f.po_id}</strong></td>
@@ -97,7 +97,7 @@ export function ExecutiveDetails() {
           <td>{f.root_causes?.length ? f.root_causes.join(", ") : <span className="small muted">Tidak ada</span>}</td>
         </tr>)}
         {!d.po_summary.fulfilment.length && <tr><td colSpan={5} className="muted">Tidak ada data fulfilment.</td></tr>}
-        </tbody></table></div>
+        </tbody></Table>
     </Card>}
   </>;
 }

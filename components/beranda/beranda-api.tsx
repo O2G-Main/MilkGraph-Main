@@ -11,7 +11,7 @@ import { findNav, visibleNav } from "@/lib/nav";
 import { canOpen, canSee, type RoleId } from "@/lib/roles";
 import type { DataSource } from "@/mock/ops";
 import type { Tone } from "@/mock/types";
-import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Icon, SectionTitle, buttonClass } from "@/components/ui";
 
 const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
 const jam = (n?: number) => (n === undefined ? "-" : new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(n));
@@ -50,7 +50,7 @@ export function BerandaApiHero({ role }: { role: RoleId }) {
       : ds
       ? `Jendela ${fmtWaktu(ds.window.start)} sampai ${fmtWaktu(ds.window.end)}. ${po ? `${po.fulfilled} PO terpenuhi, ${po.on_track} sesuai rencana. ` : ""}Pasokan diterima ${fmt(d.milk_received_l.total)} liter dari RT berstatus Sudah Tiba.`
       : `Pasokan diterima ${fmt(d.milk_received_l.total)} liter dari RT berstatus Sudah Tiba. Generate jadwal di Penjadwalan supaya status PO dan utilisasi mesin bisa dihitung.`}</p>
-    {canSee(role, findNav("/penjadwalan").tab.href) && <Link href="/penjadwalan" className="button inverse">Buka Penjadwalan<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>}
+    {canSee(role, findNav("/penjadwalan").tab.href) && <Link href="/penjadwalan" className={buttonClass("inverse")}>Buka Penjadwalan<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>}
   </section>;
 }
 
@@ -102,7 +102,7 @@ export function BerandaApiAttention({ role, title, subtitle }: { role: RoleId; t
       ? <p className="small crit-text">Gagal memuat data perhatian: {err.message}</p>
       : shown.length
       ? <><ul className="attention-list">{visible.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>
-        {shown.length > 4 && <p className="small"><button type="button" className="text-link" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `+${shown.length - 4} item lainnya`}</button></p>}</>
+        {shown.length > 4 && <p className="small"><Button variant="text" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `+${shown.length - 4} item lainnya`}</Button></p>}</>
       : <p className="small muted">Tidak ada hal yang perlu perhatian dari data server saat ini.</p>}
   </Card>;
 }

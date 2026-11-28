@@ -7,7 +7,7 @@ import { scenario } from "@/lib/data";
 import type { Answer, Scenario } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Icon, Modal } from "@/components/ui";
+import { Button, Icon, Modal } from "@/components/ui";
 import { Equipment, KIND_LABEL } from "./equipment";
 import "@xyflow/react/dist/style.css";
 
@@ -139,8 +139,8 @@ export function EvidenceGraph({
       <div className="graph-toolbar">
         <span><Icon icon={Network} size={16} />{graph.nodes.length} alat dan titik · {graph.edges.length} aliran</span>
         <div>
-          <button className="text-link" onClick={() => setAll(!all)} aria-pressed={all}>{all ? "Fokus jalur" : "Semua node"}</button>
-          <button className="icon-button" aria-label="Perluas graph" onClick={() => setExpanded(true)}><Icon icon={Maximize2} size={16} /></button>
+          <Button variant="text" onClick={() => setAll(!all)} aria-pressed={all}>{all ? "Fokus jalur" : "Semua node"}</Button>
+          <Button variant="icon" aria-label="Perluas graph" onClick={() => setExpanded(true)}><Icon icon={Maximize2} size={16} /></Button>
         </div>
       </div>
       <div className="graph-canvas">{canvas}</div>

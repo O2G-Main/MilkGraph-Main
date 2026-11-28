@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check, Pencil } from "lucide-react";
-import { Icon, Modal } from "@/components/ui";
+import { Button, Icon, Input, Modal } from "@/components/ui";
 
 const fmt = (n: number) => n.toLocaleString("id-ID", { maximumFractionDigits: 2 });
 
@@ -35,22 +35,22 @@ export function RuleDialog({
         Nilai ini dipakai di penjadwalan dan cek kelayakan, jadi pastikan sudah sesuai.
       </p>
       <div className="dialog-actions">
-        <button type="button" className="button secondary" onClick={() => setConfirm(false)}>Periksa lagi</button>
-        <button type="button" className="button primary" onClick={save}><Icon icon={Check} size={16} />Ya, simpan</button>
+        <Button variant="secondary" onClick={() => setConfirm(false)}>Periksa lagi</Button>
+        <Button variant="primary" onClick={save}><Icon icon={Check} size={16} />Ya, simpan</Button>
       </div>
     </> : <>
       <form className="schedule-form" onSubmit={e => { e.preventDefault(); if (!invalid && dirty) save(); }}>
         <label>
           <span className="field-label">Nilai baru</span>
-          <input type="number" inputMode="decimal" min={min} max={max} step={step} value={draft} autoFocus
+          <Input type="number" inputMode="decimal" min={min} max={max} step={step} value={draft} autoFocus
             aria-invalid={invalid} onChange={e => setDraft(e.target.value)} />
           <span className="small muted">{unit}</span>
         </label>
         {note && <p className="small muted">{note}</p>}
         {invalid && <p className="small crit-text" role="alert">Isi antara {fmt(min)} dan {fmt(max)} {unit}.</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose}>Batal</button>
-          <button type="submit" className="button primary" disabled={invalid || !dirty}>Simpan</button>
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={invalid || !dirty}>Simpan</Button>
         </div>
       </form>
     </>}

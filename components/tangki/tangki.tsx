@@ -11,7 +11,7 @@ import { cipLog as mockCipLog, midTanks as mockMidTanks, type MidTank } from "@/
 import type { Block, Tone } from "@/mock/types";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal, Timeline } from "@/components/ui";
+import { Badge, Button, Card, Icon, PageHeading, PageLink, SectionTitle, SourceModal, Table, Timeline } from "@/components/ui";
 import { useFlows } from "@/lib/flows";
 import { levelAfter, type FlowRow } from "@/lib/volume";
 import { balanceNote, useAssetVolume } from "@/lib/api/asset-volume";
@@ -167,13 +167,13 @@ export function Instructions({ role }: { role: "receiving" | "supervisor" }) {
               {acked ? (
                 <Badge tone="ok">Dikonfirmasi</Badge>
               ) : allowed && (
-                <button
-                  className="button secondary"
+                <Button
+                  variant="secondary"
                   disabled={ackingId === item.id}
                   onClick={() => handleAck(item.id, item.text)}
                 >
                   Konfirmasi
-                </button>
+                </Button>
               )}
             </li>
           );
@@ -300,7 +300,7 @@ export function Tangki() {
         <Timeline blocks={blocks as unknown as Block[]} resources={["Bay 1", "Bay 2", "Bay 3"]} onSource={setSource} />
       </Card>
       <div className="split-even">
-        <section className="panel">
+        <Card variant="panel">
           <SectionTitle title="Raw Milk Buffer" subtitle={`Level dan suhu tangki susu mentah. Kapasitasnya ${number(bufferCap)} L per tangki.`} />
           <div className="tanks-grid single">
             {buffers.map(tank => (
@@ -308,15 +308,14 @@ export function Tangki() {
                 cip={cipLogList.find(c => c.asset === tank.id) ?? { asset: tank.id, last: "-", hoursSince: 0, next: "-", status: "-", tone: "neutral" as Tone }} />
             ))}
           </div>
-        </section>
+        </Card>
         <Card>
           <SectionTitle
             title="Log CIP per aset"
             subtitle={`Jarak maksimal antar-CIP tiap tangki ${cipInterval} jam [asumsi].`}
-            action={<button className="icon-button" aria-label="Lihat log CIP Bay 2" onClick={() => setSource("CIP-LOG")}><Icon icon={SprayCan} size={17} /></button>}
+            action={<Button variant="icon" aria-label="Lihat log CIP Bay 2" onClick={() => setSource("CIP-LOG")}><Icon icon={SprayCan} size={17} /></Button>}
           />
-          <div className="table-wrap">
-            <table>
+          <Table>
               <thead>
                 <tr>
                   <th>Aset</th>
@@ -337,8 +336,7 @@ export function Tangki() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+          </Table>
         </Card>
       </div>
       <Card>
@@ -349,9 +347,9 @@ export function Tangki() {
         <div className="mid-grid">
           {midTanksList.map(t => <MidTankCard key={t.id} t={t} flows={flows} />)}
         </div>
-        <button className="text-link" onClick={() => setSource("TR-ST4")}>
+        <Button variant="text" onClick={() => setSource("TR-ST4")}>
           Contoh serah-terima SP-1 ke ST-4<Icon icon={ArrowUpRight} size={14} />
-        </button>
+        </Button>
       </Card>
       <SourceModal id={source} onClose={() => setSource(null)} />
     </div>

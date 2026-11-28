@@ -7,7 +7,7 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { Icon } from "@/components/ui";
+import { Button, Icon } from "@/components/ui";
 import { moveDate, productionWeek } from "@/lib/scheduling";
 import { CalendarDate } from "./calendar-date";
 import { ConditionIndicator } from "./condition-indicator";
@@ -67,8 +67,8 @@ export function ProductionCalendar({ date, month, today, onMonthChange, onSelect
     <header className={styles.calendarHeader}>
       <h2 aria-live="polite">{monthLabel}</h2>
       <div className={styles.actions}>
-        <button className="icon-button" aria-label="Bulan sebelumnya" onClick={() => nextMonth(-1)}><Icon icon={ChevronLeft} /></button>
-        <button className="icon-button" aria-label="Bulan berikutnya" onClick={() => nextMonth(1)}><Icon icon={ChevronRight} /></button>
+        <Button variant="icon" aria-label="Bulan sebelumnya" onClick={() => nextMonth(-1)}><Icon icon={ChevronLeft} /></Button>
+        <Button variant="icon" aria-label="Bulan berikutnya" onClick={() => nextMonth(1)}><Icon icon={ChevronRight} /></Button>
       </div>
     </header>
     <div className={styles.weekdays} aria-hidden="true">{["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map(day => <span key={day}>{day}</span>)}</div>

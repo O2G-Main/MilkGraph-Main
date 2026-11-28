@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from "recharts";
+import { Table } from "@/components/ui";
 
 type Point = { month: string; value: number };
 
@@ -42,6 +43,6 @@ export function LineChart({ label, values, labels, unit, decimals = 0, reference
         </AreaChart>
       </ResponsiveContainer>
     </div>
-    <details className="lc-table"><summary>Lihat data sebagai tabel</summary><div className="table-wrap"><table><thead><tr><th>Bulan</th><th className="numeric">{unit}</th></tr></thead><tbody>{data.map(d => <tr key={d.month}><td>{d.month}</td><td className="numeric">{fmt(d.value)}</td></tr>)}</tbody></table></div></details>
+    <details className="lc-table"><summary>Lihat data sebagai tabel</summary><Table><thead><tr><th>Bulan</th><th className="numeric">{unit}</th></tr></thead><tbody>{data.map(d => <tr key={d.month}><td>{d.month}</td><td className="numeric">{fmt(d.value)}</td></tr>)}</tbody></Table></details>
   </figure>;
 }

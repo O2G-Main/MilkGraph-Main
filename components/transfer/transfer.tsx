@@ -17,7 +17,7 @@ import { NeracaHarianApiCard } from "./neraca-harian-api";
 import { RadarJadwalCard } from "@/components/radar/radar-jadwal";
 import { diffTone, levelAfter, type FlowRow } from "@/lib/volume";
 import { asepticTanks, midTanks } from "@/mock/ops";
-import { Badge, Card, Icon, Modal, PageHeading, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal, PageHeading, SectionTitle, Table, Textarea, Toggle } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -54,7 +54,7 @@ export function Transfer({ alat }: { alat?: string }) {
   return (
     <div className="page-enter">
       <PageHeading title="Transfer & Volume" subtitle="Perpindahan susu antar tangki dan alat. Satu catatan langsung terhubung ke alat asal dan tujuan, volume tangki ikut diperbarui, dan selisih keluar dibanding diterima jadi mass balance.">
-        {(canRt || canProc) && <button className="button primary" onClick={() => setOpen(true)}><Icon icon={ArrowRightLeft} size={16} />Catat transfer</button>}
+        {(canRt || canProc) && <Button variant="primary" onClick={() => setOpen(true)}><Icon icon={ArrowRightLeft} size={16} />Catat transfer</Button>}
       </PageHeading>
       {loading && <p className="muted" role="status">Memuat riwayat transfer…</p>}
       {error && <p className="crit-text" role="alert">Gagal memuat transfer: {error.message}</p>}
@@ -71,7 +71,7 @@ export function Transfer({ alat }: { alat?: string }) {
       {API_MODE ? <TankVolumeApiCard tanks={apiTanks} alat={alat} /> : <>
       <Card className="rules-card">
         <SectionTitle title="Volume tangki terkini" subtitle="Level snapshot 14.42 ditambah yang diterima dan dikurangi yang keluar dari transfer setelahnya." />
-        <div className="table-wrap"><table className="schedule-table">
+        <Table variant="schedule">
           <thead><tr><th>Tangki</th><th className="numeric">Snapshot</th><th className="numeric">Masuk</th><th className="numeric">Keluar</th><th className="numeric">Volume terkini</th><th className="numeric">Terisi</th><th><span className="sr-only">Riwayat</span></th></tr></thead>
           <tbody>{tanks.map(t => {
             const inT = after.filter(f => f.to === t.id).reduce((s, f) => s + f.in, 0), outT = after.filter(f => f.from === t.id).reduce((s, f) => s + f.out, 0);
@@ -87,20 +87,20 @@ export function Transfer({ alat }: { alat?: string }) {
               <td className="table-action">{alat !== t.id && <Link className="text-link" href={`/transfer?alat=${t.id}`}>Riwayat<ArrowRight size={14} aria-hidden /></Link>}</td>
             </tr>;
           })}</tbody>
-        </table></div>
+        </Table>
       </Card>
       </>}
       {API_MODE && <NeracaHarianApiCard />}
       {API_MODE && <RadarJadwalCard />}
       <Card data-tour="transfer-history">
         <SectionTitle title={alat ? `Riwayat transfer ${alat}` : "Riwayat transfer"} subtitle="Selisih = volume keluar dari alat asal dikurangi volume diterima alat tujuan." />
-        <div className="table-wrap"><table className="schedule-table flow-table">
+        <Table variant="schedule" className="flow-table">
           <thead><tr><th>Transfer</th><th>Dari ke</th><th className="numeric">Keluar</th><th className="numeric">Diterima</th><th className="numeric">Selisih</th><th>Waktu</th><th>Sumber</th></tr></thead>
           <tbody>
             {flows.map(f => <FlowLine key={f.id} f={f} />)}
             {!flows.length && <tr><td colSpan={7} className="muted">Belum ada transfer{alat ? ` untuk ${alat}` : ""}.</td></tr>}
           </tbody>
-        </table></div>
+        </Table>
       </Card>
       {can(demo.role, "integration.manage") && <Card className="rules-card">
         <SectionTitle title="Integrasi IoT Greenfields" subtitle="Flowmeter dan sensor level bisa mengirim transfer otomatis. Data IoT tampil dengan sumber IoT, perangkat, dan waktu pengukuran." />
@@ -176,8 +176,8 @@ function FlowForm({ canRt, canProc, assigned, onClose }: { canRt: boolean; canPr
           <label><span className="field-label">Ke alat</span><Select label="Alat tujuan" value={to} onChange={v => { setTo(v); setError(null); }} options={toOptions} searchable /></label>
         </div>
         <div className="schedule-form-row">
-          <label><span className="field-label">Volume keluar (L)</span><input type="number" inputMode="numeric" min={1} step={10} value={out || ""} onChange={e => { setOut(Number(e.target.value)); setError(null); }} /></label>
-          <label><span className="field-label">Volume diterima (L)</span><input type="number" inputMode="numeric" min={0} step={10} value={inn || ""} onChange={e => { setIn(Number(e.target.value)); setError(null); }} /></label>
+          <label><span className="field-label">Volume keluar (L)</span><Input type="number" inputMode="numeric" min={1} step={10} value={out || ""} onChange={e => { setOut(Number(e.target.value)); setError(null); }} /></label>
+          <label><span className="field-label">Volume diterima (L)</span><Input type="number" inputMode="numeric" min={0} step={10} value={inn || ""} onChange={e => { setIn(Number(e.target.value)); setError(null); }} /></label>
         </div>
         <p className={`small ${diffTone(diffPct)}-text`}>{API_MODE ? "Perkiraan selisih" : "Selisih"} {number(diff)} L ({pct(diffPct)}%). {diffTone(diffPct) === "ok" ? "Dalam toleransi." : "Di luar toleransi 0,5%, tulis penyebabnya di catatan."}</p>
         <div className="schedule-form-row">
@@ -186,13 +186,13 @@ function FlowForm({ canRt, canProc, assigned, onClose }: { canRt: boolean; canPr
         </div>
         <div className="schedule-form-row">
           <label><span className="field-label">Waktu pengukuran</span><TimeField label="Waktu pengukuran" value={measuredAt} onChange={setMeasuredAt} minuteStep={5} /></label>
-          <label><span className="field-label">{API_MODE ? "Batch" : "Batch (opsional)"}</span><input value={batch} onChange={e => setBatch(e.target.value)} maxLength={30} placeholder="Contoh: MXB-1014-02" /></label>
+          <label><span className="field-label">{API_MODE ? "Batch" : "Batch (opsional)"}</span><Input value={batch} onChange={e => setBatch(e.target.value)} maxLength={30} placeholder="Contoh: MXB-1014-02" /></label>
         </div>
-        <label><span className="field-label">Catatan (opsional)</span><textarea value={note} onChange={e => setNote(e.target.value)} rows={2} maxLength={200} placeholder="Contoh: sisa 60 L tertahan di pipa, flush sebelum CIP" /></label>
+        <label><span className="field-label">Catatan (opsional)</span><Textarea value={note} onChange={e => setNote(e.target.value)} rows={2} maxLength={200} placeholder="Contoh: sisa 60 L tertahan di pipa, flush sebelum CIP" /></label>
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose} disabled={saving}>Batal</button>
-          <button type="submit" className="button primary" disabled={saving}>{saving ? "Menyimpan…" : "Catat transfer"}</button>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={saving}>{saving ? "Menyimpan…" : "Catat transfer"}</Button>
         </div>
       </form>
     </Modal>

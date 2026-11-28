@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, MessageSquareText, SendHorizontal, Sparkles } from "lucide-react";
-import { Icon } from "@/components/ui";
+import { Button, Card, Icon, Textarea } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { ASSETS, STAGES } from "@/lib/assets";
 import { badgeOf, type Adjust } from "./adjust";
@@ -43,7 +43,7 @@ export function PlanChat({ onAsk, onApply, canApply = true }: {
     { label: "Kenapa rencana ini melanggar?", text: "Constraint apa yang dilanggar di versi ini, dan kapan kejadiannya?" },
   ];
 
-  return <section className="card plan-chat" aria-labelledby="plan-chat-title">
+  return <Card className="plan-chat" aria-labelledby="plan-chat-title">
     <header className="plan-chat-head">
       <span className="plan-chat-icon"><Icon icon={MessageSquareText} size={20} /></span>
       <div><h2 id="plan-chat-title">Tanya rencana</h2><p>Jawaban dihitung langsung dari jadwal rencana yang sedang dilihat.</p></div>
@@ -66,9 +66,9 @@ export function PlanChat({ onAsk, onApply, canApply = true }: {
           const key = `${i}-${p.id}`, done = applied.has(key);
           return <div key={key} className="plan-proposal">
             <div><strong className="mono">{p.id}</strong> {badgeOf(p.adjust)}{p.reason && <small>{p.reason}</small>}</div>
-            {canApply && <button type="button" className={`button ${done ? "secondary" : "primary"}`} disabled={done} onClick={() => { onApply(p.id, p.adjust); setApplied(s => new Set(s).add(key)); }}>
+            {canApply && <Button variant={done ? "secondary" : "primary"} disabled={done} onClick={() => { onApply(p.id, p.adjust); setApplied(s => new Set(s).add(key)); }}>
               {done ? <><Icon icon={Check} size={15} />Diterapkan</> : "Terapkan di alur"}
-            </button>}
+            </Button>}
           </div>;
         })}
       </li>)}
@@ -78,10 +78,10 @@ export function PlanChat({ onAsk, onApply, canApply = true }: {
 
     <form className="plan-chat-input" onSubmit={e => { e.preventDefault(); ask(draft); }}>
       <label htmlFor="plan-chat-q" className="sr-only">Pertanyaan untuk rencana</label>
-      <textarea id="plan-chat-q" rows={2} value={draft} maxLength={1000} placeholder="Misal: maintenance F2 terbaik kapan untuk 45 menit?"
+      <Textarea id="plan-chat-q" rows={2} value={draft} maxLength={1000} placeholder="Misal: maintenance F2 terbaik kapan untuk 45 menit?"
         onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(draft); } }} />
       <button type="submit" className="plan-chat-send" disabled={!draft.trim()} aria-label="Kirim pertanyaan"><Icon icon={SendHorizontal} size={18} /></button>
     </form>
     <p className="small muted">Analisis dari jadwal yang tersedia. Keputusan tetap di planner.</p>
-  </section>;
+  </Card>;
 }

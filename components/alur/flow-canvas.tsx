@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { ReactFlow, Background, Controls, MarkerType, type Edge, type ReactFlowInstance } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Maximize2, Minimize2, MousePointer2 } from "lucide-react";
-import { Card, Icon } from "@/components/ui";
+import { Button, Card, Icon } from "@/components/ui";
 import { ASSETS, LINKS, STAGES, type Asset } from "@/lib/assets";
 import { autoLayout, visibleEdges, CARD } from "./graph";
 import { nodeTypes, type AssetNode, type StageNode } from "./flow-nodes";
@@ -84,7 +84,7 @@ export function FlowCanvas({ aside: Aside, badges = {}, overrides, hint, label, 
     {portal(<div className={`flow-frame ${full ? "is-full" : ""}`} role={full ? "dialog" : undefined} aria-modal={full || undefined} aria-label={full ? `${label} layar penuh` : undefined}>
       <div className="flow-toolbar">
         <span className="small muted">{ASSETS.length} alat</span>
-        <button className="icon-button" onClick={() => setFull(f => !f)} aria-label={full ? "Keluar dari layar penuh (Esc)" : "Tampilkan layar penuh"} title={full ? "Keluar dari layar penuh (Esc)" : "Layar penuh"}><Icon icon={full ? Minimize2 : Maximize2} size={18} /></button>
+        <Button variant="icon" onClick={() => setFull(f => !f)} aria-label={full ? "Keluar dari layar penuh (Esc)" : "Tampilkan layar penuh"} title={full ? "Keluar dari layar penuh (Esc)" : "Layar penuh"}><Icon icon={full ? Minimize2 : Maximize2} size={18} /></Button>
       </div>
       {toolbar}
       <div className={`flow-body ${asset ? "with-inspector" : ""}`}>

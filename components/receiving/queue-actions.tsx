@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { recordArrival, updateRtRecord, useDemo } from "@/lib/demo";
 import { ageAt, ageText, clock, toMin, type QueueRow } from "@/lib/receiving";
-import { Modal } from "@/components/ui";
+import { Button, buttonClass, Input, Modal } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -13,7 +13,7 @@ const BAY_CIP: Record<string, string> = { "Bay 2": "15:20" };
 export const BAYS = ["Bay 1", "Bay 2", "Bay 3"];
 
 function Actions({ onClose, label }: { onClose: () => void; label: string }) {
-  return <div className="dialog-actions"><button type="button" className="button secondary" onClick={onClose}>Batal</button><button type="submit" className="button primary">{label}</button></div>;
+  return <div className="dialog-actions"><Button variant="secondary" onClick={onClose}>Batal</Button><Button type="submit" variant="primary">{label}</Button></div>;
 }
 
 /** Catat kedatangan aktual RT dari jadwal: jam tiba, awal umur susu, volume timbang, dan suhu. */
@@ -40,7 +40,7 @@ export function ArriveDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="Catat kedatangan RT" onClose={onClose}>
-      {!waiting.length ? <><p className="muted">Semua RT di jadwal sudah tiba atau dibatalkan. Tambah jadwal baru di Jadwal Kedatangan RT.</p><div className="dialog-actions"><Link className="button primary" href="/kedatangan">Buka jadwal kedatangan</Link></div></> : (
+      {!waiting.length ? <><p className="muted">Semua RT di jadwal sudah tiba atau dibatalkan. Tambah jadwal baru di Jadwal Kedatangan RT.</p><div className="dialog-actions"><Link className={buttonClass("primary")} href="/kedatangan">Buka jadwal kedatangan</Link></div></> : (
         <form className="schedule-form" onSubmit={submit} noValidate>
           <label><span className="field-label">RT dari jadwal</span><Select label="RT dari jadwal" value={id} onChange={choose} options={waiting.map(a => ({ value: a.id, label: a.id, hint: `${a.farm}, ETA ${clock(a.eta)}` }))} /></label>
           <div className="schedule-form-row">
@@ -48,8 +48,8 @@ export function ArriveDialog({ onClose }: { onClose: () => void }) {
             <label><span className="field-label">Awal umur susu</span><TimeField label="Awal umur susu" value={milkStart} onChange={setMilkStart} minuteStep={5} /></label>
           </div>
           <div className="schedule-form-row">
-            <label><span className="field-label">Volume timbang (L)</span><input type="number" inputMode="numeric" min={1} step={10} value={volume || ""} onChange={e => setVolume(Number(e.target.value))} /></label>
-            <label><span className="field-label">Suhu (°C)</span><input type="number" inputMode="decimal" min={0} max={15} step={0.1} value={temperature} onChange={e => setTemperature(Number(e.target.value))} /></label>
+            <label><span className="field-label">Volume timbang (L)</span><Input type="number" inputMode="numeric" min={1} step={10} value={volume || ""} onChange={e => setVolume(Number(e.target.value))} /></label>
+            <label><span className="field-label">Suhu (°C)</span><Input type="number" inputMode="decimal" min={0} max={15} step={0.1} value={temperature} onChange={e => setTemperature(Number(e.target.value))} /></label>
           </div>
           <p className="small muted">Umur susu saat tiba {ageText(ageAt(milkStart, arrivedAt))}. RT masuk antrean di tahap Sampling.</p>
           {error && <p className="small crit-text" role="alert">{error}</p>}
@@ -112,9 +112,9 @@ export function RtDialog({ row, action, rows, bayOf, onClose }: { row: QueueRow;
         </div>}
         {action === "selesai" && <div className="schedule-form-row">
           <label><span className="field-label">Selesai pukul</span><TimeField label="Jam selesai bongkar" value={end} onChange={v => { setEnd(v); setError(null); }} minuteStep={5} /></label>
-          <label><span className="field-label">Volume terbongkar (L)</span><input type="number" inputMode="numeric" min={1} step={10} value={volume || ""} onChange={e => setVolume(Number(e.target.value))} /></label>
+          <label><span className="field-label">Volume terbongkar (L)</span><Input type="number" inputMode="numeric" min={1} step={10} value={volume || ""} onChange={e => setVolume(Number(e.target.value))} /></label>
         </div>}
-        {action === "selesai" && <p className="small muted">Setelah selesai, catat pindahan susu ke tangki di <Link className="inline-link" href="/transfer">Transfer &amp; Volume</Link>.</p>}
+        {action === "selesai" && <p className="small muted">Setelah selesai, catat pindahan susu ke tangki di <Link className={buttonClass("inline")} href="/transfer">Transfer &amp; Volume</Link>.</p>}
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <Actions onClose={onClose} label={{ catatan: "Simpan catatan", mulai: "Mulai bongkar", selesai: "Selesai bongkar" }[action]} />
       </form>

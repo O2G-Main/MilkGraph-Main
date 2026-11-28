@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Badge, Modal, SectionTitle } from "@/components/ui";
+import { Badge, Modal, SectionTitle, buttonClass } from "@/components/ui";
 import type { ProductionAsset, ProductionScheduleRow } from "@/lib/api/production";
 import type { BeDowntimeEvent } from "@/lib/api/contract";
 import { DOWNTIME_SOURCE_LABEL, DOWNTIME_TYPE_LABEL } from "@/lib/api/contract";
@@ -53,8 +53,8 @@ export function FactoryAssetDetail({ id, asset, nodeName, date, assignments, sch
         </li>)}</ul></>}
       </section>
       <div className={styles.actions}>
-        {date && canSee(role, "/penjadwalan") && <Link className="button secondary" href={`/penjadwalan?date=${date}`}>Buka Penjadwalan tanggal ini</Link>}
-        {canSee(role, "/alat") && <Link className="button secondary" href="/alat">Buka katalog alat</Link>}
+        {date && canSee(role, "/penjadwalan") && <Link className={buttonClass("secondary")} href={`/penjadwalan?date=${date}`}>Buka Penjadwalan tanggal ini</Link>}
+        {canSee(role, "/alat") && <Link className={buttonClass("secondary")} href="/alat">Buka katalog alat</Link>}
       </div>
     </div>
   </Modal>;

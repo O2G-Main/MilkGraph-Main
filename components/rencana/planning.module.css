@@ -6,8 +6,8 @@
 .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .state { padding: 18px 0; color: var(--color-on-surface); }
 .state p { margin-bottom: 12px; }
-.page table { width: 100%; font-size: 13px; text-align: left; border-collapse: collapse; }
-.page th { color: var(--color-on-surface-muted); font-weight: 500; position: sticky; top: 0; background: var(--color-surface); z-index: 1; }
+.page table { width: 100%; text-align: left; border-collapse: collapse; }
+.page th { color: var(--color-on-surface-muted); position: sticky; top: 0; background: var(--color-surface); z-index: 1; }
 .page th, .page td { padding: 14px 12px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
 .page td { overflow-wrap: anywhere; min-width: 150px; }
 .page td p { margin: 6px 0 0; }

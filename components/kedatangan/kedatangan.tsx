@@ -11,7 +11,7 @@ import { API_MODE, apiSend } from "@/lib/api/client";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import { RT_IMPORT_TEMPLATE, arrivalCreateBody, arrivalFromApi, arrivalUpdateBody, toHHMM, type ArrivalRow, type BeArrival } from "@/lib/api/contract";
 import { ImportCsvCard } from "@/components/import-csv-card";
-import { Badge, Card, Icon, Modal, PageHeading, PageLink, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal, PageHeading, PageLink, SectionTitle, Table, Textarea } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -59,7 +59,7 @@ export function Kedatangan() {
   return (
     <div className="page-enter kedatangan-page">
       <PageHeading title="Jadwal Kedatangan RT" subtitle="Road tanker yang dijadwalkan, dalam perjalanan, dan sudah tiba. Keterlambatan = estimasi tiba dibanding target tiba.">
-        {allowed && <button className="button primary" onClick={() => setEditing({ isNew: true, item: blank })}><Icon icon={Plus} size={16} />Tambah jadwal RT</button>}
+        {allowed && <Button variant="primary" onClick={() => setEditing({ isNew: true, item: blank })}><Icon icon={Plus} size={16} />Tambah jadwal RT</Button>}
       </PageHeading>
       <div className="schedule-stats">
         <Card><span className="small muted">Dalam perjalanan</span><strong>{onRoad.length} <small>RT</small></strong><span className="small muted">{onRoad[0] ? `Berikutnya ${onRoad[0].id} pukul ${clock(onRoad[0].eta)}` : "Tidak ada RT di jalan"}</span></Card>
@@ -70,37 +70,35 @@ export function Kedatangan() {
       </div>
       <Card>
         <SectionTitle title="Jadwal kedatangan" subtitle="Urut menurut target tiba." action={<PageLink className="text-link" href="/receiving">Buka antrean truk<Icon icon={ArrowRight} size={14} /></PageLink>} />
-        <div className="table-wrap">
-          <table className="schedule-table">
-            <thead><tr><th>RT / Farm</th><th className="numeric">Volume</th><th>Berangkat</th><th>Target tiba</th><th>Estimasi tiba</th><th>Keterlambatan</th>{showAge && <th>Umur saat tiba</th>}<th>Status</th>{allowed && <th><span className="sr-only">Aksi</span></th>}</tr></thead>
-            <tbody>
-              {visibleRows.map(a => {
-                const age = arrivalAge(a), tone = a.status === "batal" ? "neutral" : ageTone(age, holding);
-                return (
-                  <tr key={a.apiId ?? a.id}>
-                    <td><strong className="mono">{a.id}</strong><span className="table-sub">{a.farm}{a.note ? `. ${a.note}` : ""}</span></td>
-                    <td data-label="Volume" className="numeric">{number(a.volume)} L</td>
-                    <td data-label="Berangkat" className="schedule-time">{clock(a.depart)}</td>
-                    <td data-label="Target tiba" className="schedule-time">{clock(a.target)}</td>
-                    <td data-label="Estimasi tiba" className="schedule-time">{clock(a.eta)}{a.actual && <span className="table-sub">Tiba {clock(a.actual)}</span>}</td>
-                    <td data-label="Keterlambatan">{a.status === "batal" ? <span className="small muted">-</span> : <Late minutes={a.late} />}</td>
-                    {showAge && <td data-label="Umur saat tiba" className={`schedule-time ${tone === "crit" ? "crit-text" : tone === "warn" ? "warn-text" : ""}`}>{ageText(age)}<span className="table-sub">awal {clock(a.milkStart)}</span></td>}
-                    <td data-label="Status"><Badge tone={ARRIVAL_STATUS[a.status].tone}>{ARRIVAL_STATUS[a.status].label}</Badge></td>
-                    {allowed && (
-                      <td className="table-action">
-                        {a.status === "tiba" && !API_MODE
-                          ? <PageLink className="text-link" href="/receiving">Di antrean</PageLink>
-                          : <button className="icon-button" aria-label={`Ubah jadwal ${a.id}`} onClick={() => setEditing({ isNew: false, item: { ...a } })}><Icon icon={Pencil} size={16} /></button>}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table variant="schedule">
+          <thead><tr><th>RT / Farm</th><th className="numeric">Volume</th><th>Berangkat</th><th>Target tiba</th><th>Estimasi tiba</th><th>Keterlambatan</th>{showAge && <th>Umur saat tiba</th>}<th>Status</th>{allowed && <th><span className="sr-only">Aksi</span></th>}</tr></thead>
+          <tbody>
+            {visibleRows.map(a => {
+              const age = arrivalAge(a), tone = a.status === "batal" ? "neutral" : ageTone(age, holding);
+              return (
+                <tr key={a.apiId ?? a.id}>
+                  <td><strong className="mono">{a.id}</strong><span className="table-sub">{a.farm}{a.note ? `. ${a.note}` : ""}</span></td>
+                  <td data-label="Volume" className="numeric">{number(a.volume)} L</td>
+                  <td data-label="Berangkat" className="schedule-time">{clock(a.depart)}</td>
+                  <td data-label="Target tiba" className="schedule-time">{clock(a.target)}</td>
+                  <td data-label="Estimasi tiba" className="schedule-time">{clock(a.eta)}{a.actual && <span className="table-sub">Tiba {clock(a.actual)}</span>}</td>
+                  <td data-label="Keterlambatan">{a.status === "batal" ? <span className="small muted">-</span> : <Late minutes={a.late} />}</td>
+                  {showAge && <td data-label="Umur saat tiba" className={`schedule-time ${tone === "crit" ? "crit-text" : tone === "warn" ? "warn-text" : ""}`}>{ageText(age)}<span className="table-sub">awal {clock(a.milkStart)}</span></td>}
+                  <td data-label="Status"><Badge tone={ARRIVAL_STATUS[a.status].tone}>{ARRIVAL_STATUS[a.status].label}</Badge></td>
+                  {allowed && (
+                    <td className="table-action">
+                      {a.status === "tiba" && !API_MODE
+                        ? <PageLink className="text-link" href="/receiving">Di antrean</PageLink>
+                        : <Button variant="icon" aria-label={`Ubah jadwal ${a.id}`} onClick={() => setEditing({ isNew: false, item: { ...a } })}><Icon icon={Pencil} size={16} /></Button>}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
         {list.length > 10 && (
-          <p className="small"><button type="button" className="text-link" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `Tampilkan semua ${list.length} kedatangan`}</button></p>
+          <p className="small"><Button variant="text" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `Tampilkan semua ${list.length} kedatangan`}</Button></p>
         )}
       </Card>
       {API_MODE && (
@@ -166,12 +164,12 @@ function ArrivalForm({ value, isNew, taken, farmOptions, onClose }: { value: Arr
       <form className="schedule-form" onSubmit={submit} noValidate>
         <div className="schedule-form-row">
           <label><span className="field-label">Nomor RT</span><span className="field-static mono">{form.id}</span><span className="small muted">Dibuat otomatis dari jadwal terakhir</span></label>
-          <label><span className="field-label">Volume rencana (L)</span><input type="number" inputMode="numeric" min={1} step={100} value={form.volume || ""} readOnly={locked} onChange={e => set("volume", Number(e.target.value))} placeholder="Contoh: 9800" /></label>
+          <label><span className="field-label">Volume rencana (L)</span><Input type="number" inputMode="numeric" min={1} step={100} value={form.volume || ""} readOnly={locked} onChange={e => set("volume", Number(e.target.value))} placeholder="Contoh: 9800" /></label>
         </div>
         <label><span className="field-label">Farm asal</span><Select label="Farm asal" value={API_MODE ? form.farmId ?? "" : form.farm} disabled={locked} onChange={v => { const f = farmOptions.find(o => o.value === v); setForm(x => ({ ...x, farm: f?.label ?? v, farmId: API_MODE ? v : x.farmId })); }} options={farmOptions} /></label>
         <div className="schedule-form-row">
-          <label><span className="field-label">Berangkat</span>{locked ? <input value={clock(form.depart)} readOnly /> : <TimeField label="Jam berangkat" value={form.depart} onChange={v => set("depart", v)} minuteStep={5} />}</label>
-          <label><span className="field-label">Target tiba</span>{locked ? <input value={clock(form.target)} readOnly /> : <TimeField label="Target tiba" value={form.target} onChange={v => set("target", v)} minuteStep={5} />}</label>
+          <label><span className="field-label">Berangkat</span>{locked ? <Input value={clock(form.depart)} readOnly /> : <TimeField label="Jam berangkat" value={form.depart} onChange={v => set("depart", v)} minuteStep={5} />}</label>
+          <label><span className="field-label">Target tiba</span>{locked ? <Input value={clock(form.target)} readOnly /> : <TimeField label="Target tiba" value={form.target} onChange={v => set("target", v)} minuteStep={5} />}</label>
         </div>
         <div className="schedule-form-row">
           <label><span className="field-label">Estimasi tiba</span><TimeField label="Estimasi tiba" value={form.eta} onChange={v => set("eta", v)} minuteStep={5} /></label>
@@ -180,14 +178,14 @@ function ArrivalForm({ value, isNew, taken, farmOptions, onClose }: { value: Arr
         {API_MODE && form.status === "tiba" && <label><span className="field-label">Tiba aktual</span><TimeField label="Jam tiba aktual" value={form.actual ?? ""} onChange={v => set("actual", v)} minuteStep={5} /></label>}
         {!API_MODE && <>
           <label><span className="field-label">Awal umur susu</span><TimeField label="Awal umur susu" value={form.milkStart} onChange={v => set("milkStart", v)} minuteStep={5} /></label>
-          <label><span className="field-label">Catatan (opsional)</span><textarea value={form.note} onChange={e => set("note", e.target.value)} maxLength={200} rows={2} placeholder="Contoh: jalan Pujon macet, ETA mundur 20 menit" /></label>
+          <label><span className="field-label">Catatan (opsional)</span><Textarea value={form.note} onChange={e => set("note", e.target.value)} maxLength={200} rows={2} placeholder="Contoh: jalan Pujon macet, ETA mundur 20 menit" /></label>
           <p className="small muted">Perkiraan umur susu saat tiba {ageText(arrivalAge(form))}. Kedatangan aktual dicatat di Antrean Truk.</p>
         </>}
         {API_MODE && <p className="small muted">Keterlambatan dihitung server dari estimasi dan target tiba.</p>}
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose} disabled={saving}>Batal</button>
-          <button type="submit" className="button primary" disabled={saving}>{saving ? "Menyimpan…" : isNew ? "Tambah jadwal" : "Simpan perubahan"}</button>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={saving}>{saving ? "Menyimpan…" : isNew ? "Tambah jadwal" : "Simpan perubahan"}</Button>
         </div>
       </form>
     </Modal>

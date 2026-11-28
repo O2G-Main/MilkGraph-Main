@@ -7,7 +7,7 @@ import type { Scenario } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import { buildGraph, connections, layoutStep, settle, type Graph, type GraphNode, type NodeKind } from "@/lib/graph";
-import { Icon, SourceButton, SourceModal } from "@/components/ui";
+import { Card, Icon, SourceButton, SourceModal } from "@/components/ui";
 
 const SIZE = { w: 900, h: 560 };
 const KINDS: { kind: NodeKind; label: string; hint: string }[] = [
@@ -194,7 +194,7 @@ export function ContextGraph() {
 
   return <div className="page-enter">
     <div className="page-heading"><div><h1>Context Graph</h1><p>Farm, RT, hasil lab, aset proses, dan lot barang jadi yang saling terhubung. Seret node untuk menggeser, klik untuk melihat hubungannya. Ukuran node mengikuti jumlah hubungan.</p></div></div>
-    <section className="card">
+    <Card>
       <div className="kg-toolbar">
         <div className="toggle" role="group" aria-label="Tampilkan jenis node">
           {KINDS.map(k => <button key={k.kind} type="button" aria-pressed={!hidden.has(k.kind)} className={hidden.has(k.kind) ? "" : "selected"} onClick={() => setHidden(h => { const next = new Set(h); if (next.has(k.kind)) next.delete(k.kind); else next.add(k.kind); return next; })}>
@@ -224,7 +224,7 @@ export function ContextGraph() {
           </>}
         </aside>
       </div>
-    </section>
+    </Card>
     <SourceModal id={source} onClose={() => setSource(null)} />
   </div>;
 }

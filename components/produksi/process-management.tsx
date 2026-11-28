@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge, Card, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, SectionTitle, Table, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -43,8 +43,8 @@ function ProcessEquipment({ role }: { role: RoleId }) {
   const routes = asset && topology.data ? connectedRoutes(topology.data, asset.asset_id) : [];
   return <Card>
     <SectionTitle title="Konfigurasi alat & rute" subtitle="Spesifikasi dan koneksi fisik dari master pabrik. Rute konfigurasi tidak menandakan aliran susu sedang berjalan."
-      action={<button className="button secondary" disabled={topology.loading} onClick={() => void topology.reload()}>Muat ulang konfigurasi</button>} />
-    {topology.error ? <div role="alert"><p className="crit-text">Konfigurasi gagal dimuat: {topology.error.message}</p><button className="button secondary" onClick={() => void topology.reload()}>Coba lagi</button></div>
+      action={<Button variant="secondary" disabled={topology.loading} onClick={() => void topology.reload()}>Muat ulang konfigurasi</Button>} />
+    {topology.error ? <div role="alert"><p className="crit-text">Konfigurasi gagal dimuat: {topology.error.message}</p><Button variant="secondary" onClick={() => void topology.reload()}>Coba lagi</Button></div>
     : !topology.data ? <p role="status" className="muted">Memuat konfigurasi alat…</p>
     : !nodes.length ? <p className="muted">Belum ada konfigurasi alat di backend.</p>
     : <>
@@ -60,13 +60,13 @@ function ProcessEquipment({ role }: { role: RoleId }) {
         </details>
         <h3 className={styles.routeHeading}>Rute terhubung <span className="small muted">({routes.length})</span></h3>
         {!routes.length ? <p className="muted">Tidak ada rute yang mencantumkan ID alat ini.</p>
-        : <div className="table-wrap"><table className="schedule-table"><thead><tr><th>Dari</th><th>Ke</th><th>Melalui</th><th>Batas aliran (L/jam)</th></tr></thead><tbody>{routes.map(route => <tr key={route.connection_id}>
+        : <Table variant="schedule"><thead><tr><th>Dari</th><th>Ke</th><th>Melalui</th><th>Batas aliran (L/jam)</th></tr></thead><tbody>{routes.map(route => <tr key={route.connection_id}>
           <td>{route.source_asset_id}</td><td>{route.destination_asset_id}</td><td>{route.via_asset_id || "Tidak dicantumkan"}</td><td>{route.max_flow_lph || "Belum tersedia"}</td>
-        </tr>)}</tbody></table></div>}
+        </tr>)}</tbody></Table>}
       </>}
       <div className={styles.links}>
-        {canSee(role, "/alat") && <Link className="button secondary" href="/alat?tab=status">Buka status & pencatatan alat</Link>}
-        {canSee(role, "/kondisi-pabrik") && <Link className="button secondary" href="/produksi?tab=kondisi">Pantau kondisi & penugasan</Link>}
+        {canSee(role, "/alat") && <Link className={buttonClass("secondary")} href="/alat?tab=status">Buka status & pencatatan alat</Link>}
+        {canSee(role, "/kondisi-pabrik") && <Link className={buttonClass("secondary")} href="/produksi?tab=kondisi">Pantau kondisi & penugasan</Link>}
       </div>
     </>}
   </Card>;

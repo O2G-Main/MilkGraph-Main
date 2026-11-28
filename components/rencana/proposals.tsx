@@ -5,7 +5,7 @@ import { Check, Send, X } from "lucide-react";
 import { reviewProposal, submitProposal, useDemo, type Proposal } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import type { Limits } from "@/lib/rules";
-import { Badge, Card, Icon, Modal, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Modal, SectionTitle, Textarea } from "@/components/ui";
 import { badgeOf, type Adjustments } from "./adjust";
 import { useRencana } from "./rencana-state";
 
@@ -36,15 +36,15 @@ export function ProposeButton({ kind, title, detail, limits, adjust, disabled }:
   }
 
   return <>
-    <button className="button primary" disabled={disabled} onClick={() => { setSent(false); setOpen(true); }}><Icon icon={Send} size={16} />{sent ? "Terkirim ke Planner" : "Ajukan ke Planner"}</button>
+    <Button variant="primary" disabled={disabled} onClick={() => { setSent(false); setOpen(true); }}><Icon icon={Send} size={16} />{sent ? "Terkirim ke Planner" : "Ajukan ke Planner"}</Button>
     {open && <Modal title="Ajukan ke Planner?" onClose={() => setOpen(false)}>
       <form className="schedule-form" onSubmit={submit}>
         <p className="muted"><strong>{title}.</strong> {detail}</p>
         <p className="small muted">Planner/PPIC yang memutuskan usulan ini diterapkan ke jadwal aktif atau tidak.</p>
-        <label><span className="field-label">Alasan usulan (wajib)</span><textarea value={note} onChange={e => setNote(e.target.value)} rows={3} maxLength={400} required placeholder="Contoh: dengan jeda CIP 10 menit, pelanggaran turun dari 3 jadi 1" /></label>
+        <label><span className="field-label">Alasan usulan (wajib)</span><Textarea value={note} onChange={e => setNote(e.target.value)} rows={3} maxLength={400} required placeholder="Contoh: dengan jeda CIP 10 menit, pelanggaran turun dari 3 jadi 1" /></label>
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={() => setOpen(false)}>Batal</button>
-          <button type="submit" className="button primary" disabled={!note.trim()}><Icon icon={Send} size={16} />Ajukan</button>
+          <Button variant="secondary" onClick={() => setOpen(false)}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={!note.trim()}><Icon icon={Send} size={16} />Ajukan</Button>
         </div>
       </form>
     </Modal>}
@@ -86,8 +86,8 @@ export function ProposalsCard() {
       <p className="small muted">&ldquo;{p.note}&rdquo; · {p.by}, {p.at}</p>
       {p.review && <p className="small">{p.status === "diterapkan" ? "Diterapkan" : "Ditolak"} oleh {p.review.by}, {p.review.at}{p.review.note ? `. ${p.review.note}` : ""}</p>}
       {mayDecide && p.status === "diajukan" && <div className="page-actions">
-        <button className="button secondary" onClick={() => { setNote(""); setReview({ p, status: "ditolak" }); }}><Icon icon={X} size={16} />Tolak</button>
-        <button className="button primary" onClick={() => { setNote(""); setReview({ p, status: "diterapkan" }); }}><Icon icon={Check} size={16} />Terapkan</button>
+        <Button variant="secondary" onClick={() => { setNote(""); setReview({ p, status: "ditolak" }); }}><Icon icon={X} size={16} />Tolak</Button>
+        <Button variant="primary" onClick={() => { setNote(""); setReview({ p, status: "diterapkan" }); }}><Icon icon={Check} size={16} />Terapkan</Button>
       </div>}
     </li>)}</ul>
     {review && <Modal title={review.status === "diterapkan" ? "Terapkan usulan ini?" : "Tolak usulan ini?"} onClose={() => setReview(null)}>
@@ -96,10 +96,10 @@ export function ProposalsCard() {
         <p className="small muted">{review.status === "diterapkan"
           ? review.p.kind === "batas" ? "Batas constraint yang berlaku langsung diganti dengan nilai usulan." : "Pengaturan alat masuk ke rencana aktif dan ikut dihitung saat rencana diputuskan."
           : "Usulan tidak dipakai. Tulis alasannya supaya pengusul tahu."}</p>
-        <label><span className="field-label">Catatan {review.status === "ditolak" ? "(wajib)" : "(opsional)"}</span><textarea value={note} onChange={e => setNote(e.target.value)} rows={3} maxLength={400} placeholder={review.status === "ditolak" ? "Contoh: kapasitas UHT-2 belum bisa dinaikkan sampai perbaikan pompa selesai" : "Contoh: diterapkan mulai shift ini"} /></label>
+        <label><span className="field-label">Catatan {review.status === "ditolak" ? "(wajib)" : "(opsional)"}</span><Textarea value={note} onChange={e => setNote(e.target.value)} rows={3} maxLength={400} placeholder={review.status === "ditolak" ? "Contoh: kapasitas UHT-2 belum bisa dinaikkan sampai perbaikan pompa selesai" : "Contoh: diterapkan mulai shift ini"} /></label>
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={() => setReview(null)}>Batal</button>
-          <button type="submit" className="button primary" disabled={review.status === "ditolak" && !note.trim()}>{review.status === "diterapkan" ? "Terapkan" : "Tolak usulan"}</button>
+          <Button variant="secondary" onClick={() => setReview(null)}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={review.status === "ditolak" && !note.trim()}>{review.status === "diterapkan" ? "Terapkan" : "Tolak usulan"}</Button>
         </div>
       </form>
     </Modal>}

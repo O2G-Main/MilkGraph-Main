@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CircleMinus, FlaskConical, Plus, TrendingUp, X } from "lucide-react";
 import { useState } from "react";
-import { Icon, Badge, Toggle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Toggle } from "@/components/ui";
 import { Equipment } from "@/components/trace/equipment";
 import { ASSETS } from "@/lib/assets";
 import { useDemo } from "@/lib/demo";
@@ -35,14 +35,14 @@ export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: n
   const [tab, setTab] = useState<"disarankan" | "tidak">("disarankan");
 
   return <section className="upgrade-picks" aria-label="Daftar rekomendasi upgrade">
-    {tried.length > 0 && <div className="card upgrade-tried">
+    {tried.length > 0 && <Card className="upgrade-tried">
       <h2><Icon icon={FlaskConical} size={17} />Diterapkan ke rencana ({tried.length})</h2>
       <ul>{tried.map(x => <li key={x.id}>
         <span><strong className="mono">{x.id}</strong> {fmt(x.from)} ke {fmt(x.to)} L/jam <span className="muted">jalur {x.line}</span></span>
-        <span className="upgrade-tried-actions"><Link className="text-link" href="/rencana/alur">Lihat di alur</Link><button type="button" className="text-link" onClick={() => release(x.id)}><Icon icon={X} size={14} />Lepas</button></span>
+        <span className="upgrade-tried-actions"><Link className="text-link" href="/rencana/alur">Lihat di alur</Link><Button variant="text" onClick={() => release(x.id)}><Icon icon={X} size={14} />Lepas</Button></span>
       </li>)}</ul>
       {now && <p className="small muted">Dengan upgrade ini: rencana awal melanggar {now.before} dari 6 constraint, rekomendasi solver {now.after} dari 6. Angka yang sama dipakai di Kelayakan & keputusan.</p>}
-    </div>}
+    </Card>}
 
     <div className="page-tabs"><Toggle label="Jenis rekomendasi" value={tab} onChange={setTab} options={[{ value: "disarankan", label: `Disarankan (${picks.length})` }, { value: "tidak", label: `Tidak disarankan (${skips.length})` }]} /></div>
 
@@ -63,7 +63,7 @@ export function UpgradePicks({ onTry }: { onTry: (id: string, pct: number, to: n
             <span>{fmt(p.from)} ke {fmt(p.from + p.gain)} L/jam (naik {p.pct}%)</span>
             <span>sekitar +{fmt(p.gain * 8)} L per shift 8 jam</span>
           </div>
-          {allowed && <button type="button" className="button secondary" onClick={() => onTry(p.id, p.pct, p.from + p.gain)}><Icon icon={Plus} size={16} />Terapkan ke rencana</button>}
+          {allowed && <Button variant="secondary" onClick={() => onTry(p.id, p.pct, p.from + p.gain)}><Icon icon={Plus} size={16} />Terapkan ke rencana</Button>}
         </li>;
       })}
     </ol> : <p className="card upgrade-empty">Tidak ada upgrade lain yang menambah produksi dengan pengaturan sekarang.</p>

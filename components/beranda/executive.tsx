@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight, ChevronRight, type LucideIcon } from "lucide-react";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from "recharts";
 import CountUp from "@/components/bits/CountUp";
-import { Card, Icon, SectionTitle } from "@/components/ui";
+import { Card, Icon, SectionTitle, Table } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 
 const fmt = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -74,8 +74,8 @@ export function SupplyCard({ cover, planned, need, farms }: { cover: number; pla
         <Legend items={FARM.map(s => ({ label: s.label, color: s.color }))} />
       </div>
     </div>
-    <details className="lc-table"><summary>Lihat data sebagai tabel</summary><div className="table-wrap"><table><thead><tr><th>Farm</th><th className="numeric">Tiba</th><th className="numeric">Perjalanan</th><th className="numeric">Belum</th><th className="numeric">Rencana</th></tr></thead>
-      <tbody>{farms.map(f => <tr key={f.name}><td>{f.name}</td><td className="numeric">{f.tiba} RT</td><td className="numeric">{f.jalan} RT</td><td className="numeric">{f.belum} RT</td><td className="numeric">{fmt(f.plannedL)} L</td></tr>)}</tbody></table></div></details>
+    <details className="lc-table"><summary>Lihat data sebagai tabel</summary><Table><thead><tr><th>Farm</th><th className="numeric">Tiba</th><th className="numeric">Perjalanan</th><th className="numeric">Belum</th><th className="numeric">Rencana</th></tr></thead>
+      <tbody>{farms.map(f => <tr key={f.name}><td>{f.name}</td><td className="numeric">{f.tiba} RT</td><td className="numeric">{f.jalan} RT</td><td className="numeric">{f.belum} RT</td><td className="numeric">{fmt(f.plannedL)} L</td></tr>)}</tbody></Table></details>
   </Card>;
 }
 

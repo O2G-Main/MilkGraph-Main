@@ -29,9 +29,37 @@ export function Icon({ icon: Glyph, size = 18, ...props }: { icon: LucideIcon; s
 export function Badge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return <span className={`badge ${tone}`}><span className="status-dot" />{children}</span>;
 }
-export function Card({ children, className = "", ...props }: ComponentProps<"section">) {
-  return <section className={`card ${className}`} {...props}>{children}</section>;
+export type ButtonVariant = "primary" | "secondary" | "inverse" | "icon" | "text" | "inline";
+const BUTTON_CLASSES: Record<ButtonVariant, string> = {
+  primary: "button primary",
+  secondary: "button secondary",
+  inverse: "button inverse",
+  icon: "icon-button",
+  text: "text-link",
+  inline: "inline-link",
+};
+export function buttonClass(variant: ButtonVariant = "secondary", wide = false, className = "") {
+  return [BUTTON_CLASSES[variant], wide ? "wide" : "", className].filter(Boolean).join(" ");
 }
+export function Button({ variant = "secondary", wide = false, className = "", type = "button", ...props }: ComponentProps<"button"> & { variant?: ButtonVariant; wide?: boolean }) {
+  return <button type={type} className={buttonClass(variant, wide, className)} {...props} />;
+}
+
+export function Card({ variant = "card", children, className = "", ...props }: ComponentProps<"section"> & { variant?: "card" | "panel" }) {
+  return <section className={[variant, className].filter(Boolean).join(" ")} {...props}>{children}</section>;
+}
+
+export type TableVariant = "schedule" | "rules" | "asset" | "select" | "access" | "matrix" | "user" | "constraint";
+export function Table({ variant, wrapClassName = "", caption, className = "", children, ...props }: ComponentProps<"table"> & {
+  variant?: TableVariant; wrapClassName?: string; caption?: ReactNode;
+}) {
+  const tableClass = [variant ? `${variant}-table` : "", className].filter(Boolean).join(" ") || undefined;
+  return <div className={["table-wrap", wrapClassName].filter(Boolean).join(" ")}>
+    <table className={tableClass} {...props}>{caption ? <caption>{caption}</caption> : null}{children}</table>
+  </div>;
+}
+
+export { Input, Textarea, Field } from "./fields";
 export function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return <div className="section-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>;
 }

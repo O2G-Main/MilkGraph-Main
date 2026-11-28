@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { Icon } from "@/components/ui";
+import { buttonClass, Card, Icon } from "@/components/ui";
 import type { Plan } from "@/mock/types";
 import { PlanFlow } from "./plan-flow";
 import { UpgradePicks } from "./upgrade-picks";
@@ -16,13 +16,13 @@ import { ApiPlanning } from "./api-planning";
  * 2. Rekomendasi upgrade, 3. Kelayakan & keputusan. Tiap halaman diakhiri tombol ke langkah berikutnya.
  */
 function NextStep({ text, href, label, skip }: { text: string; href: string; label: string; skip?: { href: string; label: string } }) {
-  return <div className="card plan-next">
+  return <Card className="plan-next">
     <span>{text}</span>
     <span className="plan-next-actions">
       {skip && <Link className="text-link" href={skip.href}>{skip.label}</Link>}
-      <Link className="button primary" href={href}>{label}<Icon icon={ArrowRight} size={16} /></Link>
+      <Link className={buttonClass("primary")} href={href}>{label}<Icon icon={ArrowRight} size={16} /></Link>
     </span>
-  </div>;
+  </Card>;
 }
 
 /** Langkah 1: Alur rencana (poin 9, 14-17). */

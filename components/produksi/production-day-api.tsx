@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, RefreshCw, CircleCheck, CircleAlert, CircleHelp } from "lucide-react";
-import { Badge, Card, Icon, SectionTitle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, Icon, SectionTitle } from "@/components/ui";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import type { ProductionDaily, ProductionSession } from "@/lib/api/production";
 import { canRunPrediction, planningPath, runPlanningPrediction, type FulfillmentPrediction, type PlanningList, type ProductionRecommendation } from "@/lib/api/planning";
@@ -51,8 +51,8 @@ export function ProductionDayApi({ date, role, display = "detailed" }: { date: s
   return <Card className={display === "status" ? styles.statusView : ""}>
     <SectionTitle title="Prediksi pemenuhan volume produksi" subtitle={`Prediksi untuk ${new Date(`${date}T00:00:00Z`).toLocaleDateString("id-ID", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" })}. Status menunjukkan perkiraan pemenuhan target; hasil produksi aktual dilihat di Riwayat Produksi.`}
       action={<div className={styles.actions}>
-        <button className="button secondary" disabled={busy} onClick={reload}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</button>
-        {allowed && <button className="button primary" disabled={busy || noBatches} onClick={() => void run()}>{busy ? "Menghitung prediksi…" : rows.length ? "Hitung ulang prediksi" : "Hitung prediksi"}</button>}
+        <Button variant="secondary" disabled={busy} onClick={reload}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</Button>
+        {allowed && <Button variant="primary" disabled={busy || noBatches} onClick={() => void run()}>{busy ? "Menghitung prediksi…" : rows.length ? "Hitung ulang prediksi" : "Hitung prediksi"}</Button>}
       </div>} />
     <section className={styles.scope} aria-label="Cakupan perhitungan">
       <strong>Prediksi saat ini menilai kecukupan volume susu per batch.</strong>
@@ -63,7 +63,7 @@ export function ProductionDayApi({ date, role, display = "detailed" }: { date: s
     {error && <p className="crit-text" role="alert">{error}</p>}
     {message && <p className="ok-text" role="status">{message}</p>}
     {session.error && <p className="crit-text" role="alert">Izin prediksi gagal dimuat. Muat ulang untuk mencoba lagi.</p>}
-    {predictionProblem ? <div role="alert"><p className="crit-text">Gagal memuat prediksi: {predictionProblem}</p><button className="text-link" onClick={reload}>Coba lagi</button></div>
+    {predictionProblem ? <div role="alert"><p className="crit-text">Gagal memuat prediksi: {predictionProblem}</p><Button variant="text" onClick={reload}>Coba lagi</Button></div>
     : predictions.loading || !predictions.data ? <p className="muted" role="status">Memuat prediksi produksi…</p>
     : !rows.length ? <div role="status"><p className="muted">{noBatches ? "Belum ada batch produksi pada tanggal ini." : "Belum ada hasil prediksi untuk tanggal ini."}</p><p className="small muted">{noBatches ? "Tambahkan batch melalui Penjadwalan, lalu hitung prediksinya." : allowed ? "Pilih Hitung prediksi untuk mengevaluasi data produksi yang tersedia." : "Minta Planner menghitung prediksi setelah data produksi tersedia."}</p></div>
     : <>
@@ -93,7 +93,7 @@ export function ProductionDayApi({ date, role, display = "detailed" }: { date: s
             <strong>{candidates.length === 1 ? "Rekomendasi pilihan server" : candidates.length ? `${candidates.length} rekomendasi terkait` : "Tindak lanjut prediksi"}</strong>
             {candidates.map(candidate => <div key={candidate.id} className={styles.solution}><Badge tone={recommendationOrigin(candidate).tone}>{recommendationOrigin(candidate).label}</Badge><span>{recommendationLabels[candidate.recommendation_type] || candidate.recommendation_type}</span></div>)}
             {(recommendationProblem || recommendations.loading || !candidates.length) && <p>{recommendationProblem ? "Rekomendasi gagal dimuat. Pilih Perbarui tampilan." : recommendations.loading ? "Memuat rekomendasi…" : "Belum ada rekomendasi aktif yang terhubung ke hasil prediksi ini."}</p>}
-            {canRecommend ? <Link className={`button ${display === "status" ? "primary" : "secondary"}`} href={recommendationLink(date,row.batch_id,row.id)} onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }} aria-label={`${candidates.length ? "Tinjau" : "Periksa"} rekomendasi untuk ${row.batch_id ? `batch ${batch?.batch_code || row.batch_id}` : "seluruh hari"}`}>{candidates.length ? "Tinjau rekomendasi" : "Periksa rekomendasi"}<Icon icon={ArrowRight} size={16} /></Link>
+            {canRecommend ? <Link className={buttonClass(display === "status" ? "primary" : "secondary")} href={recommendationLink(date,row.batch_id,row.id)} onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }} aria-label={`${candidates.length ? "Tinjau" : "Periksa"} rekomendasi untuk ${row.batch_id ? `batch ${batch?.batch_code || row.batch_id}` : "seluruh hari"}`}>{candidates.length ? "Tinjau rekomendasi" : "Periksa rekomendasi"}<Icon icon={ArrowRight} size={16} /></Link>
             : <p className="small muted">Minta Planner meninjau rekomendasi untuk batch ini.</p>}
           </div>}
         </li>;

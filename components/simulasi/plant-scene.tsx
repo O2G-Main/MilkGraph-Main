@@ -12,6 +12,7 @@ import { SITE, SITE_STATUS, type Focus } from "@/mock/site";
 import type { Tone } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
+import { Button } from "@/components/ui";
 
 export type SceneState = "before" | "after";
 export type { Focus };
@@ -537,13 +538,13 @@ export function PlantScene({
   return <div ref={wrap} className={`plant-scene-wrap ${full ? "full" : ""}`}>
     <div ref={host} className="plant-scene" role="img" aria-label={`${label} Tombol panah menggeser, Q dan E memutar.`} tabIndex={0} />
     <div className="scene-controls" role="group" aria-label="Kontrol tampilan 3D">
-      <button className="icon-button" aria-label="Perbesar" onClick={() => zoomBy(1.4)}><Plus size={17} strokeWidth={1.75} aria-hidden /></button>
-      <button className="icon-button" aria-label="Perkecil" onClick={() => zoomBy(1 / 1.4)}><Minus size={17} strokeWidth={1.75} aria-hidden /></button>
-      <button className="icon-button" aria-label="Putar ke kiri 45 derajat" onClick={() => { spin.current += Math.PI / 4; }}><RotateCcw size={17} strokeWidth={1.75} aria-hidden /></button>
-      <button className="icon-button" aria-label="Putar ke kanan 45 derajat" onClick={() => { spin.current -= Math.PI / 4; }}><RotateCw size={17} strokeWidth={1.75} aria-hidden /></button>
-      <button className={`icon-button ${auto ? "on" : ""}`} aria-label="Putar otomatis" aria-pressed={auto} onClick={() => setAuto(a => !a)}><Rotate3d size={17} strokeWidth={1.75} aria-hidden /></button>
-      <button className="icon-button" aria-label="Lihat seluruh situs" onClick={() => fly("overview")}><Scan size={17} strokeWidth={1.75} aria-hidden /></button>
-      <button className="icon-button" aria-label={full ? "Keluar layar penuh" : "Layar penuh"} onClick={() => full ? document.exitFullscreen() : wrap.current?.requestFullscreen()}>{full ? <Minimize2 size={17} strokeWidth={1.75} aria-hidden /> : <Maximize2 size={17} strokeWidth={1.75} aria-hidden />}</button>
+      <Button variant="icon" aria-label="Perbesar" onClick={() => zoomBy(1.4)}><Plus size={17} strokeWidth={1.75} aria-hidden /></Button>
+      <Button variant="icon" aria-label="Perkecil" onClick={() => zoomBy(1 / 1.4)}><Minus size={17} strokeWidth={1.75} aria-hidden /></Button>
+      <Button variant="icon" aria-label="Putar ke kiri 45 derajat" onClick={() => { spin.current += Math.PI / 4; }}><RotateCcw size={17} strokeWidth={1.75} aria-hidden /></Button>
+      <Button variant="icon" aria-label="Putar ke kanan 45 derajat" onClick={() => { spin.current -= Math.PI / 4; }}><RotateCw size={17} strokeWidth={1.75} aria-hidden /></Button>
+      <Button variant="icon" className={auto ? "on" : ""} aria-label="Putar otomatis" aria-pressed={auto} onClick={() => setAuto(a => !a)}><Rotate3d size={17} strokeWidth={1.75} aria-hidden /></Button>
+      <Button variant="icon" aria-label="Lihat seluruh situs" onClick={() => fly("overview")}><Scan size={17} strokeWidth={1.75} aria-hidden /></Button>
+      <Button variant="icon" aria-label={full ? "Keluar layar penuh" : "Layar penuh"} onClick={() => full ? document.exitFullscreen() : wrap.current?.requestFullscreen()}>{full ? <Minimize2 size={17} strokeWidth={1.75} aria-hidden /> : <Maximize2 size={17} strokeWidth={1.75} aria-hidden />}</Button>
     </div>
     <div className="scene-mode toggle" role="group" aria-label="Fungsi seret">
       <button aria-pressed={mode === "putar"} className={mode === "putar" ? "selected" : ""} onClick={() => setMode("putar")}><Rotate3d size={15} strokeWidth={1.75} aria-hidden />Seret untuk memutar</button>

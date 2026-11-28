@@ -1,8 +1,8 @@
 "use client";
 
-import { useContext, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useContext, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Search } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Search, type LucideIcon } from "lucide-react";
 import { ModalDisplayContext } from "./modal-content";
 import { displayText } from "@/lib/display-text";
 import { Icon } from "./index";
@@ -73,8 +73,8 @@ function Popover({ place, panelRef, children, className = "", label }: { place: 
 export type SelectOption<T extends string | number> = { value: T; label: string; group?: string; hint?: string };
 
 /** Dropdown bergaya MilkGraph. Daftar panjang (lebih dari 10 opsi) otomatis punya kolom cari. */
-export function Select<T extends string | number>({ value, onChange, options, placeholder = "Pilih...", label, id, disabled = false, className = "", searchable, compact = false }: {
-  value: T | null | ""; onChange: (value: T) => void; options: SelectOption<T>[]; placeholder?: string; label?: string; id?: string; disabled?: boolean; className?: string; searchable?: boolean; compact?: boolean;
+export function Select<T extends string | number>({ value, onChange, options, placeholder = "Pilih...", label, id, name, required, disabled = false, className = "", searchable, compact = false }: {
+  value: T | null | ""; onChange: (value: T) => void; options: SelectOption<T>[]; placeholder?: string; label?: string; id?: string; name?: string; required?: boolean; disabled?: boolean; className?: string; searchable?: boolean; compact?: boolean;
 }) {
   const modal = useContext(ModalDisplayContext);
   const items = useMemo(() => modal ? options.map(option => ({ ...option, label: displayText(option.label), ...(option.group ? {group:displayText(option.group)} : {}), ...(option.hint ? {hint:displayText(option.hint)} : {}) })) : options, [options, modal]);
@@ -116,8 +116,9 @@ export function Select<T extends string | number>({ value, onChange, options, pl
   }, [active, open, place, panel]);
 
   return <>
+    {name && <input type="hidden" name={name} value={value ?? ""} required={required} />}
     <button ref={trigger} id={id} type="button" className={`field-control field-select ${compact ? "compact" : ""} ${className}`} disabled={disabled}
-      aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined} aria-label={label}
+      aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined} aria-label={label} data-required={required || undefined}
       onClick={() => open ? close() : openList()} onKeyDown={onKey}>
       <span className={selected ? "field-value" : "field-value placeholder"}>{selected ? selected.label : placeholder}</span>
       <Icon icon={ChevronDown} size={16} className="field-caret" />
@@ -229,4 +230,33 @@ export function TimeField({ value, onChange, placeholder = "Pilih jam", label, i
       </div>
     </Popover>
   </>;
+}
+
+export function Input({ icon: Glyph, wrapClassName = "", className = "", type, ...props }: ComponentProps<"input"> & {
+  icon?: LucideIcon; wrapClassName?: string;
+}) {
+  if (Glyph) {
+    return <div className={["asset-search", wrapClassName].filter(Boolean).join(" ")}>
+      <Icon icon={Glyph} size={16} />
+      <input type={type} className={className || undefined} {...props} />
+    </div>;
+  }
+  const isControl = type !== "checkbox" && type !== "radio" && type !== "range" && type !== "file";
+  const classes = [isControl ? "field-control" : "", className].filter(Boolean).join(" ") || undefined;
+  return <input type={type} className={classes} {...props} />;
+}
+
+export function Textarea({ className = "", ...props }: ComponentProps<"textarea">) {
+  return <textarea className={["field-control", className].filter(Boolean).join(" ")} {...props} />;
+}
+
+export function Field({ label, hint, error, htmlFor, className = "", children }: {
+  label: ReactNode; hint?: ReactNode; error?: ReactNode; htmlFor?: string; className?: string; children: ReactNode;
+}) {
+  return <div className={className || undefined}>
+    <label className="field-label" htmlFor={htmlFor}>{label}</label>
+    {children}
+    {hint && <p className="small muted">{hint}</p>}
+    {error && <p className="small crit-text" role="alert">{error}</p>}
+  </div>;
 }

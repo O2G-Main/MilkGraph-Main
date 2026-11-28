@@ -8,7 +8,7 @@ import { findNav, isDetail, pageTitle, visibleNav } from "@/lib/nav";
 import { BranchedNav } from "@/components/shell/branched-nav";
 import { LiveClock } from "@/components/shell/live-clock";
 import { scenario } from "@/lib/data";
-import { Badge, Icon, Modal, SourceModal } from "@/components/ui";
+import { Badge, Button, Icon, Modal, SourceModal } from "@/components/ui";
 import { initialsOf, isSignedIn, logout, resetDemo, useDemo } from "@/lib/demo";
 import { ROLES, canOpen, roleLabel, type RoleId } from "@/lib/roles";
 import { violations } from "@/lib/rules";
@@ -174,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   function renderNavigation(mobile = false) {
     return <>
-      <div className="brand-row"><Link href="/" className="brand" aria-label="MilkGraph, Beranda" onClick={() => { setDrawer(false); fromMenu(); }}><svg className="brand-symbol" viewBox="44 60 184 136" aria-hidden="true"><path fill="var(--color-surface-inverse)" d="M44 116A56 56 0 0 1 156 116V196H116V116A16 16 0 0 0 84 116H44ZM116 196V116A56 56 0 0 1 228 116V196H188V116A16 16 0 0 0 156 116V196Z" /><circle fill="var(--color-accent-fill)" cx="64" cy="176" r="20" /></svg><span className="nav-label">MilkGraph<span className="brand-caption">Dairy operations</span></span></Link>{mobile && <button className="icon-button" aria-label="Tutup menu" onClick={() => setDrawer(false)}><Icon icon={X} /></button>}</div>
+      <div className="brand-row"><Link href="/" className="brand" aria-label="MilkGraph, Beranda" onClick={() => { setDrawer(false); fromMenu(); }}><svg className="brand-symbol" viewBox="44 60 184 136" aria-hidden="true"><path fill="var(--color-surface-inverse)" d="M44 116A56 56 0 0 1 156 116V196H116V116A16 16 0 0 0 84 116H44ZM116 196V116A56 56 0 0 1 228 116V196H188V116A16 16 0 0 0 156 116V196Z" /><circle fill="var(--color-accent-fill)" cx="64" cy="176" r="20" /></svg><span className="nav-label">MilkGraph<span className="brand-caption">Dairy operations</span></span></Link>{mobile && <Button variant="icon" aria-label="Tutup menu" onClick={() => setDrawer(false)}><Icon icon={X} /></Button>}</div>
       <BranchedNav items={visibleNav(demo.role)} pathname={pathname} onNavigate={() => { setDrawer(false); fromMenu(); }} />
       <div className="sidebar-bottom"><button className="nav-item help" onClick={() => { setDrawer(false); setPanel("help"); }} aria-label="Panduan demo"><span className="nav-icon"><Icon icon={CircleHelp} size={22} /></span><span className="nav-label">Panduan demo</span></button><button className="account" onClick={() => { setDrawer(false); setPanel("profile"); }} aria-label={`Keluar dari akun ${me.user}`}><span className="avatar">{me.initials}</span><span className="account-copy nav-label"><strong>{me.user}</strong><span>{me.label}</span></span><Icon icon={ChevronDown} size={15} className="nav-label" /></button></div>
     </>;
@@ -189,7 +189,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="workspace">
       <header className="topbar">
         <div className="topbar-start">
-          <button ref={menuButton} className="icon-button mobile-menu" aria-label="Buka menu" aria-expanded={drawer} aria-controls="mobile-navigation" onClick={() => setDrawer(true)}><Icon icon={Menu} /></button>
+          <Button ref={menuButton} variant="icon" className="mobile-menu" aria-label="Buka menu" aria-expanded={drawer} aria-controls="mobile-navigation" onClick={() => setDrawer(true)}><Icon icon={Menu} /></Button>
           <span className="breadcrumb">{current.item.tabs.length > 1 && <>{current.item.label}<span>/</span></>}{pathname === current.tab.href ? <strong>{tabLabel}</strong> : <Link href={current.tab.href} onClick={fromMenu}>{tabLabel}</Link>}</span>
         </div>
         <div className="topbar-actions">
@@ -198,7 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Icon icon={Compass} size={16} /><span>Panduan halaman</span>
           </button>
           <LiveClock />
-          <button className="icon-button notification" aria-label={`Notifikasi, ${notifCount} belum dibaca`} onClick={() => setPanel("notifications")}><Icon icon={Bell} />{notifCount > 0 && <span>{notifCount}</span>}</button>
+          <Button variant="icon" className="notification" aria-label={`Notifikasi, ${notifCount} belum dibaca`} onClick={() => setPanel("notifications")}><Icon icon={Bell} />{notifCount > 0 && <span>{notifCount}</span>}</Button>
           <button className="avatar top-avatar" aria-label={`Keluar dari akun ${me.user}`} onClick={() => setPanel("profile")}>{me.initials}</button>
         </div>
       </header>
@@ -242,9 +242,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 })}
               </div>
               <div className="notification-actions">
-                <button type="button" className="text-link" onClick={() => markRead(notificationList.map(n => n.id))} disabled={!notifCount}>
+                <Button variant="text" onClick={() => markRead(notificationList.map(n => n.id))} disabled={!notifCount}>
                   {notifCount ? "Tandai semua dibaca" : "Semua sudah dibaca"}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
@@ -255,11 +255,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       {panel === "profile" && <>
         <p className="muted">Kamu masuk sebagai {me.user} ({me.label}). Untuk memakai akun lain, masuk lagi dengan email akun tersebut.</p>
         <div className="dialog-actions">
-          <button className="button secondary" onClick={() => setPanel(null)}>Batal</button>
-          <button className="button primary" onClick={handleLogout}><Icon icon={LogOut} size={16} />Keluar</button>
+          <Button variant="secondary" onClick={() => setPanel(null)}>Batal</Button>
+          <Button variant="primary" onClick={handleLogout}><Icon icon={LogOut} size={16} />Keluar</Button>
         </div>
       </>}
-      {panel === "help" && <><p>Ada dua skenario demo dari proposal, mulai dari temuan sampai keputusan.</p><ol className="guide-list"><li><strong>Antrean Truk</strong><p>Lihat antrean RT menumpuk di lab test dan Bay 2 yang sedang CIP.</p></li><li><strong>Rencana & What-if</strong><p>Rencana FIFO ditandai tidak layak. Bandingkan rekomendasi solver, lalu setujui atau tolak.</p></li><li><strong>Simulasi 3D</strong><p>Bandingkan lokasi bottleneck sebelum dan sesudah rekomendasi.</p></li><li><strong>Traceability</strong><p>Di Riwayat Produksi, pilih lot FG-1013-07 yang out-of-spec. Dari sana, telusuri mundur ke RT dan farm, lalu maju ke lot lain untuk daftar hold.</p></li></ol><button className="button secondary wide reset-demo" disabled={resetting} onClick={() => void handleResetDemo()}><Icon icon={RotateCcw} size={16} />{resetting ? "Mengatur ulang demo…" : "Atur ulang demo"}</button>{resetError && <p className="small crit-text" role="alert">{resetError}</p>}<p className="small muted">Menghapus keputusan, hold, konfirmasi, dan perubahan constraint yang tersimpan di browser ini.</p></>}
+      {panel === "help" && <><p>Ada dua skenario demo dari proposal, mulai dari temuan sampai keputusan.</p><ol className="guide-list"><li><strong>Antrean Truk</strong><p>Lihat antrean RT menumpuk di lab test dan Bay 2 yang sedang CIP.</p></li><li><strong>Rencana & What-if</strong><p>Rencana FIFO ditandai tidak layak. Bandingkan rekomendasi solver, lalu setujui atau tolak.</p></li><li><strong>Simulasi 3D</strong><p>Bandingkan lokasi bottleneck sebelum dan sesudah rekomendasi.</p></li><li><strong>Traceability</strong><p>Di Riwayat Produksi, pilih lot FG-1013-07 yang out-of-spec. Dari sana, telusuri mundur ke RT dan farm, lalu maju ke lot lain untuk daftar hold.</p></li></ol><Button variant="secondary" wide className="reset-demo" disabled={resetting} onClick={() => void handleResetDemo()}><Icon icon={RotateCcw} size={16} />{resetting ? "Mengatur ulang demo…" : "Atur ulang demo"}</Button>{resetError && <p className="small crit-text" role="alert">{resetError}</p>}<p className="small muted">Menghapus keputusan, hold, konfirmasi, dan perubahan constraint yang tersimpan di browser ini.</p></>}
     </Modal>}
     <SourceModal id={source} onClose={() => setSource(null)} />
   </div>;

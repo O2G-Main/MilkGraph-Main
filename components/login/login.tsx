@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { demoPassword, emailOf, login, useDemo } from "@/lib/demo";
 import { ROLE_IDS, roleLabel } from "@/lib/roles";
-import { Icon } from "@/components/ui";
+import { Button, Icon, Input } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 /** Diadaptasi dari "Clean & Minimal sign in" (21st.dev, @preetsuthar17, MIT). Email dipilih dari akun demo; kata sandi terisi sesuai peran. */
@@ -55,7 +55,7 @@ export function Login() {
           </div>
           <div className="login-field">
             <span className="login-icon"><Icon icon={Lock} size={16} /></span>
-            <input
+            <Input
               id="login-password"
               type={show ? "text" : "password"}
               value={password}
@@ -72,7 +72,7 @@ export function Login() {
           {error && <p className="login-error" role="alert">{error}</p>}
         </div>
 
-        <button type="submit" className="button primary wide login-submit" disabled={busy}>{busy ? "Memeriksa akun…" : "Masuk"}</button>
+        <Button type="submit" variant="primary" wide className="login-submit" disabled={busy}>{busy ? "Memeriksa akun…" : "Masuk"}</Button>
 
       </form>
     </main>

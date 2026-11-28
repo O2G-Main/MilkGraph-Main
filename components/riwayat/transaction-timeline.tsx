@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Clock3 } from "lucide-react";
-import { Badge, Card, Icon, Modal, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Modal, SectionTitle, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import type { BeTraceBackward } from "@/lib/api/trace-historis";
 import { useResource } from "@/lib/api/resource";
@@ -27,8 +27,8 @@ export function TransactionTimeline({groupId,evidence}:{groupId:string;evidence?
   const duplicates=valid?resource.data!.events.length-events.length:0;
   return <Card>
     <SectionTitle title="Detail alur & waktu transaksi" subtitle="Ikuti transaksi tercatat pada group ini, termasuk proses, filling, CIP, dan waktu tunggu yang tersedia di backend. Semua waktu menggunakan WIB."
-      action={<button className="button secondary" disabled={resource.loading} onClick={()=>{setPicked(null);void resource.reload();}}>Muat ulang transaksi</button>} />
-    {resource.error ? <div role="alert"><p className="crit-text">Transaksi belum dapat dimuat: {resource.error.message}</p><button className="button secondary" onClick={()=>void resource.reload()}>Coba lagi</button></div>
+      action={<Button variant="secondary" disabled={resource.loading} onClick={()=>{setPicked(null);void resource.reload();}}>Muat ulang transaksi</Button>} />
+    {resource.error ? <div role="alert"><p className="crit-text">Transaksi belum dapat dimuat: {resource.error.message}</p><Button variant="secondary" onClick={()=>void resource.reload()}>Coba lagi</Button></div>
     :!resource.data?<p role="status" className="muted">Memuat alur dan waktu transaksi…</p>
     :!valid?<p role="alert" className="crit-text">Data transaksi belum cocok dengan group yang dipilih.</p>
     :<>
@@ -54,7 +54,7 @@ export function TransactionTimeline({groupId,evidence}:{groupId:string;evidence?
           </button>
         </li>;
       })}</ol>}
-      {filtered.length>limit&&<button className={`button secondary ${styles.more}`} onClick={()=>setLimit(value=>value+12)}>Tampilkan {Math.min(12,filtered.length-limit)} transaksi berikutnya ({Math.min(limit,filtered.length)} dari {filtered.length})</button>}
+      {filtered.length>limit&&<Button variant="secondary" className={styles.more} onClick={()=>setLimit(value=>value+12)}>Tampilkan {Math.min(12,filtered.length-limit)} transaksi berikutnya ({Math.min(limit,filtered.length)} dari {filtered.length})</Button>}
       <p className={`small muted ${styles.scope}`}>Detail ini memakai transaksi untuk group {groupId}. Satu transaksi dapat terkait beberapa batch; identitas batch tunggal dari ringkasan API tidak dianggap mewakili seluruh group. Rekonstruksi campuran dan proporsi lot tetap mengikuti model historis di bawah.</p>
     </>}
     {picked&&<TransactionDetail event={picked} groupId={groupId} evidence={evidence} onClose={()=>setPicked(null)}/>}
@@ -75,6 +75,6 @@ function TransactionDetail({event,groupId,evidence,onClose}:{event:ProductionTra
     <p className="small muted">Waktu dan nilai ditampilkan dari catatan backend, termasuk nilai nol. Waktu kosong tidak diartikan sebagai proses sedang berjalan.</p>
     <dl className={styles.facts}>{facts.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     {related.length>0&&<section className={styles.related}><h3>Kaitan telusur historis</h3><p className="small muted">Dicocokkan berdasarkan ID transaksi yang sama pada rekonstruksi backend.</p><ul>{related.map(step=><li key={step.urut}>{step.dari} → {step.ke} · {amount(step.volume_l,"L")}</li>)}</ul></section>}
-    <div className="dialog-actions"><button className="button secondary" onClick={onClose}>Tutup</button></div>
+    <div className="dialog-actions"><Button variant="secondary" onClick={onClose}>Tutup</Button></div>
   </Modal>;
 }

@@ -18,7 +18,7 @@ import type { Scenario } from "@/mock/types";
 import { duration, number } from "@/lib/format";
 import { useDemo } from "@/lib/demo";
 import { holdingLeft, violations } from "@/lib/rules";
-import { Badge, Card, Icon, PageLink, SectionTitle, SourceModal, Toggle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, Icon, PageLink, SectionTitle, SourceModal, Table, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { MetricGrid } from "./metric-grid";
 import { Queue3D } from "./queue-3d";
@@ -148,8 +148,8 @@ function ReceivingContent({
           <p>Alur RT dari farm sampai tangki, diperbarui {now}</p>
         </div>
         <div className="page-actions">
-          {mayRecord && <button className="button primary" onClick={() => setDialog("tiba")}><Icon icon={Truck} />Catat kedatangan</button>}
-          {seePlan && <Link className={`button ${mayRecord ? "secondary" : "primary"}`} href="/rencana">
+          {mayRecord && <Button variant="primary" onClick={() => setDialog("tiba")}><Icon icon={Truck} />Catat kedatangan</Button>}
+          {seePlan && <Link className={buttonClass(mayRecord ? "secondary" : "primary")} href="/rencana">
             <Icon icon={CalendarClock} />Periksa rencana<Icon icon={ArrowUpRight} size={16} />
           </Link>}
         </div>
@@ -188,10 +188,9 @@ function ReceivingContent({
               <div><strong className="mono">{pickedRt.id}</strong> <span className="muted">{pickedRt.farm}</span></div>
               <Badge tone={pickedRt.tone}>{pickedRt.stage}</Badge>
               <span>{number(pickedRt.volume)} L</span><span>Tunggu {pickedRt.wait} mnt</span><span className={pickedRt.tone === "crit" ? "crit-text" : ""}>Umur susu {pickedRt.age}</span><span>{number(pickedRt.temperature)} °C</span>
-              <button className="text-link" onClick={() => setSource(pickedRt.source)}>Lihat bukti<Icon icon={ArrowUpRight} size={14} /></button>
+              <Button variant="text" onClick={() => setSource(pickedRt.source)}>Lihat bukti<Icon icon={ArrowUpRight} size={14} /></Button>
             </div> : <p className="small muted queue-hint">Klik truk untuk melihat rinciannya. Denyut merah: RT mendekati batas holding time. Seret untuk menggeser, klik kanan untuk memutar.</p>}
-          </> : <div className="table-wrap">
-            <table>
+          </> : <Table>
               <thead>
                 <tr>
                   <th>RT / Farm</th>
@@ -214,22 +213,21 @@ function ReceivingContent({
                     <td data-label="Umur susu" className={`numeric ${rt.tone === "crit" ? "crit-text" : rt.tone === "warn" ? "warn-text" : ""}`}>{rt.age}<span className="table-sub">awal {clock(rt.milkStart)}</span></td>
                     <td data-label="Suhu" className="numeric">{number(rt.temperature)} °C</td>
                     {mayRecord && <td data-label="Proses" className="queue-actions">
-                      {rt.stage === "Released" && <button className="button primary" onClick={() => setDialog({ row: rt, action: "mulai" })}>Mulai bongkar</button>}
-                      {rt.stage === "Unloading" && <button className="button primary" onClick={() => setDialog({ row: rt, action: "selesai" })}>Selesai bongkar</button>}
+                      {rt.stage === "Released" && <Button variant="primary" onClick={() => setDialog({ row: rt, action: "mulai" })}>Mulai bongkar</Button>}
+                      {rt.stage === "Unloading" && <Button variant="primary" onClick={() => setDialog({ row: rt, action: "selesai" })}>Selesai bongkar</Button>}
                       {rt.stage === "Selesai bongkar" && <Link className="text-link" href="/transfer">Catat transfer</Link>}
                       {(rt.stage === "Sampling" || rt.stage === "Lab test") && <span className="small muted">Tunggu rilis lab</span>}
-                      <button className="icon-button" aria-label={`Ubah catatan tiba dan umur susu ${rt.id}`} onClick={() => setDialog({ row: rt, action: "catatan" })}><Icon icon={Pencil} size={15} /></button>
+                      <Button variant="icon" aria-label={`Ubah catatan tiba dan umur susu ${rt.id}`} onClick={() => setDialog({ row: rt, action: "catatan" })}><Icon icon={Pencil} size={15} /></Button>
                     </td>}
                     <td className="table-action">
-                      {rt.source && <button className="icon-button" aria-label={`Lihat bukti ${rt.id}`} onClick={() => setSource(rt.source)}>
+                      {rt.source && <Button variant="icon" aria-label={`Lihat bukti ${rt.id}`} onClick={() => setSource(rt.source)}>
                         <Icon icon={ArrowUpRight} size={16} />
-                      </button>}
+                      </Button>}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>}
+          </Table>}
           <div className="table-footer">
             <span>{tankers.length} dari {rows.length} RT di plant. Batas holding time {duration(demo.limits.holdingMin)} [asumsi].</span>
             {seePlan ? <Link href="/rencana" className="text-link">Susun ulang antrean<Icon icon={ArrowRight} size={14} /></Link>
@@ -259,7 +257,7 @@ function ReceivingContent({
             ))}
           </div>
           <p className="incident-links">Rincian tunggu lab ada di <PageLink href="/lab">Tes Lab</PageLink>{seeBay && <>, dan kondisi bay di <Link href="/tangki">Bay &amp; Tangki</Link></>}.</p>
-          <Link href={seePlan ? "/rencana" : seeBay ? "/tangki" : "/lab"} className="button inverse">
+          <Link href={seePlan ? "/rencana" : seeBay ? "/tangki" : "/lab"} className={buttonClass("inverse")}>
             {seePlan ? "Periksa kelayakan rencana" : seeBay ? "Lihat kesiapan bay" : "Buka Tes Lab"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span>
           </Link>
         </section> : <Card className="rules-card">

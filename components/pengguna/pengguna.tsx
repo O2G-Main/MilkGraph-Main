@@ -9,7 +9,7 @@ import { ASSETS, STAGES } from "@/lib/assets";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import type { BeRolesResponse } from "@/lib/api/contract";
-import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, Icon, Input, Modal, PageHeading, SectionTitle, Table } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 interface BeUser {
@@ -32,7 +32,7 @@ export function Pengguna() {
   return (
     <div className="page-enter">
       <PageHeading title="Manajemen akun" subtitle={SUBTITLE}>
-        {can(demo.role, "users.manage") && <Link className="button secondary" href="/role-akses">Atur role & hak akses<Icon icon={ArrowRight} size={16} /></Link>}
+        {can(demo.role, "users.manage") && <Link className={buttonClass("secondary")} href="/role-akses">Atur role & hak akses<Icon icon={ArrowRight} size={16} /></Link>}
       </PageHeading>
       <UserList manage={manage} />
       <PicList manage={manage} />
@@ -108,8 +108,7 @@ function UserList({ manage }: { manage: boolean }) {
     <Card className="user-list">
       <SectionTitle title="Daftar pengguna" subtitle={API_MODE && usersRes.loading && !usersRes.data ? "Memuat daftar pengguna dari server…" : `${users.filter(u => u.active).length} aktif dari ${users.length} akun`} />
       {(apiError || usersRes.error) && <p className="small crit-text" role="alert">{apiError ?? usersRes.error?.message}</p>}
-      <div className="table-wrap">
-        <table className="user-table">
+      <Table variant="user">
           <thead>
             <tr><th>Nama</th><th>Role</th><th>Alat/lini ditugaskan</th><th>Status</th>{manage && <th className="numeric">Aksi</th>}</tr>
           </thead>
@@ -119,47 +118,45 @@ function UserList({ manage }: { manage: boolean }) {
                 <td data-label="Nama"><strong>{u.name}</strong></td>
                 <td data-label="Role">
                   {manage && !isLastAdmin(u)
-                    ? <span className="user-role"><span>{roleLabelOf(u.role)}</span><button className="icon-button" aria-label={`Ubah role ${u.name}`} onClick={() => setRoleEdit(u)}><Icon icon={Pencil} size={15} /></button></span>
+                    ? <span className="user-role"><span>{roleLabelOf(u.role)}</span><Button variant="icon" aria-label={`Ubah role ${u.name}`} onClick={() => setRoleEdit(u)}><Icon icon={Pencil} size={15} /></Button></span>
                     : roleLabelOf(u.role)}
                 </td>
                 <td data-label="Alat/lini">
                   <span className="user-assets">{u.role === SUPERADMIN ? <span className="small muted">Semua alat</span> : <span className="small">{assetsText(u.assets)}</span>}
-                    {manage && u.role !== SUPERADMIN && <button className="icon-button" aria-label={`Atur alat dan lini ${u.name}`} onClick={() => setAssigning(u)}><Icon icon={Pencil} size={15} /></button>}
+                    {manage && u.role !== SUPERADMIN && <Button variant="icon" aria-label={`Atur alat dan lini ${u.name}`} onClick={() => setAssigning(u)}><Icon icon={Pencil} size={15} /></Button>}
                   </span>
                 </td>
                 <td data-label="Status"><Badge tone={u.active ? "ok" : "neutral"}>{u.active ? "Aktif" : "Nonaktif"}</Badge></td>
                 {manage && (
                   <td data-label="Aksi" className="numeric">
-                    <button
-                      type="button"
-                      className="button secondary"
+                    <Button
+                      variant="secondary"
                       disabled={isLastAdmin(u)}
                       title={isLastAdmin(u) ? "Minimal satu Superadmin harus tetap aktif." : undefined}
                       onClick={() => setToggling(u)}
                     >
                       {u.active ? "Nonaktifkan" : "Aktifkan"}
-                    </button>
+                    </Button>
                   </td>
                 )}
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+      </Table>
       {manage && (
         <form className="user-add" onSubmit={submit}>
           <label>
             <span className="field-label">Nama pengguna baru</span>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Contoh: Wulan Pratiwi" autoComplete="off" required maxLength={60} />
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Contoh: Wulan Pratiwi" autoComplete="off" required maxLength={60} />
           </label>
           <label>
             <span className="field-label">Role</span>
             <Select label="Role pengguna baru" value={role} onChange={setNewRole} options={roleOptions} />
           </label>
-          <button type="submit" className="button primary" disabled={!name.trim()}>
+          <Button type="submit" variant="primary" disabled={!name.trim()}>
             <Icon icon={UserPlus} size={16} />
             Tambah pengguna
-          </button>
+          </Button>
         </form>
       )}
       {assigning && <AssetDialog user={assigning} onSave={assets => void savePatch(assigning.id, { assets })} onClose={() => setAssigning(null)} />}
@@ -170,10 +167,10 @@ function UserList({ manage }: { manage: boolean }) {
             : `${toggling.name} bisa masuk lagi dengan role ${roleLabelOf(toggling.role)}.`}
         </p>
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={() => setToggling(null)} disabled={saving}>Batal</button>
-          <button type="button" className="button primary" disabled={saving} onClick={() => { void savePatch(toggling.id, { active: !toggling.active }); setToggling(null); }}>
+          <Button variant="secondary" onClick={() => setToggling(null)} disabled={saving}>Batal</Button>
+          <Button variant="primary" disabled={saving} onClick={() => { void savePatch(toggling.id, { active: !toggling.active }); setToggling(null); }}>
             {toggling.active ? "Ya, nonaktifkan" : "Ya, aktifkan"}
-          </button>
+          </Button>
         </div>
       </Modal>}
       {roleEdit && <RoleDialog user={roleEdit} roleOptions={roleOptions} roleLabelOf={roleLabelOf} onSave={nextRole => void savePatch(roleEdit.id, { role: nextRole })} onClose={() => setRoleEdit(null)} />}
@@ -189,16 +186,16 @@ function RoleDialog({ user, roleOptions, roleLabelOf, onSave, onClose }: { user:
     {confirm ? <>
       <p className="dialog-summary">Role {user.name} akan diubah dari <strong>{roleLabelOf(user.role)}</strong> menjadi <strong>{roleLabelOf(role)}</strong>. Menu dan tindakan yang bisa diakses ikut berubah.</p>
       <div className="dialog-actions">
-        <button type="button" className="button secondary" onClick={() => setConfirm(false)}>Periksa lagi</button>
-        <button type="button" className="button primary" onClick={() => { onSave(role); onClose(); }}>Ya, ubah role</button>
+        <Button variant="secondary" onClick={() => setConfirm(false)}>Periksa lagi</Button>
+        <Button variant="primary" onClick={() => { onSave(role); onClose(); }}>Ya, ubah role</Button>
       </div>
     </> : <>
       <div className="schedule-form">
         <label><span className="field-label">Role</span><Select label={`Role ${user.name}`} value={role} onChange={setRole} options={roleOptions} /></label>
       </div>
       <div className="dialog-actions">
-        <button type="button" className="button secondary" onClick={onClose}>Batal</button>
-        <button type="button" className="button primary" disabled={role === user.role} onClick={() => setConfirm(true)}>Simpan</button>
+        <Button variant="secondary" onClick={onClose}>Batal</Button>
+        <Button variant="primary" disabled={role === user.role} onClick={() => setConfirm(true)}>Simpan</Button>
       </div>
     </>}
   </Modal>;
@@ -216,7 +213,7 @@ function PicList({ manage }: { manage: boolean }) {
         return <li key={a.id} className="pic-row">
           <span className="pic-copy"><strong>{a.label}</strong><span>{a.hint}</span></span>
           <span className="pic-names">{names.length ? names.map(n => <span key={n} className="pic-name">{n}</span>) : <span className="small muted">Belum ditetapkan</span>}</span>
-          {manage && <button type="button" className="button secondary" onClick={() => setArea(a.id)}><Icon icon={Pencil} size={15} />Atur</button>}
+          {manage && <Button variant="secondary" onClick={() => setArea(a.id)}><Icon icon={Pencil} size={15} />Atur</Button>}
         </li>;
       })}
     </ul>
@@ -236,8 +233,8 @@ function PicDialog({ area, current, users, onClose }: { area: PicArea; current: 
       ))}</div>
       <div className="dialog-actions">
         <span className="small muted">{picked.length ? `${picked.length} akun dipilih` : "Belum ada akun dipilih"}</span>
-        <button type="button" className="button secondary" onClick={() => setPicked([])}>Kosongkan</button>
-        <button type="submit" className="button primary">Simpan PIC</button>
+        <Button variant="secondary" onClick={() => setPicked([])}>Kosongkan</Button>
+        <Button type="submit" variant="primary">Simpan PIC</Button>
       </div>
     </form>
   </Modal>;
@@ -263,8 +260,8 @@ function AssetDialog({ user, onSave, onClose }: { user: DemoUser; onSave: (asset
         ))}</div>
         <div className="dialog-actions">
           <span className="small muted">{picked.length ? `${picked.length} alat dipilih` : "Tidak dibatasi"}</span>
-          <button type="button" className="button secondary" onClick={() => setPicked([])}>Kosongkan</button>
-          <button type="submit" className="button primary">Simpan penugasan</button>
+          <Button variant="secondary" onClick={() => setPicked([])}>Kosongkan</Button>
+          <Button type="submit" variant="primary">Simpan penugasan</Button>
         </div>
       </form>
     </Modal>

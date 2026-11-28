@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowRight, Save } from "lucide-react";
-import { Card, Icon, SectionTitle } from "@/components/ui";
+import { Button, Card, Icon, Input, SectionTitle } from "@/components/ui";
 import { API_MODE, apiGet } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import type { ProductionSession } from "@/lib/api/production";
@@ -94,17 +94,17 @@ export function ProductionSettings({ role, showTools = true, origin = "Alat" }: 
     <Card>
       <SectionTitle title="Batas operasional"
         subtitle={API_MODE ? "Pengaturan global perencanaan produksi yang disimpan ke server." : "Pengaturan global untuk simulasi lokal."} />
-      {loadError ? <div role="alert"><p className="crit-text">Gagal memuat pengaturan: {loadError.message}</p><button className="button secondary" onClick={() => { void saved.reload(); void schema.reload(); }}>Coba lagi</button></div>
+      {loadError ? <div role="alert"><p className="crit-text">Gagal memuat pengaturan: {loadError.message}</p><Button variant="secondary" onClick={() => { void saved.reload(); void schema.reload(); }}>Coba lagi</Button></div>
       : !current || (API_MODE && !schema.data) ? <p className="muted" role="status">Memuat pengaturan produksi…</p>
       : !fields.length ? <p className="muted">Server belum menyediakan parameter pengaturan ini.</p>
       : <form className="schedule-form" onSubmit={save}>
-        {API_MODE && session.error && <p className="crit-text" role="alert">Izin backend gagal dimuat. Pengaturan hanya dapat dibaca. <button type="button" className="text-link" onClick={() => void session.reload()}>Periksa ulang izin</button></p>}
+        {API_MODE && session.error && <p className="crit-text" role="alert">Izin backend gagal dimuat. Pengaturan hanya dapat dibaca. <Button variant="text" onClick={() => void session.reload()}>Periksa ulang izin</Button></p>}
         {API_MODE && !session.data && !session.error && <p className="small muted" role="status">Memeriksa izin pengaturan…</p>}
         <div className="production-settings-grid">
           {fields.map(({ key, label, min, max, step }) => (
             <label key={key}>
               <span className="field-label">{label}</span>
-              <input type="number" required min={min} max={max} step={step} readOnly={!allowed}
+              <Input type="number" required min={min} max={max} step={step} readOnly={!allowed}
                 disabled={saving} value={draft[key] ?? current[key]}
                 onChange={e => {
                   const value = e.currentTarget.value;
@@ -118,7 +118,7 @@ export function ProductionSettings({ role, showTools = true, origin = "Alat" }: 
         {error && <p className="crit-text" role="alert">Gagal menyimpan pengaturan: {error}</p>}
         {notice && <p className="ok-text" role="status">Pengaturan produksi tersimpan.</p>}
         {allowed ? <div className="dialog-actions">
-          <button type="submit" className="button primary" disabled={!dirty || saving}><Icon icon={Save} size={16} />{saving ? "Menyimpan…" : "Simpan pengaturan"}</button>
+          <Button type="submit" variant="primary" disabled={!dirty || saving}><Icon icon={Save} size={16} />{saving ? "Menyimpan…" : "Simpan pengaturan"}</Button>
         </div> : <p className="small muted">Peran Anda dapat melihat pengaturan ini.</p>}
       </form>}
     </Card>

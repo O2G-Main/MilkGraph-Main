@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
-import { Badge, Card, Icon, PageHeading, SectionTitle } from "@/components/ui";
-import { DateField } from "@/components/ui/fields";
+import { Badge, Button, Card, Icon, PageHeading, SectionTitle, buttonClass } from "@/components/ui";
+import { DateField, Select } from "@/components/ui/fields";
 import { PlantTopology } from "@/components/produksi/plant-topology";
 import { API_MODE } from "@/lib/api/client";
 import { invalidateResources, useResource } from "@/lib/api/resource";
@@ -57,21 +57,25 @@ function FactoryMonitorApi({ initialDate, initialBatch, invalidDate, embedded=fa
   const closeDetail = () => setSelected(null);
   return <div className={`page-enter ${styles.page}`}>
     {!embedded && <PageHeading title="Kondisi Pabrik" subtitle="Hubungkan penugasan jadwal dengan catatan kondisi terakhir alat.">
-      <button className="button secondary" disabled={sourcePending} onClick={refresh}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</button>
+      <Button variant="secondary" disabled={sourcePending} onClick={refresh}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</Button>
     </PageHeading>}
     <Card>
       <div className={styles.filters}>
         <label>Tanggal penugasan (WIB)<DateField label="Tanggal penugasan alat" value={date} onChange={changeDate} /></label>
-        <label>Batch yang disorot<select aria-label="Batch yang disorot" value={batch} disabled={!scheduleReady} onChange={event => { setBatch(event.target.value); setSelected(null); }}><option value="">Semua batch pada tanggal ini</option>{missingBatch && <option value={batch}>{batch} (tidak ditemukan)</option>}{batches.map(([id, code]) => <option value={id} key={id}>{code || id}</option>)}</select></label>
-        <button className="button secondary" onClick={() => changeDate(dateInWib())}>Hari ini</button>
-        {date && canSee(role, "/penjadwalan") && <Link className="button secondary" href={`/penjadwalan?date=${date}`}>Buka Penjadwalan</Link>}
-        {embedded && <button className="button secondary" disabled={sourcePending} onClick={refresh}><Icon icon={RefreshCw} size={16}/>Perbarui tampilan</button>}
+        <label>Batch yang disorot<Select label="Batch yang disorot" value={batch} disabled={!scheduleReady} onChange={value => { setBatch(value); setSelected(null); }} options={[
+          { value: "", label: "Semua batch pada tanggal ini" },
+          ...(missingBatch ? [{ value: batch, label: `${batch} (tidak ditemukan)` }] : []),
+          ...batches.map(([id, code]) => ({ value: id, label: code || id })),
+        ]} /></label>
+        <Button variant="secondary" onClick={() => changeDate(dateInWib())}>Hari ini</Button>
+        {date && canSee(role, "/penjadwalan") && <Link className={buttonClass("secondary")} href={`/penjadwalan?date=${date}`}>Buka Penjadwalan</Link>}
+        {embedded && <Button variant="secondary" disabled={sourcePending} onClick={refresh}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</Button>}
       </div>
       <p className="small muted">Tanggal dan batch mengatur sorotan penugasan. Status selalu memakai catatan terakhir alat, termasuk saat memilih jadwal historis. Semua waktu ditampilkan dalam WIB.</p>
       <p className="small muted">Label batch pada kartu menghitung semua batch yang menjadwalkan alat pada tanggal terpilih. Penugasan belum membuktikan alat atau batch sedang berjalan.</p>
       {invalidDate && <p className="warn-text" role="status">Parameter tanggal tidak valid; tampilan awal menggunakan hari ini.</p>}
     </Card>
-    {(assetProblem || scheduleProblem) && <Card><div role="alert"><p className="crit-text">{assetProblem ? `Status alat belum dapat dipastikan: ${assetProblem}` : ""}</p><p className="crit-text">{scheduleProblem ? `Penugasan belum dapat dipastikan: ${scheduleProblem}` : ""}</p><button className="button secondary" onClick={refresh}>Coba lagi</button></div></Card>}
+    {(assetProblem || scheduleProblem) && <Card><div role="alert"><p className="crit-text">{assetProblem ? `Status alat belum dapat dipastikan: ${assetProblem}` : ""}</p><p className="crit-text">{scheduleProblem ? `Penugasan belum dapat dipastikan: ${scheduleProblem}` : ""}</p><Button variant="secondary" onClick={refresh}>Coba lagi</Button></div></Card>}
     <div className={styles.metrics}>
       {([
         ["Alat dalam katalog", assetReady ? assetRows.length : null],
@@ -94,7 +98,7 @@ function FactoryMonitorApi({ initialDate, initialBatch, invalidDate, embedded=fa
       : !attention.length ? <p className="muted">Tidak ada catatan gangguan/perawatan yang dikenali pada alat terjadwal pilihan ini. Ini belum memastikan seluruh alat siap digunakan.</p>
       : <ul className={styles.list}>{attention.map(asset => <li key={asset.asset_id} className={styles.attention}>
         <div><strong>{asset.asset_id} · {asset.asset_name}</strong><p><Badge tone={assetStatusTone(asset.current_status)}>{asset.current_status}</Badge></p><p className="small muted">Catatan: {recordedStatusTime(asset.current_status_observed_at)} · {assignedBatchCount(chosenAssignments.get(asset.asset_id) ?? [])} batch terkait</p></div>
-        <button className="button secondary" aria-label={`Detail kondisi ${asset.asset_id}`} onClick={() => pickAsset(asset.asset_id)}>Detail alat</button>
+        <Button variant="secondary" aria-label={`Detail kondisi ${asset.asset_id}`} onClick={() => pickAsset(asset.asset_id)}>Detail alat</Button>
       </li>)}</ul>}
       <div className={styles.legend}><Badge tone="ok">Siap / berjalan (tercatat)</Badge><Badge tone="warn">Perawatan / CIP</Badge><Badge tone="crit">Gangguan / berhenti</Badge><Badge tone="neutral">Belum terklasifikasi</Badge></div>
     </Card>

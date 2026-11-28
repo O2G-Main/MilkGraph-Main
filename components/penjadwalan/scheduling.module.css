@@ -3,12 +3,12 @@
 .actions, .toolbar, .weekControl { display: flex; align-items: center; gap: var(--spacing-sm); flex-wrap: wrap; }
 .toolbar { justify-content: space-between; }
 .weekControl > span { font-size: 14px; font-weight: 600; }
-.date { display: flex; gap: var(--spacing-sm); align-items: center; font-size: 12px; color: var(--color-on-surface-muted); }
+.date { display: flex; gap: var(--spacing-sm); align-items: center; font-size: 13px; color: var(--color-on-surface-muted); }
 .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--spacing-md); }
 .metrics > section { display: flex; flex-direction: column; gap: var(--spacing-sm); }
 .metricCompact { display: none; }
 .metrics strong { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.planSummary { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); flex-wrap: wrap; color: var(--color-on-surface-muted); font-size: 12px; }
+.planSummary { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); flex-wrap: wrap; color: var(--color-on-surface-muted); font-size: 13px; }
 .days { display: grid; gap: var(--spacing-sm); }
 .dayRow { display: grid; grid-template-columns: 32px 64px minmax(0, 1fr) auto; align-items: center; gap: 8px; text-align: left; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--glass-chip); min-width: 0; }
 .days .selected { border-color: var(--color-primary); background: var(--color-accent-soft); color: var(--color-primary); }
@@ -26,7 +26,7 @@
 .product strong { font-size: 14px; font-weight: 550; }
 .product small, .volume small { display: block; margin-top: 4px; font-size: 12px; color: var(--color-on-surface-muted); }
 .volume { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; }
-.footnote { font-size: 12px; color: var(--color-on-surface-muted); margin-top: var(--spacing-sm); }
+.footnote { font-size: 13px; color: var(--color-on-surface-muted); margin-top: var(--spacing-sm); }
 .empty { padding-block: var(--spacing-xl); color: var(--color-on-surface-muted); text-align: center; }
 .empty h3 { color: var(--color-on-surface); margin-bottom: var(--spacing-sm); }
 :global(.schedule-tools-dialog) :global(.penjadwalan-page) { animation: none; }

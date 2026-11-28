@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
-import { Card, Icon, Modal, PageHeading } from "@/components/ui";
+import { Button, Card, Icon, Modal, PageHeading } from "@/components/ui";
 import { DateField } from "@/components/ui/fields";
 import { ProductionBatchForm } from "@/components/produksi/production-batch-form";
 import { useResource } from "@/lib/api/resource";
@@ -66,18 +66,18 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
   return <div className={`page-enter ${styles.page}`}>
     <PageHeading title="Penjadwalan" subtitle="Susun batch per hari dan pantau alokasi rencana mingguan.">
       <div className={styles.actions}>
-        <button className="button secondary" onClick={() => setPanel("tools")}>PO & versi jadwal</button>
-        {canCreate && <button className="button primary" onClick={() => { setPanel("batch"); setSaved(false); }}><Icon icon={Plus} size={16} />Susun jadwal</button>}
+        <Button variant="secondary" onClick={() => setPanel("tools")}>PO & versi jadwal</Button>
+        {canCreate && <Button variant="primary" onClick={() => { setPanel("batch"); setSaved(false); }}><Icon icon={Plus} size={16} />Susun jadwal</Button>}
       </div>
     </PageHeading>
     <div className={styles.toolbar}>
       <div className={styles.weekControl}>
-        <button className="icon-button" aria-label="Minggu sebelumnya" onClick={() => choose(moveDate(date, -7))}><Icon icon={ChevronLeft} /></button>
+        <Button variant="icon" aria-label="Minggu sebelumnya" onClick={() => choose(moveDate(date, -7))}><Icon icon={ChevronLeft} /></Button>
         <span>{weekLabel(start, end)}</span>
-        <button className="icon-button" aria-label="Minggu berikutnya" onClick={() => choose(moveDate(date, 7))}><Icon icon={ChevronRight} /></button>
+        <Button variant="icon" aria-label="Minggu berikutnya" onClick={() => choose(moveDate(date, 7))}><Icon icon={ChevronRight} /></Button>
       </div>
       <label className={styles.date}>Tanggal produksi<DateField label="Tanggal penjadwalan" value={date} onChange={choose} /></label>
-      <button className="text-link" onClick={() => choose(dateInWib())}>Hari ini</button>
+      <Button variant="text" onClick={() => choose(dateInWib())}>Hari ini</Button>
     </div>
     {saved && <p className="ok-text" role="status">Batch tersimpan. Jadwal diperbarui dari server.</p>}
     <div className={styles.metrics}>
@@ -90,17 +90,17 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
     </div>
     {(weekly.error || history.error || resources.some(resource => resource.error)) && <div role="alert" className={styles.warning}>
       <p>Sebagian ringkasan minggu belum dapat dimuat. Nilai terkait ditampilkan sebagai belum tersedia.</p>
-      <button className="text-link" onClick={() => {
+      <Button variant="text" onClick={() => {
         void weekly.reload(); void history.reload(); resources.forEach(resource => { void resource.reload(); });
-      }}><Icon icon={RefreshCw} size={14} />Coba lagi</button>
+      }}><Icon icon={RefreshCw} size={14} />Coba lagi</Button>
     </div>}
     <div className={styles.planSummary}>
       <span>{targetsReady ? `${totals.proposals.length} usulan mingguan` : "Memuat usulan mingguan…"}</span>
-      <button className="text-link" onClick={() => setPanel("targets")}>Lihat target & alokasi</button>
+      <Button variant="text" onClick={() => setPanel("targets")}>Lihat target & alokasi</Button>
     </div>
     {detailOpen ? <>
       <div className={styles.dayHeading}>
-        <button className="text-link" onClick={backToCalendar}><Icon icon={ArrowLeft} size={16} />Kembali ke kalender</button>
+        <Button variant="text" onClick={backToCalendar}><Icon icon={ArrowLeft} size={16} />Kembali ke kalender</Button>
         <h2 tabIndex={-1} ref={detailHeading}>Produksi {new Date(`${date}T00:00:00Z`).toLocaleDateString("id-ID", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h2>
       </div>
       <Card><h3>Kondisi produksi harian</h3><DayConditionSummary date={date} detailed fetchOnMount /></Card>
@@ -129,7 +129,7 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
         return <div key={day} className={`${styles.dayRow} ${day === date ? styles.selected : ""}`} aria-current={day === date ? "date" : undefined}>
           <span>{dayName(day)}</span><strong>{dayNumber(day)}</strong>
           <span className={styles.rowSummary}><small>{!resource.loading && !resource.error && resource.data ? `${new Set(uniqueSchedule(resource.data.items).map(row => row.batch_id)).size} batch · ` : ""}{resource.error ? "Gagal dimuat" : resource.loading ? "Memuat…" : liters(volume)}</small><DayConditionSummary date={day} /></span>
-          <button type="button" className={`button secondary ${styles.detailLink}`} aria-label={`Detail jadwal ${dayName(day)}, ${dayNumber(day)}`} onClick={() => openDay(day)}>Detail<Icon icon={ChevronRight} size={14} /></button>
+          <Button variant="secondary" className={styles.detailLink} aria-label={`Detail jadwal ${dayName(day)}, ${dayNumber(day)}`} onClick={() => openDay(day)}>Detail<Icon icon={ChevronRight} size={14} /></Button>
         </div>;
       })}
       </nav>
@@ -149,9 +149,9 @@ export function SchedulingWorkspace({ initialDate, role, tools }: { initialDate:
         return <li key={plan.proposal_id}><strong>{plan.product_name || plan.finished_sku_id}</strong>
           <p className="small muted">{plan.proposal_id} · {liters(plan.target_volume_l)}</p>
           {linked.length ? linked.map(row => <p key={`${row.batch_id}:${row.production_date}`}>
-            {row.batch_code || row.batch_id}{row.production_date && <button className="text-link" onClick={() => {
+            {row.batch_code || row.batch_id}{row.production_date && <Button variant="text" onClick={() => {
               openDay(row.production_date!); setPanel(null);
-            }}>Lihat {row.production_date}</button>}
+            }}>Lihat {row.production_date}</Button>}
           </p>) : <span className="small muted">Belum terhubung ke batch</span>}
         </li>;
       })}</ul>}

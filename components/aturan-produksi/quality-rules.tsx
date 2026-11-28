@@ -4,7 +4,7 @@ import { setLimits, setQuality, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { DEFAULT_LIMITS, type Limits } from "@/lib/rules";
 import { DEFAULT_QUALITY, type QualitySpec } from "@/lib/lab";
-import { Badge, Card, SectionTitle } from "@/components/ui";
+import { Badge, Card, SectionTitle, Table } from "@/components/ui";
 import { RuleValue } from "./rule-dialog";
 
 const hm = (m: number) => (m % 60 ? `${Math.floor(m / 60)} jam ${m % 60} menit` : `${m / 60} jam`);
@@ -34,25 +34,25 @@ export function QualityRules() {
   return <>
     <Card className="rules-card">
       <SectionTitle title="Batas holding time" subtitle="Umur susu maksimal sebelum masuk tahap berikutnya. Dipakai di antrean truk, jadwal kedatangan, dan cek kelayakan rencana." />
-      <div className="table-wrap"><table className="rules-table">
+      <Table variant="rules">
         <thead><tr><th>Tahap</th><th>Batas</th><th>Status</th></tr></thead>
         <tbody>{holding.map(h => <tr key={h.key}>
           <td>{h.label}<span className="table-sub">{hm(limits[h.key])} [asumsi]</span></td>
           <td data-label="Batas"><RuleValue title={`Ubah batas ${h.label}`} label={h.label} value={limits[h.key]} unit="menit" min={h.min} max={h.max} step={h.step} note="Batas wajar mengikuti asumsi skenario." allowed={allowed} onSave={saveLimit(h.key, h.label)} /></td>
           <td data-label="Status">{status(limits[h.key], DEFAULT_LIMITS[h.key])}</td>
         </tr>)}</tbody>
-      </table></div>
+      </Table>
     </Card>
     <Card className="rules-card">
       <SectionTitle title="Ketentuan mutu susu segar" subtitle="Batas parameter sampel RT di Tes Lab. Alcohol test dan antibiotik tetap harus negatif." />
-      <div className="table-wrap"><table className="rules-table">
+      <Table variant="rules">
         <thead><tr><th>Parameter</th><th>Batas</th><th>Status</th></tr></thead>
         <tbody>{specs.map(s => <tr key={s.key}>
           <td>{s.label}</td>
           <td data-label="Batas"><RuleValue title={`Ubah ${s.label}`} label={s.label} value={quality[s.key]} unit={s.unit} min={s.min} max={s.max} step={s.step} allowed={allowed} onSave={saveSpec(s.key, s.label, s.unit, s.digits)} /></td>
           <td data-label="Status">{status(quality[s.key], DEFAULT_QUALITY[s.key])}</td>
         </tr>)}</tbody>
-      </table></div>
+      </Table>
     </Card>
   </>;
 }

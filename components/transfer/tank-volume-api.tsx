@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useAssetVolume } from "@/lib/api/asset-volume";
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, Table } from "@/components/ui";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
 const signed = (n: number) => `${n > 0 ? "+" : ""}${number(n)} L`;
@@ -22,10 +22,10 @@ export function TankVolumeApiCard({ tanks, alat }: { tanks: TankRef[]; alat?: st
   return (
     <Card className="rules-card" data-tour="transfer-tank">
       <SectionTitle title="Volume tangki terkini" subtitle="Masuk, keluar, dan saldo dihitung server dari seluruh catatan transfer. Level snapshot adalah snapshot historis 1 Nov 2026 pukul 06.00 dan tidak diubah halaman ini." />
-      <div className="table-wrap"><table className="schedule-table">
+      <Table variant="schedule">
         <thead><tr><th>Tangki</th><th className="numeric">Snapshot skenario</th><th className="numeric">Masuk (server)</th><th className="numeric">Keluar (server)</th><th className="numeric">Saldo transfer (server)</th><th className="numeric">Jumlah transfer</th><th><span className="sr-only">Riwayat</span></th></tr></thead>
         <tbody>{tanks.map(t => <TankVolumeRow key={t.id} tank={t} alat={alat} />)}</tbody>
-      </table></div>
+      </Table>
       {!tanks.length && <p className="muted">Tidak ada tangki pada filter ini.</p>}
     </Card>
   );

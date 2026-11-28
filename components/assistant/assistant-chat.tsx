@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowUp, ArrowUpRight, Bot, ChevronLeft, X } from "lucide-react";
-import { Icon } from "@/components/ui";
+import { Button, Icon, Textarea } from "@/components/ui";
 import { ASSETS, LINKS } from "@/lib/assets";
 import { scenario } from "@/lib/data";
 import { useDemo } from "@/lib/demo";
@@ -250,7 +250,7 @@ export function AssistantChat() {
       {!empty && <AiOrb size={36} />}
       <div><h2>Tanya MilkGraph</h2><p><i aria-hidden="true" />Membaca kondisi 14.42</p></div>
       <span className="ai-head-actions">
-        <button type="button" className="icon-button" aria-label="Tutup asisten" title="Tutup" onClick={close}><Icon icon={X} size={18} /></button>
+        <Button variant="icon" aria-label="Tutup asisten" title="Tutup" onClick={close}><Icon icon={X} size={18} /></Button>
       </span>
     </header>
 
@@ -280,7 +280,7 @@ export function AssistantChat() {
     <form className="ai-form" onSubmit={e => { e.preventDefault(); ask(draft); }}>
       <div className={`ai-field${listening ? " is-listening" : closing ? " is-closing" : ""}`}>
         <label htmlFor="ai-q" className="sr-only">Pertanyaan untuk asisten</label>
-        <textarea id="ai-q" ref={input} rows={1} value={draft} maxLength={500} placeholder="Tanya apa saja soal pabrik..."
+        <Textarea id="ai-q" ref={input} rows={1} value={draft} maxLength={500} placeholder="Tanya apa saja soal pabrik..."
           readOnly={listening} onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); ask(draft); } }} />
         {canDictate && <VoicePill key={pillKey} size={44} accentColor="#ffffff" iconColor="var(--color-on-surface-muted)" background="var(--color-primary)" reactive={finePointer ? "mic" : "simulated"} ariaLabel="Bicara untuk mengetik" onStart={startVoice} onStop={({ reason }) => stopVoice(reason)} />}

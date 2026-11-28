@@ -8,7 +8,7 @@ import {
   DOWNTIME_SOURCE_LABEL, DOWNTIME_TYPE_LABEL, PREDICTION_ALERT_LABEL, PREDICTION_ALERT_TONE, PREDICTION_BASIS_LABEL, fmtWaktu,
   type BeDowntimeEvent, type BeDowntimePrediction, type BeMaintenanceRecommendation,
 } from "@/lib/api/contract";
-import { Badge, Card, Icon, Modal, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal, SectionTitle, Table } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 const EVENTS = "/downtime-events";
@@ -56,11 +56,11 @@ export function DowntimeApi({ role, machines, initialResource="" }: { role: stri
     <>
       <Card className="downtime-card">
         <SectionTitle title="Downtime" subtitle="Kejadian downtime dari server. Riwayat memang mulai kosong karena belum pernah dicatat, dan tumbuh dari catatan operator atau IoT."
-          action={write ? <button className="button primary" onClick={() => setFormOpen(true)}><Icon icon={TimerOff} size={16} />Catat downtime</button> : undefined} />
+          action={write ? <Button variant="primary" onClick={() => setFormOpen(true)}><Icon icon={TimerOff} size={16} />Catat downtime</Button> : undefined} />
         {eventsRes.error && <p className="crit-text" role="alert">Gagal memuat downtime: {eventsRes.error.message}</p>}
         {!eventsRes.data && !eventsRes.error && <p className="muted" role="status">Memuat downtime…</p>}
         {eventsRes.data && (events.length ? (
-          <div className="table-wrap"><table className="schedule-table">
+          <Table variant="schedule">
             <thead><tr><th>Alat</th><th>Tipe</th><th>Mulai</th><th>Selesai</th><th className="numeric">Lama</th><th>Sumber</th></tr></thead>
             <tbody>{events.map(e => <tr key={e.event_id}>
               <td><strong className="mono">{e.resource_id}</strong><span className="table-sub">{e.event_id}</span></td>
@@ -70,7 +70,7 @@ export function DowntimeApi({ role, machines, initialResource="" }: { role: stri
               <td data-label="Lama" className="numeric">{duration(e.start, e.end)}</td>
               <td data-label="Sumber">{DOWNTIME_SOURCE_LABEL[e.source] ?? e.source}</td>
             </tr>)}</tbody>
-          </table></div>
+          </Table>
         ) : <p className="muted">Belum ada kejadian downtime tercatat di server.{write ? " Pakai tombol Catat downtime untuk mencatat kejadian pertama." : ""}</p>)}
         {!write && <p className="small muted">Mencatat downtime hanya untuk Operator dan Superadmin, sesuai permission downtime.record di server. Role lain membaca riwayat dan prediksi di halaman ini.</p>}
       </Card>
@@ -81,10 +81,10 @@ export function DowntimeApi({ role, machines, initialResource="" }: { role: stri
           <div className="schedule-form-row">
             <label><span className="field-label">Alat</span><Select label="Alat untuk prediksi" value={picked} onChange={setResource} options={resourceOptions.map(id => ({ value: id, label: id }))} placeholder="Pilih alat" /></label>
             <label><span className="field-label">Durasi maintenance (jam)</span><Select label="Durasi maintenance" value={String(durationHours)} onChange={v => setDurationHours(Number(v))} options={[2, 4, 6, 8].map(h => ({ value: String(h), label: `${h} jam` }))} /></label>
-            <label><span className="field-label">Interval konfigurasi (hari, opsional)</span><input type="number" min={1} step="any" value={intervalDraft} onChange={e => setIntervalDraft(e.target.value)} placeholder="Kosongkan bila memakai riwayat" /></label>
+            <label><span className="field-label">Interval konfigurasi (hari, opsional)</span><Input type="number" min={1} step="any" value={intervalDraft} onChange={e => setIntervalDraft(e.target.value)} placeholder="Kosongkan bila memakai riwayat" /></label>
           </div>
           <div className="dialog-actions">
-            <button type="submit" className="button secondary">Hitung prediksi</button>
+            <Button type="submit" variant="secondary">Hitung prediksi</Button>
           </div>
         </form>
         {!picked && <p className="muted">Pilih alat untuk melihat prediksi dan rekomendasi.</p>}
@@ -143,14 +143,14 @@ function DowntimeForm({ machines, lineIds, role, onClose }: { machines: { id: st
           <label><span className="field-label">Tipe</span><Select label="Tipe downtime" value={type} onChange={setType} options={Object.entries(DOWNTIME_TYPE_LABEL).map(([value, label]) => ({ value, label }))} /></label>
         </div>
         <div className="schedule-form-row">
-          <label><span className="field-label">Mulai (WIB)</span><input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /></label>
-          <label><span className="field-label">Selesai (WIB)</span><input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /></label>
+          <label><span className="field-label">Mulai (WIB)</span><Input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} /></label>
+          <label><span className="field-label">Selesai (WIB)</span><Input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} /></label>
         </div>
         <p className="small muted">Kejadian tersimpan di server sebagai catatan pengguna dan langsung ikut dihitung pada prediksi. Waktu selesai wajib sesudah waktu mulai.</p>
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose} disabled={saving}>Batal</button>
-          <button type="submit" className="button primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan downtime"}</button>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan downtime"}</Button>
         </div>
       </form>
     </Modal>

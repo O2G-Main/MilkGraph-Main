@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui";
 import { useDayCondition } from "./use-day-condition";
 import { ConditionIndicator } from "./condition-indicator";
 import styles from "./scheduling.module.css";
@@ -14,7 +15,7 @@ export function DayConditionSummary({ date, detailed = false, fetchOnMount = fal
       {condition.reasons.map(reason => <span className={styles.conditionReason} key={reason}>{reason}</span>)}
       {shortage !== null && <span className={styles.conditionReason}>Kekurangan terprediksi{condition.shortagePartial ? " minimal" : ""}: {new Intl.NumberFormat("id-ID").format(shortage)} L</span>}
       {(shortage ?? 0) > 0 && <span className={styles.conditionReason}>Status pemindahan target dan referensi jadwal tujuan belum tersedia dari BE.</span>}
-      {condition.kind === "error" && <button className="text-link" onClick={() => void reload()}>Muat ulang status</button>}
+      {condition.kind === "error" && <Button variant="text" onClick={() => void reload()}>Muat ulang status</Button>}
     </>}
   </span>;
 }

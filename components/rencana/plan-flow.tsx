@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { Clock3, RotateCcw, Trash2, TriangleAlert, Wrench, X, Zap } from "lucide-react";
-import { Badge, Icon, Modal } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal } from "@/components/ui";
 import { can } from "@/lib/roles";
 import { Select } from "@/components/ui/fields";
 import { Equipment, KIND_LABEL } from "@/components/trace/equipment";
@@ -45,7 +45,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
     <header>
       <Equipment kind={asset.kind} size={44} />
       <div><h2>{asset.id}</h2><p>{KIND_LABEL[asset.kind] ?? asset.kind}</p></div>
-      <button className="icon-button" aria-label="Tutup panel atur alat" onClick={onClose}><Icon icon={X} size={18} /></button>
+      <Button variant="icon" aria-label="Tutup panel atur alat" onClick={onClose}><Icon icon={X} size={18} /></Button>
     </header>
     <Badge tone={asset.tone}>Di jam ini: {asset.status}</Badge>
 
@@ -55,7 +55,7 @@ function PlanEditor({ asset, onClose }: AsideProps) {
       {room ? <>
         <div className="plan-cap">
           <label htmlFor={`cap-${asset.id}`}>Kapasitas baru</label>
-          <div><input id={`cap-${asset.id}`} type="number" inputMode="numeric" min={room.from} step={10} value={draft ?? String(cap)} onChange={e => { setDraft(e.target.value); if (Number(e.target.value) >= room.from) setCap(Number(e.target.value)); }} onBlur={() => setDraft(null)} /><span>L/jam</span></div>
+          <div><Input id={`cap-${asset.id}`} type="number" inputMode="numeric" min={room.from} step={10} value={draft ?? String(cap)} onChange={e => { setDraft(e.target.value); if (Number(e.target.value) >= room.from) setCap(Number(e.target.value)); }} onBlur={() => setDraft(null)} /><span>L/jam</span></div>
           <small>Sekarang {fmt(room.from)} L/jam</small>
         </div>
         <div className="plan-chips">
@@ -82,12 +82,12 @@ function PlanEditor({ asset, onClose }: AsideProps) {
     </fieldset>
 
     </>}
-    {allowed && (a.upgrade || a.maintenance) && <button type="button" className="button secondary wide" onClick={() => setConfirmClear(true)}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</button>}
+    {allowed && (a.upgrade || a.maintenance) && <Button variant="secondary" wide onClick={() => setConfirmClear(true)}><Icon icon={Trash2} size={16} />Hapus pengaturan {asset.id}</Button>}
     {confirmClear && <Modal title={`Hapus pengaturan ${asset.id}?`} onClose={() => setConfirmClear(false)}>
       <p className="dialog-summary">Kapasitas dan jadwal maintenance yang sudah diatur untuk {asset.id} akan dihapus. Alur kembali memakai kondisi alat sekarang.</p>
       <div className="dialog-actions">
-        <button type="button" className="button secondary" onClick={() => setConfirmClear(false)}>Batal</button>
-        <button type="button" className="button primary" onClick={() => { set(asset.id, {}); setConfirmClear(false); }}><Icon icon={Trash2} size={16} />Hapus pengaturan</button>
+        <Button variant="secondary" onClick={() => setConfirmClear(false)}>Batal</Button>
+        <Button variant="primary" onClick={() => { set(asset.id, {}); setConfirmClear(false); }}><Icon icon={Trash2} size={16} />Hapus pengaturan</Button>
       </div>
     </Modal>}
   </aside>;
@@ -125,7 +125,7 @@ export function PlanFlow({ plan, adj, setAdj, view, setView, mode = "2d" }: { pl
   const toolbar = <div className="plan-controls">
     <label className="plan-pick"><span>Alat</span><Select label="Alat yang diatur" value={picked ?? ""} onChange={setPicked} placeholder="Pilih alat untuk diatur..." options={STAGES.flatMap(st => ASSETS.filter(x => x.stage === st).map(x => ({ value: x.id, label: x.id, group: st, hint: adj[x.id] ? "Diatur" : undefined })))} /></label>
     <div className="plan-time">
-      <label htmlFor="plan-time"><Icon icon={Clock3} size={15} />Jam <strong>{clock(t)}</strong>{t === NOW ? <span className="muted">sama dengan operasi sekarang</span> : <button type="button" className="inline-link" onClick={() => setT(NOW)}>Kembali ke {clock(NOW)}</button>}</label>
+      <label htmlFor="plan-time"><Icon icon={Clock3} size={15} />Jam <strong>{clock(t)}</strong>{t === NOW ? <span className="muted">sama dengan operasi sekarang</span> : <Button variant="inline" onClick={() => setT(NOW)}>Kembali ke {clock(NOW)}</Button>}</label>
       <input id="plan-time" type="range" min={0} max={HORIZON} step={5} value={t} onChange={e => setT(Number(e.target.value))} aria-valuetext={`Pukul ${clock(t)}`} />
       <div className="plan-ticks" aria-hidden="true"><span>13.00</span><span>16.30</span><span>20.00</span></div>
     </div>
@@ -146,11 +146,11 @@ export function PlanFlow({ plan, adj, setAdj, view, setView, mode = "2d" }: { pl
         <strong>{proj[v].broken} <small>dari 6 constraint dilanggar</small></strong>
         {proj[v].broken !== base(v) ? <em>sebelum diatur: {base(v)}</em> : <em className="muted">{view === v ? "Sedang ditampilkan di alur" : "Klik untuk melihat di alur"}</em>}
       </button>)}
-      <div className="card plan-changes">
+      <Card className="plan-changes">
         <span>{ids.length ? `${ids.length} alat diatur` : "Klik alat di alur untuk mengatur upgrade atau maintenance"}</span>
         {ids.length > 0 && <ul>{ids.map(id => <li key={id}><strong className="mono">{id}</strong> {badges[id]}{!isModelled(id, adj[id]) && <span className="muted"> (efek lanjutan belum dimodelkan)</span>}</li>)}</ul>}
-        {ids.length > 0 && <button type="button" className="inline-link" onClick={() => setAdj({})}><Icon icon={RotateCcw} size={14} />Kembalikan seperti operasional</button>}
-      </div>
+        {ids.length > 0 && <Button variant="inline" onClick={() => setAdj({})}><Icon icon={RotateCcw} size={14} />Kembalikan seperti operasional</Button>}
+      </Card>
     </section>
     <FlowCanvas mode={mode} picked={picked} onPickedChange={setPicked} label="Alur rencana produksi" badges={badges} overrides={overrides} aside={PlanEditor} toolbar={toolbar}
       hint={unmodelled.length ? `${unmodelled.length} pengaturan efek lanjutannya belum dimodelkan` : "Geser jam untuk melihat kondisi alat. Klik alat untuk mengaturnya."} />

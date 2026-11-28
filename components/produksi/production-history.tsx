@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, Table } from "@/components/ui";
 import { useResource } from "@/lib/api/resource";
 import type { BeTraceHistory } from "@/lib/api/trace-historis";
 import { number } from "@/lib/format";
@@ -18,7 +18,7 @@ export function ProductionHistory({ date, role }: { date: string; role: RoleId }
     {history.error ? <p role="alert" className="crit-text">Gagal memuat hasil: {history.error.message}</p>
     : history.loading && !history.data ? <p role="status" className="muted">Memuat hasil produksi…</p>
     : !groups.length ? <p className="muted">Belum ada hasil historis untuk tanggal ini.</p>
-    : <div className="table-wrap"><table className="schedule-table">
+    : <Table variant="schedule">
       <thead><tr><th>Produk / kelompok</th><th>Lot</th><th>Volume pengisian</th></tr></thead>
       <tbody>{groups.map(group => <tr key={group.group_id}>
         <td><strong>{group.product_name}</strong><span className="table-sub">{canTrace
@@ -26,6 +26,6 @@ export function ProductionHistory({ date, role }: { date: string; role: RoleId }
           : group.group_id}</span></td>
         <td>{group.jumlah_lot}</td><td>{number(group.total.pengisian_l)} L</td>
       </tr>)}</tbody>
-    </table></div>}
+    </Table>}
   </Card>;
 }

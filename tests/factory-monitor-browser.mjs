@@ -90,7 +90,8 @@ try {
   await expect(page.getByRole('dialog',{name:'ST-01 · Sterilizer',exact:true})).toContainText('Belum tercatat');
   await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Alur 2D',exact:true}).click();
-  await page.getByLabel('Batch yang disorot',{exact:true}).selectOption('');
+  await page.getByLabel('Batch yang disorot',{exact:true}).click();
+  await page.getByRole('option',{name:'Semua batch pada tanggal ini',exact:true}).click();
   await expect(page.getByText('ID alat pada jadwal belum ditemukan di katalog:',{exact:false})).toContainText('FL-MISSING');
   maintenance=false;
   await page.getByRole('button',{name:'Perbarui tampilan',exact:true}).click();

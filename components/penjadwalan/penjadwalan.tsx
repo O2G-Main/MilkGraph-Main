@@ -7,7 +7,7 @@ import { attainment, isLate, mayHandle, runState, type Run } from "@/lib/operati
 import { can } from "@/lib/roles";
 import { SHIFT, checkSchedule, clockOf, toMinutes, type ScheduleItem } from "@/lib/production";
 import { demandPlan, fillers } from "@/mock/ops";
-import { Badge, Card, Icon, Modal, PageHeading, PageLink, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal, PageHeading, PageLink, SectionTitle, Table } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 import { API_MODE } from "@/lib/api/client";
 import { PenjadwalanApi } from "./penjadwalan-api";
@@ -45,7 +45,7 @@ export function Penjadwalan({ initialDate }: { initialDate: string }) {
       <PageHeading title="Penjadwalan" subtitle={mine
         ? `Target dan realisasi produksi di lini yang ditugaskan (${assigned.filter(a => a.startsWith("F")).join(", ")}), Shift Siang ${clockOf(SHIFT.start)} - ${clockOf(SHIFT.end)}. Catat mulai, selesai, dan hasil tiap order.`
         : `Target dan jadwal produksi per lini filling untuk Shift Siang, ${clockOf(SHIFT.start)} - ${clockOf(SHIFT.end)}. Jeda antar-order dicek dengan standar di Aturan Produksi.`}>
-        {allowed && <button className="button primary" onClick={() => setEditing({ ...EMPTY })}><Icon icon={CalendarPlus} size={16} />Tambah jadwal</button>}
+        {allowed && <Button variant="primary" onClick={() => setEditing({ ...EMPTY })}><Icon icon={CalendarPlus} size={16} />Tambah jadwal</Button>}
       </PageHeading>
       <div className="schedule-stats" data-tour="sched-kpis">
         <Card><span className="small muted">Order di shift ini</span><strong>{items.length}</strong><span className="small muted">{new Set(items.map(i => i.line)).size} lini filling</span></Card>
@@ -54,8 +54,7 @@ export function Penjadwalan({ initialDate }: { initialDate: string }) {
       </div>
       <Card data-tour="sched-table">
         <SectionTitle title="Jadwal produksi" subtitle="Urut per lini dan jam mulai. Kapasitas dihitung dari laju target mesin dikali durasi [simulasi]." action={<PageLink className="text-link" data-tour="sched-feasibility" href="/rencana">Cek kelayakan rencana<Icon icon={ArrowRight} size={14} /></PageLink>} />
-        <div className="table-wrap">
-          <table className="schedule-table">
+        <Table variant="schedule">
             <thead><tr><th>Lini</th><th>Produk</th><th>Jam</th><th className="numeric">Target</th><th className="numeric">Kapasitas</th><th>Status</th><th>Realisasi</th>{(allowed || mayRun) && <th><span className="sr-only">Aksi</span></th>}</tr></thead>
             <tbody>
               {items.map(i => {
@@ -74,10 +73,10 @@ export function Penjadwalan({ initialDate }: { initialDate: string }) {
                     <td data-label="Realisasi"><RunCell item={i} run={runs[i.id]} /></td>
                     {(allowed || mayRun) && (
                       <td className="table-action queue-actions">
-                        {mayRun && mayHandle(assigned, i.line) && runState(runs[i.id]) === "belum" && <button className="button primary" onClick={() => setRunning({ item: i, action: "mulai" })}><Icon icon={Play} size={14} />Mulai</button>}
-                        {mayRun && mayHandle(assigned, i.line) && runState(runs[i.id]) === "jalan" && <button className="button primary" onClick={() => setRunning({ item: i, action: "selesai" })}><Icon icon={CircleCheck} size={14} />Selesai</button>}
-                        {allowed && <button className="icon-button" aria-label={`Ubah jadwal ${i.line} ${i.sku}`} onClick={() => setEditing({ ...i })}><Icon icon={Pencil} size={16} /></button>}
-                        {allowed && <button className="icon-button" aria-label={`Hapus jadwal ${i.line} ${i.sku}`} onClick={() => setRemoving(i)}><Icon icon={Trash2} size={16} /></button>}
+                        {mayRun && mayHandle(assigned, i.line) && runState(runs[i.id]) === "belum" && <Button variant="primary" onClick={() => setRunning({ item: i, action: "mulai" })}><Icon icon={Play} size={14} />Mulai</Button>}
+                        {mayRun && mayHandle(assigned, i.line) && runState(runs[i.id]) === "jalan" && <Button variant="primary" onClick={() => setRunning({ item: i, action: "selesai" })}><Icon icon={CircleCheck} size={14} />Selesai</Button>}
+                        {allowed && <Button variant="icon" aria-label={`Ubah jadwal ${i.line} ${i.sku}`} onClick={() => setEditing({ ...i })}><Icon icon={Pencil} size={16} /></Button>}
+                        {allowed && <Button variant="icon" aria-label={`Hapus jadwal ${i.line} ${i.sku}`} onClick={() => setRemoving(i)}><Icon icon={Trash2} size={16} /></Button>}
                       </td>
                     )}
                   </tr>
@@ -85,8 +84,7 @@ export function Penjadwalan({ initialDate }: { initialDate: string }) {
               })}
               {!items.length && <tr><td colSpan={8} className="muted">Belum ada jadwal di shift ini.{allowed ? " Tambah jadwal untuk mulai." : ""}</td></tr>}
             </tbody>
-          </table>
-        </div>
+        </Table>
       </Card>
       {editing && <ScheduleForm value={editing} onClose={() => setEditing(null)} />}
       {running && <RunDialog item={running.item} action={running.action} run={runs[running.item.id]} onClose={() => setRunning(null)} />}
@@ -94,8 +92,8 @@ export function Penjadwalan({ initialDate }: { initialDate: string }) {
         <Modal title="Hapus jadwal ini?" onClose={() => setRemoving(null)}>
           <p className="muted">{removing.line}, {removing.sku}, {number(removing.packs)} pak pukul {clockOf(removing.start)}-{clockOf(removing.end)}. Perubahan tercatat di Riwayat Persetujuan.</p>
           <div className="dialog-actions">
-            <button className="button secondary" onClick={() => setRemoving(null)}>Batal</button>
-            <button className="button primary" onClick={() => { removeScheduleItem(removing.id); setRemoving(null); }}><Icon icon={Trash2} size={16} />Hapus</button>
+            <Button variant="secondary" onClick={() => setRemoving(null)}>Batal</Button>
+            <Button variant="primary" onClick={() => { removeScheduleItem(removing.id); setRemoving(null); }}><Icon icon={Trash2} size={16} />Hapus</Button>
           </div>
         </Modal>
       )}
@@ -123,7 +121,7 @@ function ScheduleForm({ value, onClose }: { value: Omit<ScheduleItem, "id"> & { 
       <form className="schedule-form" onSubmit={submit} noValidate>
         <label><span className="field-label">Lini filling</span><Select label="Lini filling" value={form.line} onChange={v => set("line", v)} options={fillers.map(f => ({ value: f.id, label: f.id, hint: `${f.product}, ${f.target} pak/menit` }))} /></label>
         <label><span className="field-label">Produk</span><Select label="Produk" value={form.sku} onChange={v => set("sku", v)} options={SKUS.map(s => ({ value: s, label: s }))} /></label>
-        <label><span className="field-label">Target (pak)</span><input type="number" inputMode="numeric" min={1} step={100} value={form.packs || ""} onChange={e => set("packs", Number(e.target.value))} placeholder="Contoh: 24000" /></label>
+        <label><span className="field-label">Target (pak)</span><Input type="number" inputMode="numeric" min={1} step={100} value={form.packs || ""} onChange={e => set("packs", Number(e.target.value))} placeholder="Contoh: 24000" /></label>
         <div className="schedule-form-row">
           <label><span className="field-label">Mulai</span><TimeField label="Jam mulai" value={start} onChange={v => set("start", v)} minuteStep={5} /></label>
           <label><span className="field-label">Selesai</span><TimeField label="Jam selesai" value={end} onChange={v => set("end", v)} minuteStep={5} /></label>
@@ -131,8 +129,8 @@ function ScheduleForm({ value, onClose }: { value: Omit<ScheduleItem, "id"> & { 
         <p className="small muted">Kapasitas {form.line} di jam ini sekitar {number(capacity)} pak [simulasi].</p>
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose}>Batal</button>
-          <button type="submit" className="button primary">{value.id ? "Simpan perubahan" : "Tambah jadwal"}</button>
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button type="submit" variant="primary">{value.id ? "Simpan perubahan" : "Tambah jadwal"}</Button>
         </div>
       </form>
     </Modal>
@@ -179,15 +177,15 @@ function RunDialog({ item, action, run, onClose }: { item: ScheduleItem; action:
           : <>
             <label><span className="field-label">Selesai pukul</span><TimeField label="Jam selesai produksi" value={end} onChange={v => { setEnd(v); setError(null); }} minuteStep={5} /></label>
             <div className="schedule-form-row">
-              <label><span className="field-label">Hasil baik (pak)</span><input type="number" inputMode="numeric" min={0} step={100} value={output} onChange={e => { setOutput(Number(e.target.value)); setError(null); }} /></label>
-              <label><span className="field-label">Reject (pak)</span><input type="number" inputMode="numeric" min={0} step={10} value={reject} onChange={e => { setReject(Number(e.target.value)); setError(null); }} /></label>
+              <label><span className="field-label">Hasil baik (pak)</span><Input type="number" inputMode="numeric" min={0} step={100} value={output} onChange={e => { setOutput(Number(e.target.value)); setError(null); }} /></label>
+              <label><span className="field-label">Reject (pak)</span><Input type="number" inputMode="numeric" min={0} step={10} value={reject} onChange={e => { setReject(Number(e.target.value)); setError(null); }} /></label>
             </div>
             <p className="small muted">Pencapaian {attainment(output, item.packs)}% dari target. Mulai pukul {clockOf(start)}.</p>
           </>}
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose}>Batal</button>
-          <button type="submit" className="button primary">{action === "mulai" ? "Catat mulai" : "Catat selesai"}</button>
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button type="submit" variant="primary">{action === "mulai" ? "Catat mulai" : "Catat selesai"}</Button>
         </div>
       </form>
     </Modal>

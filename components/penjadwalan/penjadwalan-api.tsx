@@ -11,7 +11,7 @@ import {
   type BeImportPoRow, type BePo, type BeSchedule, type BeScheduleNarrate,
 } from "@/lib/api/contract";
 import { ImportCsvCard } from "@/components/import-csv-card";
-import { Badge, Card, Icon, Modal, PageHeading, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal, PageHeading, SectionTitle, Table } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
@@ -78,7 +78,7 @@ function ScheduleTools({ role }: { role: string }) {
   return (
     <div className="page-enter penjadwalan-page">
       <PageHeading title="PO & versi jadwal" subtitle="Daftar PO dan generator global dari semua PO aktif. Versinya terpisah dari urutan batch harian.">
-        {write && <button className="button primary" onClick={() => setAdding(true)}><Icon icon={CalendarPlus} size={16} />Tambah PO</button>}
+        {write && <Button variant="primary" onClick={() => setAdding(true)}><Icon icon={CalendarPlus} size={16} />Tambah PO</Button>}
       </PageHeading>
       {error && <p className="crit-text" role="alert">{error}</p>}
       {notice && <p className="small muted" role="status">{notice}</p>}
@@ -90,7 +90,7 @@ function ScheduleTools({ role }: { role: string }) {
 
       <Card>
         <SectionTitle title="Target produksi (PO)" subtitle="Daftar PO dari Backend. Label data tiap PO ditampilkan apa adanya dari server." />
-        <div className="table-wrap"><table className="schedule-table">
+        <Table variant="schedule">
           <thead><tr><th>PO</th><th>Isi PO</th><th className="numeric">Total</th><th>Batas waktu</th><th>Label data</th></tr></thead>
           <tbody>
             {pos.map(p => <tr key={p.po_id}>
@@ -102,7 +102,7 @@ function ScheduleTools({ role }: { role: string }) {
             </tr>)}
             {!pos.length && <tr><td colSpan={5} className="muted">Belum ada PO di server.</td></tr>}
           </tbody>
-        </table></div>
+        </Table>
       </Card>
 
       <ImportCsvCard<BeImportPoRow>
@@ -127,12 +127,12 @@ function ScheduleTools({ role }: { role: string }) {
 
       <Card data-tour="sched-table">
         <SectionTitle title="Jadwal produksi" subtitle={schedule ? `Jendela ${fmtWaktu(schedule.window.start)} sampai ${fmtWaktu(schedule.window.end)}, digenerate ${fmtWaktu(schedule.generated_at)}.` : "Belum ada jadwal tergenerate."}
-          action={write ? <button className="button primary" disabled={busy !== null} onClick={generate}><Icon icon={Play} size={15} />{busy === "generate" ? "Menggenerate…" : "Generate jadwal"}</button> : undefined} />
+          action={write ? <Button variant="primary" disabled={busy !== null} onClick={generate}><Icon icon={Play} size={15} />{busy === "generate" ? "Menggenerate…" : "Generate jadwal"}</Button> : undefined} />
         {!schedule && <p className="muted">{noSchedule ? "Server belum punya jadwal. " : ""}{write ? "Pakai tombol Generate jadwal untuk membuat versi pertama dari daftar PO." : "Jadwal dibuat oleh Planner atau Superadmin."}</p>}
         {schedule && [...byFm.entries()].map(([fm, runs]) => (
           <div key={fm}>
             <h3 className="small"><strong>{fm}</strong></h3>
-            <div className="table-wrap"><table className="schedule-table">
+            <Table variant="schedule">
               <thead><tr><th>Run</th><th>PO / Produk</th><th>Tangki sumber</th><th>Jam</th><th className="numeric">Volume</th><th className="numeric">Changeover sesudahnya</th></tr></thead>
               <tbody>{runs.map(r => <tr key={r.run_id}>
                 <td><strong className="mono">{r.run_id}</strong></td>
@@ -142,11 +142,11 @@ function ScheduleTools({ role }: { role: string }) {
                 <td className="numeric">{number(r.qty_liter)} L</td>
                 <td className="numeric">{r.changeover_after_min ? `${r.changeover_after_min} mnt` : "-"}</td>
               </tr>)}</tbody>
-            </table></div>
+            </Table>
           </div>
         ))}
         {schedule && <div className="dialog-actions">
-          <button className="button secondary" disabled={busy !== null} onClick={narrate}><Icon icon={Sparkles} size={15} />{busy === "narrate" ? "Meminta narasi…" : "Narasi jadwal dari AI"}</button>
+          <Button variant="secondary" disabled={busy !== null} onClick={narrate}><Icon icon={Sparkles} size={15} />{busy === "narrate" ? "Meminta narasi…" : "Narasi jadwal dari AI"}</Button>
         </div>}
         {narasi && <div>
           <p>{narasi.penjelasan}</p>
@@ -156,7 +156,7 @@ function ScheduleTools({ role }: { role: string }) {
 
       {schedule && <Card>
         <SectionTitle title="Status pencapaian PO" subtitle="Status, persen terpenuhi, dan rencana selesai dari Backend." />
-        <div className="table-wrap"><table className="schedule-table">
+        <Table variant="schedule">
           <thead><tr><th>PO</th><th>Status</th><th className="numeric">Terpenuhi</th><th>Rencana selesai</th><th>Akar masalah</th></tr></thead>
           <tbody>{schedule.fulfilment.map(f => <tr key={f.po_id}>
             <td><strong className="mono">{f.po_id}</strong></td>
@@ -167,7 +167,7 @@ function ScheduleTools({ role }: { role: string }) {
           </tr>)}
           {!schedule.fulfilment.length && <tr><td colSpan={5} className="muted">Tidak ada data fulfilment pada jadwal ini.</td></tr>}
           </tbody>
-        </table></div>
+        </Table>
       </Card>}
 
       {!!schedule?.warnings.length && <Card>
@@ -209,12 +209,12 @@ function TriggerCard({ role, busy, onAct }: { role: string; busy: string | null;
       <form className="schedule-form" onSubmit={submit} noValidate>
         <div className="schedule-form-row">
           <label><span className="field-label">Jenis pemicu</span><Select label="Jenis pemicu" value={reason} onChange={setReason} options={TRIGGER_REASONS.map(r => ({ value: r.code, label: r.label }))} /></label>
-          <label><span className="field-label">Referensi</span><input value={refId} onChange={e => { setRefId(e.target.value); setLocalError(null); }} placeholder="Contoh: RT-26" maxLength={40} /></label>
+          <label><span className="field-label">Referensi</span><Input value={refId} onChange={e => { setRefId(e.target.value); setLocalError(null); }} placeholder="Contoh: RT-26" maxLength={40} /></label>
         </div>
-        <label><span className="field-label">Keterangan</span><input value={detail} onChange={e => setDetail(e.target.value)} placeholder="Contoh: RT tiba 35 menit dari target" maxLength={200} /></label>
+        <label><span className="field-label">Keterangan</span><Input value={detail} onChange={e => setDetail(e.target.value)} placeholder="Contoh: RT tiba 35 menit dari target" maxLength={200} /></label>
         {localError && <p className="small crit-text" role="alert">{localError}</p>}
         <div className="dialog-actions">
-          <button type="submit" className="button primary" disabled={busy !== null}><Icon icon={RefreshCw} size={15} />{busy === "trigger" ? "Memproses…" : "Catat dan generate ulang"}</button>
+          <Button type="submit" variant="primary" disabled={busy !== null}><Icon icon={RefreshCw} size={15} />{busy === "trigger" ? "Memproses…" : "Catat dan generate ulang"}</Button>
         </div>
       </form>
     </Card>
@@ -246,21 +246,21 @@ function PoForm({ skus, role, onClose }: { skus: SkuRow[]; role: string; onClose
     <Modal title="Tambah PO" onClose={onClose}>
       <form className="schedule-form" onSubmit={submit} noValidate>
         <div className="schedule-form-row">
-          <label><span className="field-label">Prioritas</span><input type="number" min={1} step={1} value={priority} onChange={e => setPriority(Number(e.target.value))} /></label>
+          <label><span className="field-label">Prioritas</span><Input type="number" min={1} step={1} value={priority} onChange={e => setPriority(Number(e.target.value))} /></label>
         </div>
-        <label><span className="field-label">Batas waktu (WIB)</span><input type="datetime-local" value={due} onChange={e => setDue(e.target.value)} /></label>
+        <label><span className="field-label">Batas waktu (WIB)</span><Input type="datetime-local" value={due} onChange={e => setDue(e.target.value)} /></label>
         {lines.map((l, i) => (
           <div className="schedule-form-row" key={i}>
             <label><span className="field-label">SKU</span><Select label={`SKU baris ${i + 1}`} value={l.sku} onChange={v => setLines(ls => ls.map((x, j) => j === i ? { ...x, sku: v } : x))} options={options} placeholder="Pilih SKU" /></label>
-            <label><span className="field-label">Volume (L)</span><input type="number" min={1} step={100} value={l.qty} onChange={e => setLines(ls => ls.map((x, j) => j === i ? { ...x, qty: e.target.value } : x))} placeholder="Contoh: 12000" /></label>
+            <label><span className="field-label">Volume (L)</span><Input type="number" min={1} step={100} value={l.qty} onChange={e => setLines(ls => ls.map((x, j) => j === i ? { ...x, qty: e.target.value } : x))} placeholder="Contoh: 12000" /></label>
           </div>
         ))}
-        <button type="button" className="button secondary" onClick={() => setLines(ls => [...ls, { sku: skus[0]?.finished_sku_id ?? "", qty: "" }])}>Tambah baris SKU</button>
+        <Button variant="secondary" onClick={() => setLines(ls => [...ls, { sku: skus[0]?.finished_sku_id ?? "", qty: "" }])}>Tambah baris SKU</Button>
         <p className="small muted">SKU harus ada di master finished SKU server, kalau tidak PO ditolak 422. PO dari form ini tersimpan dengan label data simulasi (bawaan server); PO hasil impor CSV mengikuti label data yang dipilih pada kartu impor.</p>
         {error && <p className="small crit-text" role="alert">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" className="button secondary" onClick={onClose}>Batal</button>
-          <button type="submit" className="button primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan PO"}</button>
+          <Button variant="secondary" onClick={onClose}>Batal</Button>
+          <Button type="submit" variant="primary" disabled={saving}>{saving ? "Menyimpan…" : "Simpan PO"}</Button>
         </div>
       </form>
     </Modal>

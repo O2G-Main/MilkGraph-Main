@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, GitBranch, RefreshCw, ShieldAlert, Sliders } from "lucide-react";
-import { Badge, Card, Icon, PageHeading, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Button, Card, Icon, PageHeading, SectionTitle, Table, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -208,34 +208,32 @@ export function MasterDataView() {
           <div className="grid-2">
             <Card>
               <SectionTitle title="Inventaris Tabel Master" subtitle="13 tabel terverifikasi pada startup server" />
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nama Tabel</th>
-                      <th>Jumlah Baris</th>
-                      <th>Kategori</th>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Nama Tabel</th>
+                    <th>Jumlah Baris</th>
+                    <th>Kategori</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(summary.tables).map(([name, count]) => (
+                    <tr key={name}>
+                      <td><span className="mono"><strong>{name}.csv</strong></span></td>
+                      <td><Badge tone="ok">{count} record</Badge></td>
+                      <td className="small muted">
+                        {name.includes("asset") ? "Topologi Pabrik" : name.includes("sku") || name.includes("product") ? "Katalog Produk" : name.includes("line") ? "Alokasi & Lini" : "Aturan Operasional"}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(summary.tables).map(([name, count]) => (
-                      <tr key={name}>
-                        <td><span className="mono"><strong>{name}.csv</strong></span></td>
-                        <td><Badge tone="ok">{count} record</Badge></td>
-                        <td className="small muted">
-                          {name.includes("asset") ? "Topologi Pabrik" : name.includes("sku") || name.includes("product") ? "Katalog Produk" : name.includes("line") ? "Alokasi & Lini" : "Aturan Operasional"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </Table>
             </Card>
 
             <Card>
               <SectionTitle title="Prinsip & Batasan Integritas" subtitle="Kepatuhan standar data klien" />
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div className="panel">
+                <Card variant="panel">
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                     <Icon icon={ShieldAlert} size={16} style={{ color: "#00782A" }} />
                     <strong>Perlakuan Nilai Placeholder</strong>
@@ -243,9 +241,9 @@ export function MasterDataView() {
                   <p className="small muted">
                     Sebanyak 531 sel berisi &apos;X&apos; dan &apos;N/A&apos; tidak diubah menjadi angka perkiraan atau nilai nol sembarangan. Flag <code className="mono">numericalPlanningReady: false</code> dipasang agar sistem tidak mengeksekusi perhitungan kapasitas matematis sebelum parameter riil diisi oleh pihak plant.
                   </p>
-                </div>
+                </Card>
 
-                <div className="panel">
+                <Card variant="panel">
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                     <Icon icon={GitBranch} size={16} />
                     <strong>Koneksi Rute vs Bukti Transfer</strong>
@@ -253,9 +251,9 @@ export function MasterDataView() {
                   <p className="small muted">
                     Sebanyak 118 relasi di <code className="mono">asset_connections.csv</code> merepresentasikan kapabilitas rute pipa fisik yang diizinkan (route capability), bukan rekam transfer historis atau genealogi perpindahan susu aktif.
                   </p>
-                </div>
+                </Card>
 
-                <div className="panel">
+                <Card variant="panel">
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                     <Icon icon={Sliders} size={16} />
                     <strong>Dedikasi Tangki Aseptik &amp; Lini</strong>
@@ -263,7 +261,7 @@ export function MasterDataView() {
                   <p className="small muted">
                     Setiap tangki aseptik AT-01 hingga AT-05 didedikasikan tepat ke 2 lini filling melalui pipa steril PIPE-01 hingga PIPE-10. Aturan AT_SAME_PRODUCT melarang dua lini yang berbagi satu tangki memproses produk berbeda secara simultan.
                   </p>
-                </div>
+                </Card>
               </div>
             </Card>
           </div>
@@ -289,8 +287,8 @@ export function MasterDataView() {
                 </div>
               }
             />
-            <div className="table-wrap" style={{ maxHeight: "350px", overflowY: "auto" }}>
-              <table>
+            <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+              <Table>
                 <thead>
                   <tr>
                     <th>ID Aset</th>
@@ -321,7 +319,7 @@ export function MasterDataView() {
                     ))
                   )}
                 </tbody>
-              </table>
+              </Table>
             </div>
           </Card>
 
@@ -330,8 +328,8 @@ export function MasterDataView() {
               title="118 Jalur Koneksi Pipa Resmi"
               subtitle="Rute fisik yang diizinkan mengalirkan susu di dalam pabrik"
             />
-            <div className="table-wrap" style={{ maxHeight: "350px", overflowY: "auto" }}>
-              <table>
+            <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+              <Table>
                 <thead>
                   <tr>
                     <th>ID Rute</th>
@@ -360,7 +358,7 @@ export function MasterDataView() {
                     ))
                   )}
                 </tbody>
-              </table>
+              </Table>
             </div>
           </Card>
         </div>
@@ -372,8 +370,8 @@ export function MasterDataView() {
             title="Katalog 44 SKU Barang Jadi (Finished SKU)"
             subtitle="Kombinasi 8 Liquid SKU, 5 Ukuran Kemasan, dan 2 Varian Pasar (LOCAL / EXP)"
           />
-          <div className="table-wrap" style={{ maxHeight: "500px", overflowY: "auto" }}>
-            <table>
+          <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+            <Table>
               <thead>
                 <tr>
                   <th>ID Finished SKU</th>
@@ -396,7 +394,7 @@ export function MasterDataView() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         </Card>
       )}
@@ -407,40 +405,38 @@ export function MasterDataView() {
             title="10 Lini Filling &amp; Dedikasi Tangki Aseptik"
             subtitle="Spesifikasi alokasi aseptic tank ke filling line"
           />
-          <div className="table-wrap">
-            <table>
-              <thead>
+          <Table>
+            <thead>
+              <tr>
+                <th>ID Lini</th>
+                <th>Nama Mesin Filling</th>
+                <th>Teknologi</th>
+                <th>Sumber Tangki Aseptik</th>
+                <th>Ukuran Kemasan Diizinkan</th>
+                <th>SKU Produk Diizinkan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineDedications.length === 0 ? (
                 <tr>
-                  <th>ID Lini</th>
-                  <th>Nama Mesin Filling</th>
-                  <th>Teknologi</th>
-                  <th>Sumber Tangki Aseptik</th>
-                  <th>Ukuran Kemasan Diizinkan</th>
-                  <th>SKU Produk Diizinkan</th>
+                  <td colSpan={6} className="muted" style={{ textAlign: "center", padding: "20px" }}>
+                    {API_MODE && linesRes.loading ? "Memuat dedikasi lini..." : "Data lini dimuat via API mode."}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {lineDedications.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="muted" style={{ textAlign: "center", padding: "20px" }}>
-                      {API_MODE && linesRes.loading ? "Memuat dedikasi lini..." : "Data lini dimuat via API mode."}
-                    </td>
+              ) : (
+                lineDedications.map(l => (
+                  <tr key={l.line_id}>
+                    <td><span className="mono"><strong>{l.line_id}</strong></span></td>
+                    <td>{l.line_name}</td>
+                    <td><Badge>{l.technology}</Badge></td>
+                    <td><Badge tone="ok">{l.source_aseptic_tank_id}</Badge></td>
+                    <td className="mono small">{l.allowed_pack_size_codes}</td>
+                    <td className="mono small">{l.allowed_sku_ids}</td>
                   </tr>
-                ) : (
-                  lineDedications.map(l => (
-                    <tr key={l.line_id}>
-                      <td><span className="mono"><strong>{l.line_id}</strong></span></td>
-                      <td>{l.line_name}</td>
-                      <td><Badge>{l.technology}</Badge></td>
-                      <td><Badge tone="ok">{l.source_aseptic_tank_id}</Badge></td>
-                      <td className="mono small">{l.allowed_pack_size_codes}</td>
-                      <td className="mono small">{l.allowed_sku_ids}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </Table>
         </Card>
       )}
 
@@ -474,14 +470,14 @@ export function MasterDataView() {
             </div>
 
             <div style={{ marginTop: "16px" }}>
-              <button
-                className="button primary"
+              <Button
+                variant="primary"
                 disabled={classifying || fromSku === ""}
                 onClick={() => void handleClassify()}
               >
                 <Icon icon={RefreshCw} size={16} className={classifying ? "spin" : ""} />
                 {classifying ? "Mengevaluasi Aturan..." : "Evaluasi Transisi Changeover"}
-              </button>
+              </Button>
             </div>
 
             {classifyError && (
@@ -491,7 +487,7 @@ export function MasterDataView() {
             )}
 
             {classifyResult && (
-              <div className="panel" style={{ marginTop: "20px", borderLeft: "4px solid var(--color-primary, #00782A)" }}>
+              <Card variant="panel" style={{ marginTop: "20px", borderLeft: "4px solid var(--color-primary, #00782A)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
                   <div>
                     <h3 style={{ margin: "0 0 4px 0" }}>{classifyResult.activity}</h3>
@@ -522,7 +518,7 @@ export function MasterDataView() {
                     <dd>{classifyResult.additionalNote || "SOP normal berlaku."}</dd>
                   </div>
                 </dl>
-              </div>
+              </Card>
             )}
           </Card>
         </div>

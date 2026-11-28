@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
-import { Card, Icon, SectionTitle, SourceButton } from "@/components/ui";
+import { Button, Card, Icon, SectionTitle, SourceButton } from "@/components/ui";
 
 /** Grafik tunggu lab test per jam. Dipindah dari Antrean Truk ke Tes Lab (poin 7: satu halaman satu topik). */
 export function LabWaitChart({ history, avg, delta, onSource }: { history: { hour: string; minutes: number }[]; avg: number; delta: number; onSource: (id: string) => void }) {
@@ -9,7 +9,7 @@ export function LabWaitChart({ history, avg, delta, onSource }: { history: { hou
     <SectionTitle
       title="Tunggu lab test"
       subtitle="Rata-rata menit tunggu per jam."
-      action={<button className="icon-button" aria-label="Lihat sumber grafik lab test" onClick={() => onSource("LAB-QUEUE")}><Icon icon={ArrowUpRight} /></button>}
+      action={<Button variant="icon" aria-label="Lihat sumber grafik lab test" onClick={() => onSource("LAB-QUEUE")}><Icon icon={ArrowUpRight} /></Button>}
     />
     <div className="chart-summary">
       <strong>{avg}<span>menit</span></strong>

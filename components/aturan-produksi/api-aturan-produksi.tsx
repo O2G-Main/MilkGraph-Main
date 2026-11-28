@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Badge, Card, PageHeading, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, PageHeading, SectionTitle, Table } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { useDemo } from "@/lib/demo";
 import { useResource } from "@/lib/api/resource";
@@ -37,7 +37,7 @@ function ChangeoverClassifier({ catalog, role }: { catalog: ProductCatalog; role
     <form className={styles.form} onSubmit={submit} aria-busy={pending}>
       <div className={styles.field}><label className="small muted" htmlFor="changeover-from">Dari finished SKU</label><Select id="changeover-from" label="Dari finished SKU" value={from} onChange={value => change("from", value)} options={options} placeholder="Pilih SKU asal" disabled={pending} searchable /></div>
       <div className={styles.field}><label className="small muted" htmlFor="changeover-to">Ke finished SKU</label><Select id="changeover-to" label="Ke finished SKU" value={to} onChange={value => change("to", value)} options={options} placeholder="Pilih SKU tujuan" disabled={pending} searchable /></div>
-      <button className="button primary" type="submit" disabled={pending}>{pending ? "Mengklasifikasikan…" : "Klasifikasikan"}</button>
+      <Button variant="primary" type="submit" disabled={pending}>{pending ? "Mengklasifikasikan…" : "Klasifikasikan"}</Button>
     </form>
     {pending && <p className="small muted" role="status">Memeriksa aturan transisi SKU…</p>}
     {error && <p className="crit-text" role="alert">{error}</p>}
@@ -77,24 +77,24 @@ export function ApiAturanProduksi() {
     <PageHeading title="Aturan Produksi" subtitle="Aturan changeover, CIP, constraint, dan satuan aset dari master API. Aturan master hanya dapat dibaca." />
     <Card className="rules-card">
       <SectionTitle title="Klasifikasi changeover" subtitle="Periksa transisi dua finished SKU tanpa mengubah aturan atau jadwal produksi." />
-      {catalogError ? <div role="alert"><p className="crit-text">Gagal memuat SKU: {catalogError}</p><button className="button secondary" disabled={catalogResource.loading} onClick={() => void catalogResource.reload()}>Coba lagi</button></div> : !catalog ? <p className="muted" role="status">Memuat pilihan SKU…</p> : <ChangeoverClassifier key={role} catalog={catalog} role={role} />}
+      {catalogError ? <div role="alert"><p className="crit-text">Gagal memuat SKU: {catalogError}</p><Button variant="secondary" disabled={catalogResource.loading} onClick={() => void catalogResource.reload()}>Coba lagi</Button></div> : !catalog ? <p className="muted" role="status">Memuat pilihan SKU…</p> : <ChangeoverClassifier key={role} catalog={catalog} role={role} />}
     </Card>
-    {rulesError ? <Card><div role="alert"><p className="crit-text">Gagal memuat aturan master: {rulesError}</p><button className="button secondary" disabled={rulesResource.loading} onClick={() => void rulesResource.reload()}>Coba lagi</button></div></Card> : !rules ? <Card><p className="muted" role="status">Memuat aturan master…</p></Card> : <>
+    {rulesError ? <Card><div role="alert"><p className="crit-text">Gagal memuat aturan master: {rulesError}</p><Button variant="secondary" disabled={rulesResource.loading} onClick={() => void rulesResource.reload()}>Coba lagi</Button></div></Card> : !rules ? <Card><p className="muted" role="status">Memuat aturan master…</p></Card> : <>
       <Card className="rules-card">
         <SectionTitle title="Changeover antar-produk" subtitle="Prioritas dan durasi dari aturan master; CIP tetap diperiksa terpisah." action={<Badge>Hanya baca</Badge>} />
-        {!rules.changeover.length ? <p className="muted">Belum ada aturan changeover.</p> : <div className="table-wrap"><table className="rules-table"><thead><tr><th>Aturan</th><th>Aktivitas</th><th>Kondisi</th><th>Durasi</th><th>Prioritas</th><th>Catatan</th></tr></thead><tbody>{rules.changeover.map(rule => <tr key={rule.rule_id}><td data-label="Aturan">{rule.rule_id}</td><td data-label="Aktivitas">{rule.activity}</td><td data-label="Kondisi">{rule.condition}</td><td data-label="Durasi">{rule.duration_minutes} menit</td><td data-label="Prioritas">{rule.precedence}</td><td data-label="Catatan">{rule.additional_note}</td></tr>)}</tbody></table></div>}
+        {!rules.changeover.length ? <p className="muted">Belum ada aturan changeover.</p> : <Table variant="rules"><thead><tr><th>Aturan</th><th>Aktivitas</th><th>Kondisi</th><th>Durasi</th><th>Prioritas</th><th>Catatan</th></tr></thead><tbody>{rules.changeover.map(rule => <tr key={rule.rule_id}><td data-label="Aturan">{rule.rule_id}</td><td data-label="Aktivitas">{rule.activity}</td><td data-label="Kondisi">{rule.condition}</td><td data-label="Durasi">{rule.duration_minutes} menit</td><td data-label="Prioritas">{rule.precedence}</td><td data-label="Catatan">{rule.additional_note}</td></tr>)}</tbody></Table>}
       </Card>
       <Card className="rules-card">
         <SectionTitle title="Aturan CIP" subtitle="Trigger, cakupan aset, dan kewajiban pembersihan dari master." />
-        {!rules.cip.length ? <p className="muted">Belum ada aturan CIP.</p> : <div className="table-wrap"><table className="rules-table"><thead><tr><th>Aturan</th><th>Trigger</th><th>Cakupan aset</th><th>Ketentuan</th></tr></thead><tbody>{rules.cip.map(rule => <tr key={rule.rule_id}><td data-label="Aturan">{rule.rule_id}</td><td data-label="Trigger">{rule.trigger}</td><td data-label="Cakupan aset">{rule.asset_scope}</td><td data-label="Ketentuan">{rule.requirement}</td></tr>)}</tbody></table></div>}
+        {!rules.cip.length ? <p className="muted">Belum ada aturan CIP.</p> : <Table variant="rules"><thead><tr><th>Aturan</th><th>Trigger</th><th>Cakupan aset</th><th>Ketentuan</th></tr></thead><tbody>{rules.cip.map(rule => <tr key={rule.rule_id}><td data-label="Aturan">{rule.rule_id}</td><td data-label="Trigger">{rule.trigger}</td><td data-label="Cakupan aset">{rule.asset_scope}</td><td data-label="Ketentuan">{rule.requirement}</td></tr>)}</tbody></Table>}
       </Card>
       <Card className="rules-card">
         <SectionTitle title="Constraint produksi" subtitle="Batas operasional dan ketentuan perencanaan dari master." />
-        {!rules.constraints.length ? <p className="muted">Belum ada constraint produksi.</p> : <div className="table-wrap"><table className="rules-table"><thead><tr><th>Aturan</th><th>Cakupan</th><th>Ketentuan</th></tr></thead><tbody>{rules.constraints.map(rule => <tr key={rule.rule_id}><td data-label="Aturan">{rule.rule_id}</td><td data-label="Cakupan">{rule.scope}</td><td data-label="Ketentuan">{rule.description}</td></tr>)}</tbody></table></div>}
+        {!rules.constraints.length ? <p className="muted">Belum ada constraint produksi.</p> : <Table variant="rules"><thead><tr><th>Aturan</th><th>Cakupan</th><th>Ketentuan</th></tr></thead><tbody>{rules.constraints.map(rule => <tr key={rule.rule_id}><td data-label="Aturan">{rule.rule_id}</td><td data-label="Cakupan">{rule.scope}</td><td data-label="Ketentuan">{rule.description}</td></tr>)}</tbody></Table>}
       </Card>
       <Card className="rules-card">
         <SectionTitle title="Satuan parameter aset" subtitle="Definisi satuan agar kapasitas, laju alir, dan kecepatan kemasan tidak tertukar." />
-        {!rules.asset_units.length ? <p className="muted">Belum ada definisi satuan aset.</p> : <div className="table-wrap"><table className="rules-table"><thead><tr><th>Parameter</th><th>Satuan</th><th>Berlaku untuk</th><th>Definisi</th></tr></thead><tbody>{rules.asset_units.map(unit => <tr key={unit.field}><td data-label="Parameter">{unit.field}</td><td data-label="Satuan">{unit.unit}</td><td data-label="Berlaku untuk">{unit.applies_to}</td><td data-label="Definisi">{unit.definition}</td></tr>)}</tbody></table></div>}
+        {!rules.asset_units.length ? <p className="muted">Belum ada definisi satuan aset.</p> : <Table variant="rules"><thead><tr><th>Parameter</th><th>Satuan</th><th>Berlaku untuk</th><th>Definisi</th></tr></thead><tbody>{rules.asset_units.map(unit => <tr key={unit.field}><td data-label="Parameter">{unit.field}</td><td data-label="Satuan">{unit.unit}</td><td data-label="Berlaku untuk">{unit.applies_to}</td><td data-label="Definisi">{unit.definition}</td></tr>)}</tbody></Table>}
       </Card>
     </>}
   </div>;

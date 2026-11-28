@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { ReactFlow, Background, Controls, MarkerType, type Node, type Edge, type NodeChange } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Card, SectionTitle, Toggle } from "@/components/ui";
+import { Button, Card, Input, SectionTitle, Table, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { useResource } from "@/lib/api/resource";
 import { connectedRoutes, filterPlantTopology, plantGraph, type PlantTopologyData } from "@/lib/api/topology";
@@ -87,11 +87,11 @@ export function PlantTopology({ assignmentCounts = {}, selectedAsset, onAssetSel
 
   return <Card data-tour="plant-topology">
     <SectionTitle title={title} subtitle={subtitle} action={<Toggle label="Tampilan topologi" value={view} onChange={setView} options={[{ value: "diagram", label: "Alur 2D" }, { value: "3d", label: "Alur 3D" }, { value: "routes", label: "Daftar rute" }]} />} />
-    {topology.error ? <div role="alert"><p className="crit-text">Gagal memuat alur: {topology.error.message}</p><button className="button secondary" onClick={() => void topology.reload()}>Coba lagi</button></div>
+    {topology.error ? <div role="alert"><p className="crit-text">Gagal memuat alur: {topology.error.message}</p><Button variant="secondary" onClick={() => void topology.reload()}>Coba lagi</Button></div>
     : !topology.data ? <p className="muted" role="status">Memuat alur pabrik…</p>
     : <>
       <div className={styles.toolbar}>
-        <label className="schedule-form"><span className="field-label">Cari alat atau rute</span><input type="search" value={query} onChange={event => { setQuery(event.target.value); setSelected(null); }} placeholder="Kode atau nama alat" /></label>
+        <label className="schedule-form"><span className="field-label">Cari alat atau rute</span><Input type="search" value={query} onChange={event => { setQuery(event.target.value); setSelected(null); }} placeholder="Kode atau nama alat" /></label>
         <label className="schedule-form"><span className="field-label">Jenis alat</span><Select label="Jenis alat pada alur" value={type} onChange={value => { setType(value); setSelected(null); }} options={[{ value: "", label: "Semua jenis" }, ...[...new Set(topology.data.nodes.map(asset => asset.asset_type))].sort().map(value => ({ value, label: value }))]} /></label>
         <span className="small muted">Menampilkan {visible.size} dari {topology.data.nodes.length} {showStatusDetails ? "node konfigurasi" : "alat"} · {routes.length} dari {topology.data.edges.length} rute</span>
       </div>
@@ -107,9 +107,9 @@ export function PlantTopology({ assignmentCounts = {}, selectedAsset, onAssetSel
           </ReactFlow>}
         </div>
         <p className="small muted">Geser dan perbesar diagram untuk melihat detail. Pilih alat untuk melihat spesifikasi dan rute terkait.</p>
-      </> : <div className="table-wrap"><table className="schedule-table"><thead><tr><th>Rute</th><th>Dari</th><th>Ke</th><th>Melalui</th><th>Jenis aliran</th><th>Batas aliran (L/jam)</th></tr></thead><tbody>{routes.map(edge => <tr key={edge.connection_id}><td>{edge.connection_id}</td><td><button className="text-link" onClick={() => setSelected(edge.source_asset_id)}>{edge.source_asset_id}</button></td><td><button className="text-link" onClick={() => setSelected(edge.destination_asset_id)}>{edge.destination_asset_id}</button></td><td>{edge.via_asset_id || "Tidak dicantumkan"}</td><td>{edge.flow_type}</td><td>{edge.max_flow_lph || "Belum tersedia"}</td></tr>)}</tbody></table>{!routes.length && <p className="muted">Tidak ada rute yang cocok.</p>}</div>}
+      </> : <><Table variant="schedule"><thead><tr><th>Rute</th><th>Dari</th><th>Ke</th><th>Melalui</th><th>Jenis aliran</th><th>Batas aliran (L/jam)</th></tr></thead><tbody>{routes.map(edge => <tr key={edge.connection_id}><td>{edge.connection_id}</td><td><Button variant="text" onClick={() => setSelected(edge.source_asset_id)}>{edge.source_asset_id}</Button></td><td><Button variant="text" onClick={() => setSelected(edge.destination_asset_id)}>{edge.destination_asset_id}</Button></td><td>{edge.via_asset_id || "Tidak dicantumkan"}</td><td>{edge.flow_type}</td><td>{edge.max_flow_lph || "Belum tersedia"}</td></tr>)}</tbody></Table>{!routes.length && <p className="muted">Tidak ada rute yang cocok.</p>}</>}
       {picked && !onAssetSelect && <div className={styles.inspector} aria-live="polite">
-        <SectionTitle title={`${picked.asset_id} · ${picked.asset_name}`} subtitle={picked.asset_type} action={<button className="button secondary" onClick={() => setSelected(null)}>Tutup detail</button>} />
+        <SectionTitle title={`${picked.asset_id} · ${picked.asset_name}`} subtitle={picked.asset_type} action={<Button variant="secondary" onClick={() => setSelected(null)}>Tutup detail</Button>} />
         <dl className={styles.details}><div><dt>Status terakhir</dt><dd>{statusLabel(picked.asset_id)}</dd></div><div><dt>Kapasitas (L)</dt><dd>{picked.capacity_l || "Belum tersedia"}</dd></div><div><dt>Kecepatan proses (L/jam)</dt><dd>{picked.process_speed_lph || "Belum tersedia"}</dd></div><div><dt>Rute terkait</dt><dd>{pickedRoutes.length} rute</dd></div></dl>
         <p className="small muted">{pickedRoutes.map(edge => `${edge.source_asset_id} → ${edge.destination_asset_id}`).join(" · ") || "Belum ada koneksi tercatat."}</p>
         <Link className="text-link" href="/alat">Buka daftar dan status alat</Link>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ArrowUpRight, CalendarClock, Crosshair, Mouse, Move3d, Scan } from "lucide-react";
-import { Badge, Card, Icon, PageLink, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, Icon, PageLink, SectionTitle, Toggle } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 import { BOTTLENECKS as bottlenecks } from "@/mock/site";
 import { PlantScene, type Focus, type SceneState, type SiteLayout, type SiteStatus } from "./plant-scene";
@@ -51,7 +51,7 @@ export function Simulasi() {
           <h1>Simulasi 3D</h1>
           <p>Model plant dengan tata letak nyata. Di sini terlihat alur susu, kondisi bay dan tangki, dan lokasi bottleneck.</p>
         </div>
-        <PageLink className="button primary" href="/rencana">
+        <PageLink className={buttonClass("primary")} href="/rencana">
           <Icon icon={CalendarClock} />
           Buka rencana
           <Icon icon={ArrowUpRight} size={16} />
@@ -107,9 +107,9 @@ export function Simulasi() {
                 : "Proyeksi setelah rekomendasi disetujui. Pilih salah satu untuk memfokuskan kamera."
             }
             action={
-              <button className="icon-button" aria-label="Lihat seluruh pabrik" aria-pressed={focus === "overview"} onClick={() => setFocus("overview")}>
+              <Button variant="icon" aria-label="Lihat seluruh pabrik" aria-pressed={focus === "overview"} onClick={() => setFocus("overview")}>
                 <Icon icon={Scan} size={17} />
-              </button>
+              </Button>
             }
           />
           <ol className="bottleneck-list">

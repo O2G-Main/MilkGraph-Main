@@ -16,7 +16,7 @@ import { checkSchedule } from "@/lib/production";
 import { PROCESS_LOSS, UNIT_STATE, dataSources, demandPlan, farms, fillers, labResults, pastLog } from "@/mock/ops";
 import { BOTTLENECKS } from "@/mock/site";
 import type { Tone } from "@/mock/types";
-import { Badge, Card, Icon, PageHeading, SectionTitle, SourceModal } from "@/components/ui";
+import { Badge, Card, Icon, PageHeading, SectionTitle, SourceModal, buttonClass } from "@/components/ui";
 import { MetricGrid } from "@/components/receiving/metric-grid";
 import { ASSETS } from "@/lib/assets";
 import { ExecKpis, MachineCard, ScheduleCard, SupplyCard, TargetCard, type ExecKpi, type StateSlice } from "./executive";
@@ -335,7 +335,7 @@ export function Beranda() {
         <h2>{approved ? <>Rekomendasi disetujui,<br />RT-26 pindah ke Bay 1.</> : <>Rencana tidak layak,<br />{broken} constraint dilanggar.</>}</h2>
         <div className="incident-time"><span><Icon icon={Hourglass} size={15} />Sisa holding time RT-26</span><strong>{duration(left)}</strong></div>
         <p className="inverse-muted">{approved ? `Disetujui ${approved.by}, ${approved.at}.` : `Lab test butuh ${lab.value} ${lab.unit}, dan ${bay.delta}.`}</p>
-        {canSee(demo.role, findNav(heroHref).tab.href) && <Link href={heroHref} className="button inverse">{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : isQa ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>}
+        {canSee(demo.role, findNav(heroHref).tab.href) && <Link href={heroHref} className={buttonClass("inverse")}>{seePlan ? (approved ? "Lihat rencana" : "Periksa rencana") : isLab ? "Buka Tes Lab" : isOperator ? "Buka jadwal lini" : isQa ? "Buka Tes Lab" : "Buka antrean truk"}<span className="button-circle"><Icon icon={ArrowUpRight} /></span></Link>}
       </section>
       <Card className="home-attention"><SectionTitle title={attentionTitle} subtitle={attentionSubtitle} action={<Badge tone="crit">{shown.filter(a => a.tone === "crit").length} kritis</Badge>} />
         <ul className="attention-list">{shown.map(a => <li key={a.title}><Link href={a.href} className={`attention-item ${a.tone}`}><span className="attention-icon"><Icon icon={a.icon} size={18} /></span><span className="attention-copy"><strong>{a.title}</strong><span>{a.meta}</span></span><Icon icon={ChevronRight} size={18} /></Link></li>)}</ul>

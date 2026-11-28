@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { ArrowRight, CircleCheck, Pencil, Search, TimerOff } from "lucide-react";
-import { Badge, Card, Icon, Modal, PageHeading, SectionTitle, Toggle } from "@/components/ui";
+import { Badge, Button, Card, Icon, Input, Modal, PageHeading, SectionTitle, Table, Textarea, Toggle } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 import { ASSETS as ALL, type Asset } from "@/lib/assets";
 import { assignedAssets, saveDowntime, updateMachine, useDemo } from "@/lib/demo";
@@ -25,7 +25,7 @@ const withUpdates = (assets: Asset[], machines: OperationState["machines"]) => a
 });
 
 function AssetTable({ rows, onEdit }: { rows: Asset[]; onEdit?: (a: Asset) => (() => void) | undefined }) {
-  return <div className="table-wrap"><table className="asset-table">
+  return <Table variant="asset">
     <thead><tr><th>Alat</th><th>Tahap</th><th>Kondisi</th><th>Keterangan</th><th><span className="sr-only">Detail</span></th></tr></thead>
     <tbody>{rows.map(a => <tr key={a.id}>
       <td><strong className="mono">{a.id}</strong></td>
@@ -33,14 +33,14 @@ function AssetTable({ rows, onEdit }: { rows: Asset[]; onEdit?: (a: Asset) => ((
       <td data-label="Kondisi"><Badge tone={a.tone}>{a.status}</Badge></td>
       <td data-label="Keterangan" className="asset-note">{a.note}</td>
       <td className="table-action queue-actions">
-        {onEdit?.(a) && <button className="icon-button" aria-label={`Perbarui kondisi ${a.id}`} onClick={onEdit(a)}><Icon icon={Pencil} size={15} /></button>}
+        {onEdit?.(a) && <Button variant="icon" aria-label={`Perbarui kondisi ${a.id}`} onClick={onEdit(a)}><Icon icon={Pencil} size={15} /></Button>}
         <Link className="text-link" href={a.href} aria-label={`Detail ${a.id}`}>Detail<Icon icon={ArrowRight} size={14} /></Link>
       </td>
     </tr>)}</tbody>
-  </table></div>;
+  </Table>;
 }
 
-export function KondisiAlat({ title = "Kondisi Alat", navigation }: { title?: string; navigation?: ReactNode } = {}) {
+export function KondisiAlat({ title = "Kondisi Alat", navigation, notice }: { title?: string; navigation?: ReactNode; notice?: ReactNode } = {}) {
   const demo = useDemo();
   const mayUpdate = can(demo.role, "equipment.update");
   const assigned = assignedAssets(demo);
@@ -65,13 +65,14 @@ export function KondisiAlat({ title = "Kondisi Alat", navigation }: { title?: st
 
   return <div className="page-enter">
     <PageHeading title={title} subtitle={assigned ? `Kondisi alat yang ditugaskan (${assigned.join(", ")}) dan semua alat lain, snapshot pukul 14.42. Perbarui kondisi mesin dan catat downtime.` : "Kondisi setiap alat pada snapshot pukul 14.42, diurutkan sesuai alur produksi."}>
-      {mayUpdate && !API_MODE && <button className="button primary" onClick={() => setDowntime({ asset: machines[0]?.id, cause: "Breakdown", start: NOW, note: "" })}><Icon icon={TimerOff} size={16} />Catat downtime</button>}
+      {mayUpdate && !API_MODE && <Button variant="primary" onClick={() => setDowntime({ asset: machines[0]?.id, cause: "Breakdown", start: NOW, note: "" })}><Icon icon={TimerOff} size={16} />Catat downtime</Button>}
     </PageHeading>
+    {notice}
     {navigation}
     <div className="page-tabs"><Toggle label="Tampilan alat" value={view} onChange={setView} options={[...(assigned ? [{ value: "tugas" as const, label: `Ditugaskan (${mine.length})` }] : []), { value: "semua", label: `Semua (${assets.length})` }, { value: "perhatian", label: `Perlu diperhatikan (${attentionCount})` }]} /></div>
     <Card>
       <div className="asset-toolbar">
-        <label className="asset-search"><Icon icon={Search} size={16} /><span className="sr-only">Cari alat</span><input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari nama, kode, atau kondisi..." autoComplete="off" /></label>
+        <Input icon={Search} type="search" aria-label="Cari alat" value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari nama, kode, atau kondisi..." autoComplete="off" />
       </div>
       {empty ? <p className="muted asset-empty">{q ? <>Tidak ada alat yang cocok dengan &quot;{query}&quot;.</> : "Semua alat dalam kondisi normal."}</p>
         : view !== "perhatian" ? <AssetTable rows={rows} onEdit={edit} />
@@ -83,7 +84,7 @@ export function KondisiAlat({ title = "Kondisi Alat", navigation }: { title?: st
     {API_MODE ? <DowntimeApi role={demo.role} machines={machines} /> : <>
     <Card className="downtime-card">
       <SectionTitle title="Downtime" subtitle={`${downtimes.filter(d => !d.end).length} masih berlangsung, total ${duration(downtimes.reduce((s, d) => s + downtimeMinutes(d), 0))} di shift ini.`} />
-      <div className="table-wrap"><table className="schedule-table">
+      <Table variant="schedule">
         <thead><tr><th>Alat</th><th>Penyebab</th><th>Jam</th><th className="numeric">Lama</th><th>Catatan</th>{mayUpdate && <th><span className="sr-only">Aksi</span></th>}</tr></thead>
         <tbody>{downtimes.map(d => <tr key={d.id}>
           <td><strong className="mono">{d.asset}</strong></td>
@@ -92,11 +93,11 @@ export function KondisiAlat({ title = "Kondisi Alat", navigation }: { title?: st
           <td data-label="Lama" className="numeric">{duration(downtimeMinutes(d))}</td>
           <td data-label="Catatan" className="asset-note">{d.note || "-"}</td>
           {mayUpdate && <td className="table-action queue-actions">{mayHandle(assigned, d.asset) && <>
-            {!d.end && <button className="button primary" onClick={() => setDowntime({ ...d, end: NOW })}><Icon icon={CircleCheck} size={14} />Selesai</button>}
-            <button className="icon-button" aria-label={`Ubah downtime ${d.asset}`} onClick={() => setDowntime({ ...d })}><Icon icon={Pencil} size={15} /></button>
+            {!d.end && <Button variant="primary" onClick={() => setDowntime({ ...d, end: NOW })}><Icon icon={CircleCheck} size={14} />Selesai</Button>}
+            <Button variant="icon" aria-label={`Ubah downtime ${d.asset}`} onClick={() => setDowntime({ ...d })}><Icon icon={Pencil} size={15} /></Button>
           </>}</td>}
         </tr>)}</tbody>
-      </table></div>
+      </Table>
     </Card>
     </>}
     {machine && <MachineDialog asset={machine} onClose={() => setMachine(null)} />}
@@ -113,9 +114,9 @@ function MachineDialog({ asset, onClose }: { asset: Asset; onClose: () => void }
       <form className="schedule-form" onSubmit={e => { e.preventDefault(); updateMachine(asset.id, state, note.trim()); onClose(); }}>
         <p className="muted">{asset.group}, sekarang {asset.status.toLowerCase()}.</p>
         <label><span className="field-label">Kondisi mesin</span><Select label="Kondisi mesin" value={state} onChange={setState} options={(Object.keys(MACHINE_STATE) as MachineState[]).map(k => ({ value: k, label: MACHINE_STATE[k].label }))} /></label>
-        <label><span className="field-label">Keterangan (opsional)</span><textarea value={note} onChange={e => setNote(e.target.value)} rows={2} maxLength={200} placeholder="Contoh: sensor level AT-2 dikalibrasi ulang, jalan normal" /></label>
+        <label><span className="field-label">Keterangan (opsional)</span><Textarea value={note} onChange={e => setNote(e.target.value)} rows={2} maxLength={200} placeholder="Contoh: sensor level AT-2 dikalibrasi ulang, jalan normal" /></label>
         <p className="small muted">Kalau mesin berhenti, catat juga downtime-nya supaya lama berhentinya terhitung.</p>
-        <div className="dialog-actions"><button type="button" className="button secondary" onClick={onClose}>Batal</button><button type="submit" className="button primary">Simpan kondisi</button></div>
+        <div className="dialog-actions"><Button variant="secondary" onClick={onClose}>Batal</Button><Button type="submit" variant="primary">Simpan kondisi</Button></div>
       </form>
     </Modal>
   );
@@ -148,9 +149,9 @@ function DowntimeDialog({ value, machines, onClose }: { value: Partial<Downtime>
           {!ongoing && <label><span className="field-label">Selesai</span><TimeField label="Jam selesai downtime" value={form.end ?? NOW} onChange={v => set("end", v)} minuteStep={5} /></label>}
         </div>
         <label className="check-row"><input type="checkbox" checked={ongoing} onChange={e => setOngoing(e.target.checked)} />Masih berlangsung</label>
-        <label><span className="field-label">Catatan (opsional)</span><textarea value={form.note ?? ""} onChange={e => set("note", e.target.value)} rows={2} maxLength={200} placeholder="Contoh: seal jaw aus, tiket MT-2240" /></label>
+        <label><span className="field-label">Catatan (opsional)</span><Textarea value={form.note ?? ""} onChange={e => set("note", e.target.value)} rows={2} maxLength={200} placeholder="Contoh: seal jaw aus, tiket MT-2240" /></label>
         {error && <p className="small crit-text" role="alert">{error}</p>}
-        <div className="dialog-actions"><button type="button" className="button secondary" onClick={onClose}>Batal</button><button type="submit" className="button primary">Simpan downtime</button></div>
+        <div className="dialog-actions"><Button variant="secondary" onClick={onClose}>Batal</Button><Button type="submit" variant="primary">Simpan downtime</Button></div>
       </form>
     </Modal>
   );
