@@ -6,7 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** `match`: halaman detail tanpa menu sendiri yang tetap menyorot tab ini (mis. /tangki di bawah Kondisi Alat). */
+/** `match`: halaman detail tanpa menu sendiri yang tetap menyorot tab ini (mis. /tangki di bawah Alat). */
 export type NavTab = { label: string; href: string; icon?: LucideIcon; match?: string[] };
 export type NavItem = { label: string; hint: string; icon: LucideIcon; tabs: NavTab[] };
 
@@ -15,8 +15,8 @@ export const navigation: NavItem[] = [
   { label: "Beranda", hint: "Ringkasan semua area", icon: LayoutDashboard, tabs: [{ label: "Beranda", href: "/" }] },
   { label: "Simulasi 3D", hint: "Plant dan bottleneck", icon: Box, tabs: [{ label: "Simulasi 3D", href: "/simulasi" }] },
   { label: "Penerimaan", hint: "Kedatangan, antrean, lab", icon: Truck, tabs: [{ label: "Jadwal Kedatangan RT", href: "/kedatangan", icon: CalendarDays }, { label: "Antrean Truk", href: "/receiving", icon: ListOrdered }, { label: "Tes Lab", href: "/lab", icon: FlaskConical }] },
-  { label: "Operasional", hint: "Jadwal, kondisi pabrik, dan mutu", icon: Factory, tabs: [{ label: "Penjadwalan", href: "/penjadwalan", icon: CalendarRange }, { label: "Kondisi Pabrik", href: "/kondisi-pabrik", icon: Gauge }, { label: "QC Barang Jadi", href: "/qc-produk", icon: TestTubeDiagonal }] },
-  { label: "Master", hint: "Produksi, alat, dan produk", icon: Layers3, tabs: [{ label: "Produksi", href: "/produksi", icon: Workflow }, { label: "Alat", href: "/alat", icon: Gauge, match: ["/kondisi-alat", "/tangki", "/filling"] }, { label: "Master Produk", href: "/produk", icon: Library, match: ["/master-data"] }] },
+  { label: "Operasional", hint: "Jadwal, kondisi pabrik, dan mutu", icon: Factory, tabs: [{ label: "Penjadwalan", href: "/penjadwalan", icon: CalendarRange }, { label: "Produksi", href: "/produksi", icon: Workflow, match: ["/kondisi-pabrik", "/operasional/prediksi", "/alur"] }, { label: "QC Barang Jadi", href: "/qc-produk", icon: TestTubeDiagonal }] },
+  { label: "Master", hint: "Alat dan produk", icon: Layers3, tabs: [{ label: "Alat", href: "/alat", icon: Gauge, match: ["/kondisi-alat", "/tangki", "/filling"] }, { label: "Master Produk", href: "/produk", icon: Library, match: ["/master-data"] }] },
   { label: "Rencana", hint: "Aturan dan keputusan", icon: CalendarClock, tabs: [{ label: "Aturan Produksi", href: "/aturan-produksi", icon: Timer }, { label: "Alur rencana", href: "/rencana/alur", icon: Waypoints }, { label: "Rekomendasi upgrade", href: "/rencana/upgrade", icon: TrendingUp }, { label: "Kelayakan & keputusan", href: "/rencana", icon: ClipboardCheck, match: ["/pasokan", "/constraint", "/persetujuan"] }] },
   { label: "Traceability", hint: "Asal produksi dan volume", icon: GitBranch, tabs: [{ label: "Riwayat Produksi", href: "/riwayat-produksi", icon: History, match: ["/trace"] }, { label: "Context Graph", href: "/graph", icon: Share2 }, { label: "Hold Produk", href: "/hold", icon: PackageX }, { label: "Transfer & Volume", href: "/transfer", icon: ArrowRightLeft }] },
   { label: "Pengaturan", hint: "Sumber data, akun, role", icon: Settings, tabs: [{ label: "Sumber Data", href: "/sumber-data", icon: Database }, { label: "Manajemen akun", href: "/pengguna", icon: Users }, { label: "Role & Hak Akses", href: "/role-akses", icon: ShieldCheck }] },

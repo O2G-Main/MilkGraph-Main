@@ -66,7 +66,7 @@ export function RiwayatProduksi({ lot }: { lot?: string }) {
       onExample={() => { update({ ...EMPTY, product: "UHT Stroberi 200 ml", time: "16:00" }); setPicked("FG-1012-11"); }} />
     {historyRes.error && <p className="small crit-text" role="alert">Gagal memuat daftar group historis: {historyRes.error.message}</p>}
 
-    {!output ? <Card className="rp-empty"><p>Tidak ada output yang cocok dengan pilihan ini.</p><button type="button" className="button secondary" onClick={() => update(EMPTY)}>Reset pilihan</button></Card> : histGroup ? <HistorisDetail group={histGroup} detail={backwardRes.data} loading={backwardRes.loading && !backwardRes.data} error={backwardRes.error} /> : <>
+    {API_MODE && !historyRes.data ? <Card>{historyRes.error ? <button className="button secondary" onClick={() => void historyRes.reload()}>Coba lagi daftar produksi</button> : <p className="muted" role="status">Memuat daftar hasil produksi…</p>}</Card> : !output ? <Card className="rp-empty"><p>Tidak ada output yang cocok dengan pilihan ini.</p><button type="button" className="button secondary" onClick={() => update(EMPTY)}>Reset pilihan</button></Card> : histGroup ? <HistorisDetail group={histGroup} detail={backwardRes.data} loading={backwardRes.loading && !backwardRes.data} error={backwardRes.error} /> : <>
       <Card className="rp-summary">
         <Equipment kind="Lot" size={52} />
         <div className="rp-summary-main"><span>Output terpilih</span><h2>{output.product}</h2><span className="mono">{output.id}</span></div>

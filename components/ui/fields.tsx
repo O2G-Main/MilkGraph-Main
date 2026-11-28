@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useContext, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Search } from "lucide-react";
+import { ModalDisplayContext } from "./modal-content";
+import { displayText } from "@/lib/display-text";
 import { Icon } from "./index";
 
 /**
@@ -74,23 +76,25 @@ export type SelectOption<T extends string | number> = { value: T; label: string;
 export function Select<T extends string | number>({ value, onChange, options, placeholder = "Pilih...", label, id, disabled = false, className = "", searchable, compact = false }: {
   value: T | null | ""; onChange: (value: T) => void; options: SelectOption<T>[]; placeholder?: string; label?: string; id?: string; disabled?: boolean; className?: string; searchable?: boolean; compact?: boolean;
 }) {
+  const modal = useContext(ModalDisplayContext);
+  const items = useMemo(() => modal ? options.map(option => ({ ...option, label: displayText(option.label), ...(option.group ? {group:displayText(option.group)} : {}), ...(option.hint ? {hint:displayText(option.hint)} : {}) })) : options, [options, modal]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const close = useCallback(() => { setOpen(false); setQuery(""); }, []);
   const { trigger, panel, place } = usePopover(open, close);
   const listId = useId();
-  const search = searchable ?? options.length > 10;
-  const selected = options.find(o => o.value === value);
+  const search = searchable ?? items.length > 10;
+  const selected = items.find(o => o.value === value);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? options.filter(o => `${o.label} ${o.group ?? ""} ${o.hint ?? ""}`.toLowerCase().includes(q)) : options;
-  }, [options, query]);
+    return q ? items.filter(o => `${o.label} ${o.group ?? ""} ${o.hint ?? ""}`.toLowerCase().includes(q)) : items;
+  }, [items, query]);
   // Judul grup tampil di opsi pertama tiap grup.
   const headed = shown.map((o, i) => ({ o, i, header: o.group && o.group !== shown[i - 1]?.group ? o.group : null }));
 
   const openList = () => {
-    setActive(Math.max(0, options.findIndex(o => o.value === value)));
+    setActive(Math.max(0, items.findIndex(o => o.value === value)));
     setOpen(true);
   };
   const pick = (o: SelectOption<T>) => { onChange(o.value); close(); trigger.current?.focus(); };

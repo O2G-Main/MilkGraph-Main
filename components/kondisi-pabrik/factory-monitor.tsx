@@ -18,15 +18,17 @@ import { canSee } from "@/lib/roles";
 import { FactoryAssetDetail } from "./factory-asset-detail";
 import styles from "./factory-monitor.module.css";
 
-type Props = { initialDate: string; initialBatch: string; invalidDate: boolean };
+type Props = { initialDate: string; initialBatch: string; invalidDate: boolean; embedded?: boolean; selectedDate?: string; selectedBatch?: string; onDateChange?: (date:string)=>void; onBatchChange?: (batch:string)=>void };
 export function FactoryMonitor(props: Props) {
-  if (!API_MODE) return <div className={styles.page}><PageHeading title="Kondisi Pabrik" subtitle="Status alat dan penugasan produksi dari backend." /><Card><p>Halaman ini memerlukan mode API. Data simulasi tidak ditampilkan sebagai kondisi alat terkini.</p></Card></div>;
+  if (!API_MODE) return <div className={styles.page}>{!props.embedded && <PageHeading title="Kondisi Pabrik" subtitle="Status alat dan penugasan produksi dari backend." />}<Card><p>Halaman ini memerlukan mode API. Data simulasi tidak ditampilkan sebagai kondisi alat terkini.</p></Card></div>;
   return <FactoryMonitorApi {...props} />;
 }
-function FactoryMonitorApi({ initialDate, initialBatch, invalidDate }: Props) {
+function FactoryMonitorApi({ initialDate, initialBatch, invalidDate, embedded=false, selectedDate, selectedBatch, onDateChange, onBatchChange }: Props) {
   const { role } = useDemo();
-  const [date, setDate] = useState(initialDate);
-  const [batch, setBatch] = useState(initialBatch);
+  const [ownDate, setOwnDate] = useState(initialDate);
+  const date=selectedDate??ownDate;const setDate=onDateChange??setOwnDate;
+  const [ownBatch, setOwnBatch] = useState(initialBatch);
+  const batch=selectedBatch??ownBatch;const setBatch=onBatchChange??setOwnBatch;
   const [selected, setSelected] = useState<string | null>(null);
   const assets = useResource<ProductionList<ProductionAsset>>("/production/assets");
   const schedule = useResource<ProductionList<ProductionScheduleRow>>(date ? `/production/schedule?date=${date}` : null);
@@ -48,21 +50,22 @@ function FactoryMonitorApi({ initialDate, initialBatch, invalidDate }: Props) {
   const missingBatch = !!batch && scheduleReady && !batches.some(([id]) => id === batch);
   const counts = Object.fromEntries([...allAssignments].map(([id, rows]) => [id, assignedBatchCount(rows)]));
   const sourcePending = assets.loading || schedule.loading || downtime.loading;
-  const changeDate = (value: string) => { setDate(value); setBatch(""); setSelected(null); };
+  const changeDate = (value: string) => { setDate(value); if (!onDateChange) setBatch(""); setSelected(null); };
   const refresh = () => { void assets.reload(); void schedule.reload(); void downtime.reload(); invalidateResources(["/master/topology"]); };
 
   const pickAsset = (id: string | null) => setSelected(id);
   const closeDetail = () => setSelected(null);
   return <div className={`page-enter ${styles.page}`}>
-    <PageHeading title="Kondisi Pabrik" subtitle="Hubungkan penugasan jadwal dengan catatan kondisi terakhir alat.">
+    {!embedded && <PageHeading title="Kondisi Pabrik" subtitle="Hubungkan penugasan jadwal dengan catatan kondisi terakhir alat.">
       <button className="button secondary" disabled={sourcePending} onClick={refresh}><Icon icon={RefreshCw} size={16} />Perbarui tampilan</button>
-    </PageHeading>
+    </PageHeading>}
     <Card>
       <div className={styles.filters}>
         <label>Tanggal penugasan (WIB)<DateField label="Tanggal penugasan alat" value={date} onChange={changeDate} /></label>
         <label>Batch yang disorot<select aria-label="Batch yang disorot" value={batch} disabled={!scheduleReady} onChange={event => { setBatch(event.target.value); setSelected(null); }}><option value="">Semua batch pada tanggal ini</option>{missingBatch && <option value={batch}>{batch} (tidak ditemukan)</option>}{batches.map(([id, code]) => <option value={id} key={id}>{code || id}</option>)}</select></label>
         <button className="button secondary" onClick={() => changeDate(dateInWib())}>Hari ini</button>
         {date && canSee(role, "/penjadwalan") && <Link className="button secondary" href={`/penjadwalan?date=${date}`}>Buka Penjadwalan</Link>}
+        {embedded && <button className="button secondary" disabled={sourcePending} onClick={refresh}><Icon icon={RefreshCw} size={16}/>Perbarui tampilan</button>}
       </div>
       <p className="small muted">Tanggal dan batch mengatur sorotan penugasan. Status selalu memakai catatan terakhir alat, termasuk saat memilih jadwal historis. Semua waktu ditampilkan dalam WIB.</p>
       <p className="small muted">Label batch pada kartu menghitung semua batch yang menjadwalkan alat pada tanggal terpilih. Penugasan belum membuktikan alat atau batch sedang berjalan.</p>

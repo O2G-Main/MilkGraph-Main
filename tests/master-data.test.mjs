@@ -13,15 +13,14 @@ test('navigation separates Master Produk and Alat, retaining the old master-data
   assert.ok(!nav.includes('label: "Master Alat"'));
 });
 
-test('sidebar groups production, equipment and products under Master without moving operational routes', () => {
-  const nav = read('lib/nav.ts');
-  const operational = nav.match(/\{ label: "Operasional"[^\n]+/s)?.[0] ?? '';
-  const master = nav.match(/\{ label: "Master"[^\n]+/s)?.[0] ?? '';
-  for (const href of ['/penjadwalan', '/kondisi-pabrik', '/qc-produk']) assert.ok(operational.includes(`href: "${href}"`), href);
-  for (const href of ['/produksi', '/alat', '/produk']) {
-    assert.ok(master.includes(`href: "${href}"`), `Master missing ${href}`);
-    assert.ok(!operational.includes(`href: "${href}"`), `Operasional still contains ${href}`);
-  }
+test('sidebar places unified Production under Operational and keeps equipment/products under Master', () => {
+  const nav=read('lib/nav.ts');
+  const operational=nav.match(/\{ label: "Operasional"[^\n]+/s)?.[0]??'';
+  const master=nav.match(/\{ label: "Master"[^\n]+/s)?.[0]??'';
+  for(const href of ['/penjadwalan','/produksi','/qc-produk'])assert.ok(operational.includes(`href: "${href}"`),href);
+  for(const href of ['/alat','/produk'])assert.ok(master.includes(`href: "${href}"`),href);
+  assert.ok(!master.includes('href: "/produksi"'));
+  for(const alias of ['/kondisi-pabrik','/operasional/prediksi'])assert.ok(!operational.includes(`href: "${alias}"`));
 });
 
 test('old master-data page directs users to domain pages and keeps only the actual dataset summary', () => {

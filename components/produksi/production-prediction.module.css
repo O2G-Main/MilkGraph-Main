@@ -38,3 +38,16 @@
 .volumeLegend i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
 .calculationDetails { margin-top: 16px; }
 .calculationDetails > summary { min-height: 44px; padding-block: 12px; font-size: 13px; color: var(--color-primary); cursor: pointer; }
+
+.statusView .predictions { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+.statusView .predictions h3 { display: flex; align-items: center; gap: 8px; }
+.statusView .predictions h3 svg { flex-shrink: 0; }
+.statusIcon { display: inline-flex; color: var(--color-on-surface-muted); }
+.statusIcon[data-tone="ok"] { color: var(--color-status-ok); }
+.statusIcon[data-tone="warn"] { color: var(--color-status-warn); }
+.statusIcon[data-tone="crit"] { color: var(--color-status-crit); }
+.statusView .recommendation > :global(.button) { max-width: 100%; white-space: normal; }
+.solution { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+@media(max-width:1023px) { .statusView .predictions { grid-template-columns: minmax(0,1fr); } }
+
+.unassessed { margin-top: 16px; }

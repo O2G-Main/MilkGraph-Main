@@ -26,6 +26,7 @@ await page.route('**/api/v1/**',async route=>{
   {key:'cipBuffer',kind:'range',min:0,max:30,step:5},
   {key:'changeoverMax',kind:'range',min:0,max:4,step:1},
  ]}]});
+ if(path.endsWith('/configuration'))return route.fulfill({status:404,json:{error:{message:'Not found'}}});
  if(path==='/master/topology'){
   if(failTopology)return route.fulfill({status:503,json:{error:{message:'Master tidak tersedia'}}});
   return route.fulfill({json:emptyTopology?{nodes:[],edges:[]}:{nodes:[
@@ -60,8 +61,9 @@ try{
  permission=true;await open();
  await page.getByRole('button',{name:'Alat & rute',exact:true}).click();
  await expect(page.getByLabel('Pilih alat proses',{exact:true})).toBeVisible();
+ await page.getByText('Spesifikasi master lengkap',{exact:true}).click();
  await expect(page.getByText('12000',{exact:true}).first()).toBeVisible();
- await expect(page.getByText('Backend belum menyediakan',{exact:false})).toBeVisible();
+ await expect(page.getByText('Layanan konfigurasi per alat belum tersedia',{exact:false})).toBeVisible();
  await page.getByLabel('Pilih alat proses',{exact:true}).click();await page.getByRole('option',{name:'AT-01 · Tangki aseptik'}).click();await expect(page.getByRole('heading',{name:'AT-01 · Tangki aseptik',exact:true})).toBeVisible();
  await expect(page.getByText('20000',{exact:true})).toBeVisible();
  await page.getByLabel('Pilih alat proses',{exact:true}).click();await page.getByRole('option',{name:'FL-01 · Filler satu'}).click();

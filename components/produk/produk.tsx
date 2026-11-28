@@ -20,7 +20,7 @@ function ProductDetail({ product, catalog, onClose }: { product: CatalogProduct;
       </dl>
       <section>
         <SectionTitle title="Ukuran kemasan" subtitle="Pilihan kemasan yang tersedia untuk produk ini." />
-        {related.packSizes.length ? <div className="table-wrap"><table className="rules-table"><thead><tr><th>Kode</th><th>Volume</th><th>Keterangan</th></tr></thead><tbody>{related.packSizes.map(size => <tr key={size.pack_size_code}><td data-label="Kode">{size.pack_size_code}</td><td data-label="Volume">{size.exact_size_ml === null ? "Belum tersedia" : `${size.exact_size_ml} ml`}</td><td data-label="Keterangan">{size.description}</td></tr>)}</tbody></table></div> : <p className="muted">Belum ada ukuran kemasan untuk produk ini.</p>}
+        {related.packSizes.length ? <div className="table-wrap"><table className="rules-table"><thead><tr><th>Kemasan</th><th>Volume</th><th>Keterangan</th></tr></thead><tbody>{related.packSizes.map(size => <tr key={size.pack_size_code}><td data-label="Kemasan">{size.pack_size_code}</td><td data-label="Volume">{size.exact_size_ml === null ? "Belum tersedia" : `${size.exact_size_ml} ml`}</td><td data-label="Keterangan">{size.description}</td></tr>)}</tbody></table></div> : <p className="muted">Belum ada ukuran kemasan untuk produk ini.</p>}
       </section>
       <section>
         <SectionTitle title="SKU produk jadi (Finished SKU)" subtitle="Kode untuk setiap kombinasi produk, ukuran kemasan, dan varian pasar." />

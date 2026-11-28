@@ -1,48 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Alur } from "@/components/alur/alur";
-import { DateField } from "@/components/ui/fields";
-import { Card, PageHeading, Toggle } from "@/components/ui";
-import { API_MODE } from "@/lib/api/client";
+import { PageHeading, Toggle } from "@/components/ui";
 import { useDemo } from "@/lib/demo";
-import { dateInWib } from "@/lib/production-date";
-import { DemoProductionDay } from "./production-day";
-import { ProductionDayApi } from "./production-day-api";
+import { productionLocation, type ProductionTab } from "@/lib/production-location";
+import { FactoryMonitor } from "@/components/kondisi-pabrik/factory-monitor";
+import { OperationalPrediction } from "@/components/operasional/operational-prediction";
 import { ProcessManagement } from "./process-management";
-import { PlantTopology } from "./plant-topology";
 
-type View = "daily" | "flow" | "process";
-
-export function ProductionPage({ initialDate }: { initialDate: string }) {
-  const { role } = useDemo();
-  const [date, setDate] = useState(initialDate);
-  const [view, setView] = useState<View>("daily");
+export function ProductionPage({ initialDate, initialBatch="", initialTab="kondisi", invalidDate=false }: {
+  initialDate:string;initialBatch?:string;initialTab?:ProductionTab;invalidDate?:boolean;
+}) {
+  const {role}=useDemo();
+  const [date,setDate]=useState(initialDate);
+  const [batch,setBatch]=useState(initialBatch);
+  const [view,setView]=useState<ProductionTab>(initialTab);
+  const updateUrl=(tab:ProductionTab,nextDate:string,nextBatch:string)=>window.history.replaceState(null,"",productionLocation(tab,nextDate,nextBatch));
+  const changeDate=(value:string)=>{setDate(value);setBatch("");updateUrl(view,value,"");};
+  const changeBatch=(value:string)=>{setBatch(value);updateUrl(view,date,value);};
+  const changeView=(value:ProductionTab)=>{setView(value);updateUrl(value,date,batch);};
   return <div className="page-enter">
-    <PageHeading title="Produksi" subtitle={API_MODE ? "Periksa kecukupan volume susu per batch, tinjau alur pabrik, dan kelola batas operasional produksi." : "Tinjau produksi harian dan alur pabrik menggunakan data simulasi lokal."} />
-    <div className="page-tabs production-tabs">
-      <Toggle label="Bagian Produksi" value={view} onChange={setView} options={[
-        { value: "daily", label: API_MODE ? "Prediksi pemenuhan" : "Produksi harian (demo)" },
-        { value: "flow", label: "Alur pabrik" },
-        { value: "process", label: "Manajemen proses" },
-      ]} />
-    </div>
+    <PageHeading title="Produksi" subtitle="Pantau kondisi pabrik, kelola konfigurasi proses, dan periksa prediksi pemenuhan produksi."/>
+    <div className="page-tabs production-tabs"><Toggle label="Bagian Produksi" value={view} onChange={changeView} options={[
+      {value:"kondisi",label:"Kondisi pabrik"},{value:"proses",label:"Manajemen proses"},{value:"prediksi",label:"Prediksi pemenuhan"},
+    ]}/></div>
     <div className="production-stack">
-      {view === "daily" && <>
-        <Card className="production-date">
-          <label className="schedule-form">
-            <span className="field-label">{API_MODE ? "Tanggal produksi yang dinilai (WIB)" : "Tanggal produksi simulasi (WIB)"}</span>
-            <DateField label="Pilih tanggal produksi" value={date} onChange={setDate} />
-          </label>
-          <button className="button secondary" onClick={() => setDate(dateInWib())}>Hari ini</button>
-          <p id="production-date-hint" className="small muted">{API_MODE ? "Filter tanggal ini berlaku untuk prediksi. Alur pabrik menampilkan konfigurasi alat saat ini." : "Data pada halaman ini merupakan simulasi lokal."}</p>
-        </Card>
-        {!date ? <p className="muted">Pilih tanggal produksi untuk melihat hasil prediksi.</p>
-          : API_MODE ? <ProductionDayApi key={date} date={date} role={role} />
-          : <DemoProductionDay date={date} role={role} />}
-      </>}
-      {view === "process" && <ProcessManagement role={role} />}
-      {view === "flow" && (API_MODE ? <PlantTopology /> : <Alur />)}
+      {view==="kondisi"&&<FactoryMonitor embedded initialDate={initialDate} initialBatch={initialBatch} invalidDate={invalidDate} selectedDate={date} selectedBatch={batch} onDateChange={changeDate} onBatchChange={changeBatch}/>}
+      {view==="proses"&&<ProcessManagement role={role}/>}
+      {view==="prediksi"&&<OperationalPrediction embedded initialDate={initialDate} selectedDate={date} onDateChange={changeDate}/>}
     </div>
   </div>;
 }

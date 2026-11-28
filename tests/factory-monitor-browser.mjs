@@ -45,9 +45,19 @@ await page.route('**/api/v1/**',async route=>{
   return route.fulfill({json:[]});
 });
 try {
-  await page.goto(root+'/kondisi-pabrik?date=2026-11-01&batch=B1');
-  await expect(page.getByRole('heading',{name:'Kondisi Pabrik',exact:true})).toBeVisible();
+  await page.goto(root+'/produksi?tab=kondisi&date=2026-11-01&batch=B1');
+  await expect(page.getByRole('heading',{name:'Produksi',exact:true})).toBeVisible();
   await expect(page.locator('#desktop-navigation .nav-item.active')).toHaveAttribute('aria-label','Operasional');
+  await expect(page.getByLabel('Batch yang disorot',{exact:true})).toHaveValue('B1');
+  await expect(page.locator('#desktop-navigation .nav-section:has(.nav-item[aria-label="Master"]) .nav-sub[href="/produksi"]')).toHaveCount(0);
+  await page.getByRole('button',{name:'Manajemen proses',exact:true}).press('Enter');
+  await expect(page.getByRole('heading',{name:'Manajemen proses',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{level:1})).toHaveCount(1);
+  await page.reload();await expect(page.getByRole('button',{name:'Manajemen proses',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'Prediksi pemenuhan',exact:true}).press('Enter');
+  await expect(page.getByRole('button',{name:'Tanggal status pemenuhan',exact:true})).toContainText('1 Nov 2026');
+  await expect(page.getByRole('heading',{level:1})).toHaveCount(1);
+  await page.getByRole('button',{name:'Kondisi pabrik',exact:true}).press('Enter');
   await expect(page.getByLabel('Batch yang disorot',{exact:true})).toHaveValue('B1');
   const filler = page.getByRole('button',{name:/^Lihat alat FL-01\./});
   await expect(filler).toBeVisible();
@@ -90,8 +100,12 @@ try {
   await page.getByRole('dialog',{name:'Tanggal penugasan alat'}).getByRole('button',{name:'Kosongkan',exact:true}).click();
   await expect(page.getByText('Pilih tanggal untuk melihat penugasan.',{exact:false})).toBeVisible();
   await expect(filler).toContainText('Available');
+  assert.equal(new URL(page.url()).searchParams.has('date'),false);
+  await page.getByRole('button',{name:'Prediksi pemenuhan',exact:true}).click();
+  await expect(page.getByText('Pilih tanggal produksi untuk memeriksa status pemenuhan.')).toBeVisible();
   await page.goto(root+'/kondisi-pabrik?date=2026-11-02');
   await expect(page.getByText('Belum ada jadwal pada tanggal 2026-11-02.',{exact:false})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Kembali ke Produksi',exact:true})).toHaveCount(0);
   await expect(filler).toBeVisible();
   await page.goto(root+'/kondisi-pabrik?date=2026-11-01&batch=UNKNOWN');
   await expect(page.getByText('Batch UNKNOWN tidak ditemukan',{exact:false})).toBeVisible();
@@ -111,7 +125,7 @@ try {
   await page.locator('nav[aria-label="Hari produksi"] [aria-current="date"] button').click();
   await page.getByRole('button',{name:/B1/}).first().click();
   await page.getByRole('link',{name:'Lihat kondisi alat batch'}).click();
-  await expect(page).toHaveURL(root+'/kondisi-pabrik?date=2026-11-01&batch=B1');
+  await expect(page).toHaveURL(root+'/produksi?tab=kondisi&date=2026-11-01&batch=B1');
   await expect(page.getByLabel('Batch yang disorot',{exact:true})).toHaveValue('B1');
   if(process.env.QA_ARTIFACT_DIR){ await mkdir(process.env.QA_ARTIFACT_DIR,{recursive:true}); await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);}); await page.screenshot({path:process.env.QA_ARTIFACT_DIR+'/kondisi-pabrik.png',fullPage:true}); }
   assert.deepEqual(writes,[]);assert.deepEqual(errors,[]);
