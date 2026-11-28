@@ -18,13 +18,14 @@ import type { Scenario } from "@/mock/types";
 import { duration, number } from "@/lib/format";
 import { useDemo } from "@/lib/demo";
 import { holdingLeft, violations } from "@/lib/rules";
-import { Badge, Button, buttonClass, Card, Icon, PageLink, SectionTitle, SourceModal, Table, Toggle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, EmptyState, Icon, PageLink, SectionTitle, SourceModal, Table, Toggle } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
-import { MetricGrid } from "./metric-grid";
+import { Equipment } from "@/components/trace/equipment";
 import { Queue3D } from "./queue-3d";
 import { queueLayout } from "./queue-layout";
 
 const stageIcons = [MapPin, Truck, Droplets, FlaskConical, ShieldCheck, PackageOpen, PackageCheck];
+const stageEquipment = ["Farm", "RT", "LabResult", "LabResult", "Bay", "Bay", "Buffer"];
 type ReceivingData = Pick<Scenario, "metrics" | "stages" | "tankers" | "assets" | "labHistory"> & {
   labSummary: { avgMinutes: number; deltaMinutes: number };
   // Skenario November tidak mempunyai insiden antrean: server mengirim
@@ -157,16 +158,18 @@ function ReceivingContent({
       {mayTest && <Card className="lab-queue">
         <SectionTitle title="Perlu diperiksa lab" subtitle="RT di sampling dan lab test serta batch tangki proses yang hasil ujinya belum lengkap. RT diurutkan dari umur susu tertua." action={<Link className="text-link" href="/lab">Buka Tes Lab<Icon icon={ArrowRight} size={14} /></Link>} />
         {toTest.length ? <ul className="attention-list">{toTest.map(t => <li key={t.key}><Link href={t.href} className={`attention-item ${t.tone}`}><span className="attention-icon"><Icon icon={t.batch ? FlaskConical : Truck} size={18} /></span><span className="attention-copy"><strong>{t.title}</strong><span>{t.meta}</span></span><Icon icon={ArrowRight} size={16} /></Link></li>)}</ul>
-          : <p className="small muted">Tidak ada RT atau batch yang menunggu pemeriksaan.</p>}
+          : <EmptyState title="Data kosong" description="Tidak ada RT atau batch yang menunggu pemeriksaan." />}
       </Card>}
-      <MetricGrid metrics={scenarioData.metrics} onSource={setSource} />
       <Card className="flow-card">
-        <SectionTitle title="Alur penerimaan RT" action={<span className="small muted flow-hint"><span className="status-dot" />Snapshot {now}</span>} />
+        <SectionTitle title="Alur penerimaan RT" subtitle="Ringkasan jumlah RT dan status di setiap tahap penerimaan." action={<span className="small muted flow-hint"><span className="status-dot" />Snapshot {now}</span>} />
         <ol className="stage-flow">
           {scenarioData.stages.map((stage, i) => (
             <li key={stage.id}>
               <a href={stage.id === "stored" && seeBay ? "/tangki" : "#antrean-rt"} className={`flow-step ${stage.tone}`}>
-                <span className="flow-icon"><Icon icon={stageIcons[i]} size={20} /></span>
+                <span className="flow-step-head">
+                  <span className="flow-icon"><Icon icon={stageIcons[i]} size={18} /></span>
+                  <Equipment kind={stageEquipment[i] ?? "Storage"} size={36} />
+                </span>
                 <span>
                   <strong>{stage.label} <span className="stage-count">{stage.count}</span></strong>
                   <span className="flow-status"><span className="status-dot" />{stage.status}</span>
@@ -226,6 +229,7 @@ function ReceivingContent({
                     </td>
                   </tr>
                 ))}
+                {!tankers.length && <tr><td colSpan={mayRecord ? 8 : 7}><EmptyState title="Data kosong" description="Tidak ada RT pada tahap yang dipilih." /></td></tr>}
               </tbody>
           </Table>}
           <div className="table-footer">

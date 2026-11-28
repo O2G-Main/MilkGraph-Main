@@ -8,6 +8,9 @@ const labels: Record<string,string> = {
   capacity_l:"Kapasitas (L)",speed_packph:"Kecepatan kemasan (pak/jam)",process_speed_lph:"Kecepatan proses (L/jam)",holding_time_limit_hours:"Batas holding time (jam)",cip_duration_minutes:"Durasi CIP (menit)",
   batch_id:"ID batch",asset_id:"ID alat",source_asset_id:"Alat asal",destination_asset_id:"Alat tujuan",transaction_id:"ID transaksi",production_date:"Tanggal produksi",finished_sku_id:"SKU produk jadi",pack_size_code:"Ukuran kemasan",market_variant:"Varian pasar",
   draft:"Draf",accepted:"Diterima",rejected:"Ditolak",applied:"Ditandai diterapkan",
+  true:"Ya",false:"Tidak",yes:"Ya",no:"Tidak",eligible:"Memenuhi syarat",not_eligible:"Tidak memenuhi syarat",
+  clean:"Bersih",dirty:"Kotor",available:"Tersedia",unavailable:"Tidak tersedia",
+  active:"Aktif",inactive:"Tidak aktif",in_progress:"Sedang berjalan",completed:"Selesai",pending:"Menunggu",cancelled:"Dibatalkan",
 };
 export function displayToken(value:string):string {
   const mapped=labels[value.toLowerCase()];if(mapped)return mapped;
@@ -17,7 +20,7 @@ export function displayToken(value:string):string {
 export function displayText(value:string):string {
   if(/^\s*_+\s*$/.test(value))return "Belum tersedia";
   if(/^(?:null|undefined|n\/a|x)$/i.test(value.trim()))return "Belum tersedia";
-  return value.replace(/https?:\/\/[^\s]+|www\.[^\s]+|[\w.+-]+@[\w.-]+\.[A-Za-z]+|\b[A-Za-z][A-Za-z0-9]*(?:[-_]+[A-Za-z0-9]+)*\b/g,token=>{
+  return value.replace(/https?:\/\/[^\s]+|www\.[^\s]+|[\w.+-]+@[\w.-]+\.[A-Za-z]+|\b[A-Za-z0-9]+(?:[-_]+[A-Za-z0-9]+)+\b|\b[A-Za-z][A-Za-z0-9]*\b/g,token=>{
     if(/^(?:https?:\/\/|www\.)/.test(token)||token.includes("@")||token.includes("-"))return token;
     return displayToken(token);
   });

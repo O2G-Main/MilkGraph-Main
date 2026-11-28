@@ -17,7 +17,10 @@ test('sidebar places unified Production under Operational and keeps equipment/pr
   const nav=read('lib/nav.ts');
   const operational=nav.match(/\{ label: "Operasional"[^\n]+/s)?.[0]??'';
   const master=nav.match(/\{ label: "Master"[^\n]+/s)?.[0]??'';
-  for(const href of ['/penjadwalan','/produksi','/qc-produk'])assert.ok(operational.includes(`href: "${href}"`),href);
+  const traceability=nav.match(/\{ label: "Traceability"[^\n]+/s)?.[0]??'';
+  for(const href of ['/produksi','/penjadwalan'])assert.ok(operational.includes(`href: "${href}"`),href);
+  assert.ok(!operational.includes('href: "/qc-produk"'));
+  assert.ok(traceability.includes('href: "/qc-produk"'));
   for(const href of ['/alat','/produk'])assert.ok(master.includes(`href: "${href}"`),href);
   assert.ok(!master.includes('href: "/produksi"'));
   for(const alias of ['/kondisi-pabrik','/operasional/prediksi'])assert.ok(!operational.includes(`href: "${alias}"`));

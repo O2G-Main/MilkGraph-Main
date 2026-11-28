@@ -9,7 +9,7 @@ import { demandPlan as mockDemandPlan, farms as mockFarms, fillers as mockFiller
 import type { Tone } from "@/mock/types";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Button, Card, Icon, PageHeading, SectionTitle, Table } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Icon, PageHeading, SectionTitle, Table } from "@/components/ui";
 import { LineChart } from "./line-chart";
 
 type DemandLine = {
@@ -89,7 +89,12 @@ export function Pasokan() {
       return <div className="page-enter" role="status">Gagal memuat Pasokan & Permintaan: {err.message}</div>;
     }
     if (!farmsRes.data?.length || !demandPlanRes.data?.lines?.length) {
-      return <div className="page-enter" role="status">Tidak ada data pasokan dan permintaan tersedia.</div>;
+      return (
+        <div className="page-enter">
+          <PageHeading title="Pasokan & Permintaan" subtitle="Rencana kirim farm, kebutuhan susu dari rencana produksi, dan kapasitas pabrik dalam satu tempat untuk PPIC." />
+          <Card><EmptyState title="Data kosong" description="Tidak ada data pasokan dan permintaan tersedia." /></Card>
+        </div>
+      );
     }
   }
 
@@ -151,11 +156,11 @@ export function Pasokan() {
         <Card><SectionTitle title="Rencana susu segar masuk" subtitle="Dalam ton per hari [simulasi]. Kapasitas pabrik 320 t/hari." action={<Badge tone={(trendData.incoming.at(-1) ?? 0) > trendData.capacity ? "crit" : "warn"}>{trendData.incoming.at(-1) ?? 0} t/hari</Badge>} /><LineChart label="Rencana susu segar masuk" values={trendData.incoming} labels={trendData.months} unit="t/hari" reference={{ value: trendData.capacity, label: "Kapasitas 320 t/hari" }} /></Card>
       </div>
       <Card className="page-block"><SectionTitle title="Kebutuhan susu dari rencana produksi" subtitle={`Rencana produksi hari ini diterjemahkan ke susu segar, termasuk susut proses ${processLoss * 100}% [asumsi].`} action={<Badge tone={gap >= 0 ? "ok" : "crit"}>{gap >= 0 ? `Pasokannya cukup, masih sisa ${number(gap)} L` : `Kurang ${number(-gap)} L`}</Badge>} />
-        <Table><thead><tr><th>SKU</th><th>Kemasan</th><th className="numeric">Rencana</th><th className="numeric">Volume produk</th><th className="numeric">Susu segar</th></tr></thead><tbody>{demandPlanLines.map(d => <tr key={d.sku}><td><strong>{d.sku}</strong></td><td data-label="Kemasan">{d.pack}</td><td data-label="Rencana" className="numeric">{number(d.packs)} pak</td><td data-label="Volume produk" className="numeric">{number(product(d))} L</td><td data-label="Susu segar" className="numeric">{number(milkNeed(d))} L</td></tr>)}</tbody>
+        <Table><thead><tr><th>SKU</th><th>Kemasan</th><th className="numeric">Rencana</th><th className="numeric">Volume produk</th><th className="numeric">Susu segar</th></tr></thead><tbody>{demandPlanLines.map(d => <tr key={d.sku}><td><strong>{d.sku}</strong></td><td data-label="Kemasan">{d.pack}</td><td data-label="Rencana" className="numeric">{number(d.packs)} pak</td><td data-label="Volume produk" className="numeric">{number(product(d))} L</td><td data-label="Susu segar" className="numeric">{number(milkNeed(d))} L</td></tr>)}{!demandPlanLines.length && <tr><td colSpan={5}><EmptyState title="Data kosong" description="Belum ada rencana kebutuhan susu." /></td></tr>}</tbody>
           <tfoot><tr><td colSpan={4}>Total kebutuhan termasuk susut</td><td className="numeric"><strong>{number(needTotal)} L</strong></td></tr><tr><td colSpan={4}>Rencana kirim farm hari ini</td><td className="numeric">{number(supplyTotal)} L</td></tr><tr><td colSpan={4}>Kapasitas olah 320 t/hari</td><td className="numeric">{number(capacityL)} L</td></tr></tfoot></Table>
       </Card>
       <Card><SectionTitle title="Jadwal kirim dan kesiapan mutu farm" />
-        <Table><thead><tr><th>Farm</th><th className="numeric">Rencana</th><th className="numeric">Tiba</th><th className="numeric">Di jalan</th><th className="numeric">Lolos lab 30 hari</th><th className="numeric">Suhu muat</th><th>Temuan terakhir</th></tr></thead><tbody>{farmsList.map(f => <tr key={f.name}><td><strong>{f.name}</strong></td><td data-label="Rencana" className="numeric">{f.plannedRt} RT · {number(f.plannedL)} L</td><td data-label="Tiba" className="numeric">{f.arrived}</td><td data-label="Di jalan" className="numeric">{f.onTheWay}</td><td data-label="Lolos lab 30 hari" className="numeric">{f.passRate == null ? "-" : <Badge tone={f.tone}>{number(f.passRate)}%</Badge>}</td><td data-label="Suhu muat" className="numeric">{f.coolingC == null ? "-" : `${number(f.coolingC)} °C`}</td><td data-label="Temuan terakhir">{f.finding ?? "-"}</td></tr>)}</tbody></Table>
+        <Table><thead><tr><th>Farm</th><th className="numeric">Rencana</th><th className="numeric">Tiba</th><th className="numeric">Di jalan</th><th className="numeric">Lolos lab 30 hari</th><th className="numeric">Suhu muat</th><th>Temuan terakhir</th></tr></thead><tbody>{farmsList.map(f => <tr key={f.name}><td><strong>{f.name}</strong></td><td data-label="Rencana" className="numeric">{f.plannedRt} RT · {number(f.plannedL)} L</td><td data-label="Tiba" className="numeric">{f.arrived}</td><td data-label="Di jalan" className="numeric">{f.onTheWay}</td><td data-label="Lolos lab 30 hari" className="numeric">{f.passRate == null ? "-" : <Badge tone={f.tone}>{number(f.passRate)}%</Badge>}</td><td data-label="Suhu muat" className="numeric">{f.coolingC == null ? "-" : `${number(f.coolingC)} °C`}</td><td data-label="Temuan terakhir">{f.finding ?? "-"}</td></tr>)}{!farmsList.length && <tr><td colSpan={7}><EmptyState title="Data kosong" description="Belum ada jadwal kirim farm." /></td></tr>}</tbody></Table>
       </Card>
     </div>
   );

@@ -13,8 +13,10 @@ import type { ProductionAsset, ProductionList, ProductionSession } from "@/lib/a
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import { useDemo } from "@/lib/demo";
 import { displayText } from "@/lib/display-text";
+import { assetStatusTone } from "@/lib/factory-monitor";
 import { GreenfieldCatalog } from "./greenfield-catalog";
 import { equipmentLocation, type EquipmentView } from "@/lib/equipment-location";
+import { AssetConfigurationPanel } from "@/components/produksi/asset-configuration-editor";
 import { ProductionSettings } from "@/components/produksi/production-settings";
 import { ProductionLines } from "@/components/produksi/production-lines";
 
@@ -64,6 +66,7 @@ function EquipmentApi({ role, initialSearch="" }: { role: string; initialSearch?
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editing, setEditing] = useState<ProductionAsset | null>(null);
   const [notice, setNotice] = useState("");
+  const [displayMode, setDisplayMode] = useState<"cards" | "table">("cards");
   const rows = assets.data?.items ?? [];
   const shown = filterEquipment(rows, search, type, status);
   const write = canRecordStatus(session.data, role);
@@ -78,21 +81,39 @@ function EquipmentApi({ role, initialSearch="" }: { role: string; initialSearch?
         action={<Button variant="secondary" onClick={() => { void assets.reload(); void session.reload(); }} disabled={assets.loading}>Muat ulang</Button>} />
       <div className="asset-toolbar">
         <Input icon={Search} type="search" aria-label="Cari alat" value={search} onChange={event => setSearch(event.currentTarget.value)} placeholder="Cari kode, nama, jenis, atau status…" />
+        <Toggle label="Tampilan status alat" value={displayMode} onChange={setDisplayMode} options={[{ value: "cards", label: "Kartu" }, { value: "table", label: "Tabel" }]} />
       </div>
       <div className="schedule-form"><div className="schedule-form-row">
-        <label><span className="field-label">Jenis alat</span><Select label="Filter jenis alat" value={type} onChange={setType} options={[{ value: "", label: "Semua jenis" }, ...types.map(value => ({ value, label: value }))]} /></label>
+        <label><span className="field-label">Jenis alat</span><Select label="Filter jenis alat" value={type} onChange={setType} options={[{ value: "", label: "Semua jenis" }, ...types.map(value => ({ value, label: displayText(value) }))]} /></label>
         <label><span className="field-label">Status terakhir</span><Select label="Filter status alat" value={status} onChange={setStatus} options={[{ value: "", label: "Semua status" }, { value: MISSING_STATUS, label: "Belum tercatat" }, ...statuses.map(value => ({ value, label: displayText(value) }))]} /></label>
       </div></div>
       {notice && <p className="ok-text" role="status">{notice}</p>}
       {assets.error && <p className="crit-text" role="alert">Gagal memuat katalog alat: {assets.error.message}</p>}
       {!assets.data && !assets.error && <p className="muted" role="status">Memuat katalog alat…</p>}
-      {assets.data && (!shown.length ? <p className="muted asset-empty">{rows.length ? "Tidak ada alat yang cocok dengan pencarian atau filter." : "Belum ada alat di katalog backend."}</p> : <Table variant="asset">
+      {assets.data && (!shown.length ? <p className="muted asset-empty">{rows.length ? "Tidak ada alat yang cocok dengan pencarian atau filter." : "Belum ada alat di katalog backend."}</p>
+      : displayMode === "cards" ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", marginTop: "12px" }}>
+        {shown.map(asset => <Card key={asset.asset_id} variant="panel" style={{ display: "grid", gap: "12px", alignContent: "space-between" }}>
+          <div style={{ display: "grid", gap: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px", flexWrap: "wrap" }}>
+              <div><strong className="mono">{asset.asset_id}</strong><div style={{ fontWeight: 500, marginTop: "2px" }}>{asset.asset_name}</div></div>
+              <Badge tone={assetStatusTone(asset.current_status)}>{displayText(asset.current_status || "Belum tercatat")}</Badge>
+            </div>
+            <div className="small muted">{displayText(asset.asset_type)}</div>
+            <p className="small muted" style={{ margin: 0 }}>{asset.current_status_reason ? displayText(asset.current_status_reason) : "Belum ada keterangan"}{asset.current_status_observed_at ? ` · ${fmtWaktu(asset.current_status_observed_at)}` : ""}</p>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            <Button variant="secondary" aria-label={`Detail ${asset.asset_id}`} onClick={() => setDetailId(asset.asset_id)}>Detail &amp; atur</Button>
+            {write && <Button variant="text" aria-label={`Catat status ${asset.asset_id}`} onClick={() => { setNotice(""); setEditing(asset); }}>Catat status</Button>}
+          </div>
+        </Card>)}
+      </div>
+      : <Table variant="asset">
         <thead><tr><th>Alat</th><th>Jenis</th><th>Status terakhir</th><th>Keterangan</th><th>Aksi</th></tr></thead>
         <tbody>{shown.map(asset => <tr key={asset.asset_id}>
           <td><strong className="mono">{asset.asset_id}</strong><span className="table-sub">{asset.asset_name}</span></td>
-          <td data-label="Jenis">{asset.asset_type}</td>
-          <td data-label="Status terakhir"><Badge tone="neutral">{displayText(asset.current_status || "Belum tercatat")}</Badge></td>
-          <td data-label="Keterangan" className="asset-note">{asset.current_status_reason || "Belum ada keterangan"}{asset.current_status_observed_at && <span className="table-sub">{fmtWaktu(asset.current_status_observed_at)}</span>}</td>
+          <td data-label="Jenis">{displayText(asset.asset_type)}</td>
+          <td data-label="Status terakhir"><Badge tone={assetStatusTone(asset.current_status)}>{displayText(asset.current_status || "Belum tercatat")}</Badge></td>
+          <td data-label="Keterangan" className="asset-note">{asset.current_status_reason ? displayText(asset.current_status_reason) : "Belum ada keterangan"}{asset.current_status_observed_at && <span className="table-sub">{fmtWaktu(asset.current_status_observed_at)}</span>}</td>
           <td className="table-action queue-actions"><Button variant="text" aria-label={`Detail ${asset.asset_id}`} onClick={() => setDetailId(asset.asset_id)}>Detail</Button>
             {write && <Button variant="secondary" aria-label={`Catat status ${asset.asset_id}`} onClick={() => { setNotice(""); setEditing(asset); }}>Catat status</Button>}</td>
         </tr>)}</tbody>
@@ -102,24 +123,25 @@ function EquipmentApi({ role, initialSearch="" }: { role: string; initialSearch?
         : !write && <p className="small muted">Pencatatan status memerlukan izin downtime.record pada sesi backend yang sesuai peran aktif.</p>}
     </Card>
     <DowntimeApi initialResource={initialSearch} role={write ? role : "viewer"} machines={toDowntimeMachines(rows)} />
-    {selected && <EquipmentDetail asset={selected} onClose={() => setDetailId(null)} />}
+    {selected && <EquipmentDetail asset={selected} role={role} onClose={() => setDetailId(null)} />}
     {editing && write && <EquipmentStatusForm key={editing.asset_id} asset={editing} role={role} onClose={() => setEditing(null)} onSaved={asset => { setNotice(displayText(`Status ${asset.asset_id} tersimpan dan terverifikasi: ${asset.current_status}.`)); setEditing(null); }} />}
   </div>;
 }
 
-function EquipmentDetail({ asset, onClose }: { asset: ProductionAsset; onClose: () => void }) {
+function EquipmentDetail({ asset, role, onClose }: { asset: ProductionAsset; role: string; onClose: () => void }) {
   const master = useResource<EquipmentMaster[]>("/master/assets");
   const specs = master.data ? equipmentSpecs(asset.asset_id, master.data) : null;
   return <Modal title={`Detail ${asset.asset_id}`} onClose={onClose}>
-    <p>{asset.asset_name} · {asset.asset_type}</p>
-    <p>Status terakhir: <strong>{asset.current_status || "Belum tercatat"}</strong></p>
-    {asset.current_status_reason && <p className="muted">{asset.current_status_reason}</p>}
+    <p>{asset.asset_name} · {displayText(asset.asset_type)}</p>
+    <p>Status terakhir: <strong>{displayText(asset.current_status || "Belum tercatat")}</strong></p>
+    {asset.current_status_reason && <p className="muted">{displayText(asset.current_status_reason)}</p>}
     {asset.current_status_observed_at && <p className="small muted">Dicatat {fmtWaktu(asset.current_status_observed_at)}</p>}
     <SectionTitle title="Spesifikasi alat" subtitle="Data master sesuai ID alat. Parameter tanpa data ditandai belum tersedia dan tidak dianggap nol." />
     {master.error && <p className="crit-text" role="alert">Gagal memuat spesifikasi: {master.error.message}</p>}
     {!master.data && !master.error && <p className="muted" role="status">Memuat spesifikasi…</p>}
-    {master.data && (specs ? <Table variant="schedule"><tbody>{specs.map(spec => <tr key={spec.key}><th scope="row">{spec.label}</th><td>{spec.value}</td></tr>)}</tbody></Table> : <p className="muted">Spesifikasi untuk ID {asset.asset_id} belum tersedia di master.</p>)}
+    {master.data && (specs ? <Table variant="schedule"><tbody>{specs.map(spec => <tr key={spec.key}><th scope="row">{spec.label}</th><td>{displayText(spec.value)}</td></tr>)}</tbody></Table> : <p className="muted">Spesifikasi untuk ID {asset.asset_id} belum tersedia di master.</p>)}
     {master.error && <Button variant="secondary" onClick={() => void master.reload()}>Coba lagi</Button>}
+    {API_MODE ? <AssetConfigurationPanel id={asset.asset_id} role={role} /> : <p className="small muted">Pengaturan parameter per alat memerlukan mode API aktif.</p>}
     <div className="dialog-actions"><Button variant="secondary" onClick={onClose}>Tutup</Button></div>
   </Modal>;
 }

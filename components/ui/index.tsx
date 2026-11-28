@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode, type ComponentProps } from "react";
-import { ArrowUpRight, X, Database, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, X, Database, PackageOpen, type LucideIcon } from "lucide-react";
 import { scenario } from "@/lib/data";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
@@ -62,6 +62,29 @@ export function Table({ variant, wrapClassName = "", caption, className = "", ch
 export { Input, Textarea, Field } from "./fields";
 export function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return <div className="section-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>;
+}
+
+export function EmptyState({
+  icon: Glyph = PackageOpen,
+  title = "Data kosong",
+  description,
+  action,
+  className = "",
+}: {
+  icon?: LucideIcon;
+  title?: string;
+  description?: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={["empty-state", className].filter(Boolean).join(" ")}>
+      <span className="empty-state-icon"><Icon icon={Glyph} size={22} /></span>
+      <strong className="empty-state-title">{title}</strong>
+      {description && <p className="empty-state-desc">{description}</p>}
+      {action && <div className="empty-state-action">{action}</div>}
+    </div>
+  );
 }
 export function Modal({ title, onClose, children, className = "" }: { title: string; onClose: () => void; children: ReactNode; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);

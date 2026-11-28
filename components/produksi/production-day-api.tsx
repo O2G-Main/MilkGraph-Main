@@ -37,6 +37,7 @@ export function ProductionDayApi({ date, role, display = "detailed" }: { date: s
   const noBatches = summary.total === 0 && !summary.mismatch && rows.length === 0;
   const unassessed = [...new Map(dailyRows.map(row => [row.batch_id,row])).values()].filter(batch => !rows.some(row => row.batch_id === batch.batch_id));
   const canRecommend = canSee(role, "/rencana/upgrade");
+  const canSeePlanning = canSee(role, "/rencana");
   const reload = () => { setMessage(null); setError(null); void predictions.reload(); void recommendations.reload(); void daily.reload(); void session.reload(); };
   async function run() {
     if (!allowed || lock.current || !session.data) return;
@@ -72,7 +73,7 @@ export function ProductionDayApi({ date, role, display = "detailed" }: { date: s
         {summary.missing !== null && summary.missing > 0 && <p className="small muted">{summary.missing} batch belum memiliki hasil prediksi. Cakupan prediksi tanggal ini belum lengkap.</p>}
         {summary.daily > 0 && <p className="small muted">Ada prediksi untuk seluruh hari yang ditampilkan terpisah dan tidak dihitung sebagai batch.</p>}
       </div>
-      {(summary.assessed > 0 || (summary.total ?? 0) > 0) && <dl className={styles.summary} aria-label="Jumlah batch menurut hasil prediksi">{Object.entries(predictionLabels).map(([status, label]) => <div key={status}><dt>{label}</dt><dd>{summary.counts[status]} <span>batch</span></dd></div>)}</dl>}
+      {(summary.assessed > 0 || (summary.total ?? 0) > 0) && <dl className={styles.summary} aria-label="Jumlah batch menurut hasil prediksi">{Object.entries(predictionLabels).map(([status, label]) => <div key={status}><dt><Badge tone={tones[status as keyof typeof tones] ?? "neutral"}>{label}</Badge></dt><dd>{summary.counts[status]} <span>batch</span></dd></div>)}</dl>}
       <ul className={styles.predictions}>{rows.map((row, index) => {
         const candidates = recommendationProblem || recommendations.loading ? [] : relatedRecommendations(row, Array.isArray(recommendations.data?.items) ? recommendations.data.items : []);
         const needsAction = row.fulfill_status === "berisiko" || row.fulfill_status === "tidak_terpenuhi" || (row.shortage_l ?? 0) > 0;
@@ -93,8 +94,9 @@ export function ProductionDayApi({ date, role, display = "detailed" }: { date: s
             <strong>{candidates.length === 1 ? "Rekomendasi pilihan server" : candidates.length ? `${candidates.length} rekomendasi terkait` : "Tindak lanjut prediksi"}</strong>
             {candidates.map(candidate => <div key={candidate.id} className={styles.solution}><Badge tone={recommendationOrigin(candidate).tone}>{recommendationOrigin(candidate).label}</Badge><span>{recommendationLabels[candidate.recommendation_type] || candidate.recommendation_type}</span></div>)}
             {(recommendationProblem || recommendations.loading || !candidates.length) && <p>{recommendationProblem ? "Rekomendasi gagal dimuat. Pilih Perbarui tampilan." : recommendations.loading ? "Memuat rekomendasi…" : "Belum ada rekomendasi aktif yang terhubung ke hasil prediksi ini."}</p>}
-            {canRecommend ? <Link className={buttonClass(display === "status" ? "primary" : "secondary")} href={recommendationLink(date,row.batch_id,row.id)} onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }} aria-label={`${candidates.length ? "Tinjau" : "Periksa"} rekomendasi untuk ${row.batch_id ? `batch ${batch?.batch_code || row.batch_id}` : "seluruh hari"}`}>{candidates.length ? "Tinjau rekomendasi" : "Periksa rekomendasi"}<Icon icon={ArrowRight} size={16} /></Link>
-            : <p className="small muted">Minta Planner meninjau rekomendasi untuk batch ini.</p>}
+            {canRecommend ? <Link className={buttonClass("primary")} href={recommendationLink(date,row.batch_id,row.id)} onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }} aria-label={`${candidates.length ? "Tinjau" : "Periksa"} rekomendasi untuk ${row.batch_id ? `batch ${batch?.batch_code || row.batch_id}` : "seluruh hari"}`}>{candidates.length ? "Tinjau rekomendasi" : "Periksa rekomendasi"}<Icon icon={ArrowRight} size={16} /></Link>
+            : canSeePlanning ? <Link className={buttonClass("secondary")} href={date ? `/rencana?date=${encodeURIComponent(date)}` : "/rencana"} onClick={() => { selection.chooseDate(date); selection.chooseBatch(row.batch_id || ""); }}>Buka kelayakan rencana<Icon icon={ArrowRight} size={16} /></Link>
+            : <p className="small muted">Perlu tindak lanjut Planner: tinjau rekomendasi di menu Rencana untuk {row.batch_id ? `batch ${batch?.batch_code || row.batch_id}` : "seluruh hari"}.</p>}
           </div>}
         </li>;
       })}</ul>

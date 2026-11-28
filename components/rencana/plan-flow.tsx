@@ -1,8 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
+import Link from "next/link";
 import { Clock3, RotateCcw, Trash2, TriangleAlert, Wrench, X, Zap } from "lucide-react";
-import { Badge, Button, Card, Icon, Input, Modal } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, Icon, Input, Modal } from "@/components/ui";
 import { can } from "@/lib/roles";
 import { Select } from "@/components/ui/fields";
 import { Equipment, KIND_LABEL } from "@/components/trace/equipment";
@@ -155,6 +156,13 @@ export function PlanFlow({ plan, adj, setAdj, view, setView, mode = "2d" }: { pl
     <FlowCanvas mode={mode} picked={picked} onPickedChange={setPicked} label="Alur rencana produksi" badges={badges} overrides={overrides} aside={PlanEditor} toolbar={toolbar}
       hint={unmodelled.length ? `${unmodelled.length} pengaturan efek lanjutannya belum dimodelkan` : "Geser jam untuk melihat kondisi alat. Klik alat untuk mengaturnya."} />
     <p className="small muted plan-note">Ini pratinjau di halaman Rencana saja. Batas di halaman Constraint dan keputusan rencana tidak ikut berubah.</p>
+    <Card className="plan-next">
+      <span>Terhubung dengan kondisi dan prediksi produksi harian.</span>
+      <div className="plan-next-actions">
+        <Link className={buttonClass("secondary")} href="/produksi?tab=kondisi">Kembali ke Produksi</Link>
+        <Link className={buttonClass("secondary")} href="/produksi?tab=prediksi">Cek Prediksi Produksi</Link>
+      </div>
+    </Card>
     </div>
     </div>
   </Ctx.Provider>;

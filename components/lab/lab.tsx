@@ -11,7 +11,7 @@ import { labResults, type LabResult } from "@/mock/ops";
 import { OUTPUTS } from "@/mock/outputs";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Button, Card, Icon, Modal, PageHeading, PageLink, SectionTitle, SourceButton, SourceModal, Table, Textarea, buttonClass } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Icon, Modal, PageHeading, PageLink, SectionTitle, SourceButton, SourceModal, Table, Textarea, buttonClass } from "@/components/ui";
 import type { Scenario, Tone } from "@/mock/types";
 import { scenario } from "@/lib/data";
 import { LabWaitChart } from "./lab-wait-chart";
@@ -100,7 +100,7 @@ export function Lab({ kind, lot, sample }: { kind: LabResult["kind"]; lot?: stri
     <div className="metrics-grid three">{metrics.map(m => <Card key={m.label} className="metric-card"><span className="metric-label"><Icon icon={m.icon} size={15} />{m.label}</span><p className="metric-value">{m.value}<span>{m.unit}</span></p></Card>)}</div>
     <div className="kg-layout">
       <Card><SectionTitle title={intake ? "Sampel road tanker dan batch" : "Sampel lot barang jadi"} subtitle="Pilih baris untuk melihat parameter dan batasnya." />
-        <Table variant="select"><thead><tr><th>Sampel</th><th>{intake ? "RT / Batch" : "Lot"}</th><th>Diambil</th><th>Status</th></tr></thead><tbody>{rows.map(r => <tr key={r.id} className={openId === r.id ? "selected" : ""} onClick={() => setOpenId(r.id)}><td><button className="row-button" aria-pressed={openId === r.id} onClick={() => setOpenId(r.id)}><strong className="mono">{r.id}</strong></button></td><td data-label={intake ? "RT" : "Lot"}><strong className="mono">{r.subject}</strong><span className="table-sub">{r.detail}</span></td><td data-label="Diambil">{r.sampled}</td><td data-label="Status"><Badge tone={badge(r).tone}>{badge(r).label}</Badge></td></tr>)}</tbody></Table>
+        <Table variant="select"><thead><tr><th>Sampel</th><th>{intake ? "RT / Batch" : "Lot"}</th><th>Diambil</th><th>Status</th></tr></thead><tbody>{rows.map(r => <tr key={r.id} className={openId === r.id ? "selected" : ""} onClick={() => setOpenId(r.id)}><td><button className="row-button" aria-pressed={openId === r.id} onClick={() => setOpenId(r.id)}><strong className="mono">{r.id}</strong></button></td><td data-label={intake ? "RT" : "Lot"}><strong className="mono">{r.subject}</strong><span className="table-sub">{r.detail}</span></td><td data-label="Diambil">{r.sampled}</td><td data-label="Status"><Badge tone={badge(r).tone}>{badge(r).label}</Badge></td></tr>)}{!rows.length && <tr><td colSpan={4}><EmptyState title="Data kosong" description="Belum ada sampel lab untuk kategori ini." /></td></tr>}</tbody></Table>
       </Card>
       <aside className="kg-detail" aria-live="polite">{open ? <>
         <div className="kg-detail-top"><Badge tone={badge(open).tone}>{badge(open).label}</Badge><SourceButton id={open.source} onSelect={setSource} compact /></div>

@@ -9,7 +9,7 @@ import { ProposalsCard, ProposeAdjust } from "./proposals";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, CheckCheck, CircleCheck, CircleHelp, CircleX, Cpu, History, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { scenario } from "@/lib/data";
 
-import { Badge, Button, Card, Icon, Modal, SectionTitle, SourceButton, SourceModal, Table, Textarea, Timeline, Toggle } from "@/components/ui";
+import { Badge, Button, buttonClass, Card, Icon, Modal, SectionTitle, SourceButton, SourceModal, Table, Textarea, Timeline, Toggle } from "@/components/ui";
 import { decidePlan, useDemo } from "@/lib/demo";
 import { can } from "@/lib/roles";
 import { DEFAULT_LIMITS, evaluate, starvation, type ConstraintId } from "@/lib/rules";
@@ -105,7 +105,7 @@ function DemoRencana() {
       setSubmitting(false);
     }
   }
-  return <div className="page-enter"><div className="page-heading"><div><h1>Kelayakan & keputusan</h1><p>Baca ringkasan dan alasannya, lalu setujui atau tolak rekomendasi solver. Rinciannya ada di bawah.</p></div><div className="page-actions"><ProposeAdjust /></div></div>
+  return <div className="page-enter"><div className="page-heading"><div><h1>Kelayakan & keputusan</h1><p>Baca ringkasan dan alasannya, lalu setujui atau tolak rekomendasi solver. Rinciannya ada di bawah.</p></div><div className="page-actions"><Link className={buttonClass("secondary")} href="/produksi?tab=kondisi">Kembali ke Produksi</Link><Link className={buttonClass("secondary")} href="/produksi?tab=prediksi">Cek Prediksi Produksi</Link><ProposeAdjust /></div></div>
     <ProposalsCard />
     <nav className="plan-links" aria-label="Halaman pendukung rencana"><span>Data pendukung:</span><Link href="/pasokan">Pasokan & permintaan</Link><Link href="/constraint">Constraint</Link><Link href="/persetujuan">Riwayat keputusan</Link></nav>
     {actionError && <div className="decision-banner warn" role="alert"><Icon icon={X} /><span><strong>Gagal memproses keputusan</strong><span>{actionError}</span></span></div>}

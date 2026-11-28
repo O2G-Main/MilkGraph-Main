@@ -11,7 +11,8 @@ import { API_MODE, apiSend } from "@/lib/api/client";
 import { invalidateResources, useResource } from "@/lib/api/resource";
 import { RT_IMPORT_TEMPLATE, arrivalCreateBody, arrivalFromApi, arrivalUpdateBody, toHHMM, type ArrivalRow, type BeArrival } from "@/lib/api/contract";
 import { ImportCsvCard } from "@/components/import-csv-card";
-import { Badge, Button, Card, Icon, Input, Modal, PageHeading, PageLink, SectionTitle, Table, Textarea } from "@/components/ui";
+import { Equipment } from "@/components/trace/equipment";
+import { Badge, Button, Card, EmptyState, Icon, Input, Modal, PageHeading, PageLink, SectionTitle, Table, Textarea } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(n);
@@ -59,14 +60,35 @@ export function Kedatangan() {
   return (
     <div className="page-enter kedatangan-page">
       <PageHeading title="Jadwal Kedatangan RT" subtitle="Road tanker yang dijadwalkan, dalam perjalanan, dan sudah tiba. Keterlambatan = estimasi tiba dibanding target tiba.">
+        {API_MODE && (
+          <ImportCsvCard<BeArrival>
+            title="Import CSV jadwal kedatangan"
+            subtitle="Satu baris CSV adalah satu kedatangan RT. Waktu boleh ditulis jam saja (HH:MM, digabung tanggal demo oleh server) atau datetime penuh. RT yang sudah ada tidak ditimpa."
+            templateCsv={RT_IMPORT_TEMPLATE}
+            templateName="template-kedatangan-rt.csv"
+            importPath="/supply/rt-arrivals/import"
+            role={demo.role}
+            canImport={["planner", "receiving", "supervisor", "manager", "superadmin"].includes(demo.role)}
+            gateNote="Import jadwal kedatangan untuk Planner, Manager, Supervisor, dan Receiving (khusus RT) lewat permission rt.manage atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca jadwal di atas."
+            invalidate={[PATH, "/audit", "/dashboard/executive"]}
+            rowKey={r => r.id}
+            columns={[
+              { header: "RT", cell: r => <strong className="mono">{r.rt_id}</strong> },
+              { header: "Farm", cell: r => r.farm_name },
+              { header: "Volume", numeric: true, cell: r => `${number(r.volume_l)} L` },
+              { header: "Target tiba", cell: r => toHHMM(r.target_arrival) },
+              { header: "Status", cell: r => r.status },
+            ]}
+          />
+        )}
         {allowed && <Button variant="primary" onClick={() => setEditing({ isNew: true, item: blank })}><Icon icon={Plus} size={16} />Tambah jadwal RT</Button>}
       </PageHeading>
       <div className="schedule-stats">
-        <Card><span className="small muted">Dalam perjalanan</span><strong>{onRoad.length} <small>RT</small></strong><span className="small muted">{onRoad[0] ? `Berikutnya ${onRoad[0].id} pukul ${clock(onRoad[0].eta)}` : "Tidak ada RT di jalan"}</span></Card>
-        <Card><span className="small muted">Terlambat dari target</span><strong className={lateRows.length ? "warn-text" : "ok-text"}>{lateRows.length} <small>RT</small></strong><span className="small muted">{lateRows.length ? lateRows.map(a => `${a.id} ${a.late} mnt`).join(", ") : "Semua sesuai target"}</span></Card>
+        <Card className="stat-card-equip"><div><span className="small muted">Dalam perjalanan</span><strong>{onRoad.length} <small>RT</small></strong><span className="small muted">{onRoad[0] ? `Berikutnya ${onRoad[0].id} pukul ${clock(onRoad[0].eta)}` : "Tidak ada RT di jalan"}</span></div><Equipment kind="RT" size={38} /></Card>
+        <Card className="stat-card-equip"><div><span className="small muted">Terlambat dari target</span><strong className={lateRows.length ? "warn-text" : "ok-text"}>{lateRows.length} <small>RT</small></strong><span className="small muted">{lateRows.length ? lateRows.map(a => `${a.id} ${a.late} mnt`).join(", ") : "Semua sesuai target"}</span></div><Equipment kind="Bay" size={38} /></Card>
         {showAge
-          ? <Card><span className="small muted">Berisiko holding time</span><strong className={risky.length ? "warn-text" : "ok-text"}>{risky.length}</strong><span className="small muted">Sisa kurang dari 3 jam saat tiba, batas {duration(holding)}</span></Card>
-          : <Card><span className="small muted">Akan masuk</span><strong>{number(active.reduce((s, a) => s + a.volume, 0))} <small>L</small></strong><span className="small muted">{active.length} RT belum tiba</span></Card>}
+          ? <Card className="stat-card-equip"><div><span className="small muted">Berisiko holding time</span><strong className={risky.length ? "warn-text" : "ok-text"}>{risky.length}</strong><span className="small muted">Sisa kurang dari 3 jam saat tiba, batas {duration(holding)}</span></div><Equipment kind="LabResult" size={38} /></Card>
+          : <Card className="stat-card-equip"><div><span className="small muted">Akan masuk</span><strong>{number(active.reduce((s, a) => s + a.volume, 0))} <small>L</small></strong><span className="small muted">{active.length} RT belum tiba</span></div><Equipment kind="Buffer" size={38} /></Card>}
       </div>
       <Card>
         <SectionTitle title="Jadwal kedatangan" subtitle="Urut menurut target tiba." action={<PageLink className="text-link" href="/receiving">Buka antrean truk<Icon icon={ArrowRight} size={14} /></PageLink>} />
@@ -95,33 +117,13 @@ export function Kedatangan() {
                 </tr>
               );
             })}
+            {!visibleRows.length && <tr><td colSpan={showAge ? (allowed ? 9 : 8) : (allowed ? 8 : 7)}><EmptyState title="Data kosong" description="Belum ada jadwal kedatangan RT." /></td></tr>}
           </tbody>
         </Table>
         {list.length > 10 && (
           <p className="small"><Button variant="text" onClick={() => setShowAll(v => !v)}>{showAll ? "Tampilkan lebih sedikit" : `Tampilkan semua ${list.length} kedatangan`}</Button></p>
         )}
       </Card>
-      {API_MODE && (
-        <ImportCsvCard<BeArrival>
-          title="Import CSV jadwal kedatangan"
-          subtitle="Satu baris CSV adalah satu kedatangan RT. Waktu boleh ditulis jam saja (HH:MM, digabung tanggal demo oleh server) atau datetime penuh. RT yang sudah ada tidak ditimpa."
-          templateCsv={RT_IMPORT_TEMPLATE}
-          templateName="template-kedatangan-rt.csv"
-          importPath="/supply/rt-arrivals/import"
-          role={demo.role}
-          canImport={["planner", "receiving", "supervisor", "manager", "superadmin"].includes(demo.role)}
-          gateNote="Import jadwal kedatangan untuk Planner, Manager, Supervisor, dan Receiving (khusus RT) lewat permission rt.manage atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca jadwal di atas."
-          invalidate={[PATH, "/audit", "/dashboard/executive"]}
-          rowKey={r => r.id}
-          columns={[
-            { header: "RT", cell: r => <strong className="mono">{r.rt_id}</strong> },
-            { header: "Farm", cell: r => r.farm_name },
-            { header: "Volume", numeric: true, cell: r => `${number(r.volume_l)} L` },
-            { header: "Target tiba", cell: r => toHHMM(r.target_arrival) },
-            { header: "Status", cell: r => r.status },
-          ]}
-        />
-      )}
       {editing && <ArrivalForm value={editing.item} isNew={editing.isNew} taken={list.map(a => a.id)} farmOptions={farmOptions} onClose={() => setEditing(null)} />}
     </div>
   );

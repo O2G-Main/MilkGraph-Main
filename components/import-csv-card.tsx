@@ -5,7 +5,7 @@ import { Download, Eye, Upload } from "lucide-react";
 import { apiUpload } from "@/lib/api/client";
 import { invalidateResources } from "@/lib/api/resource";
 import type { BeImportReport } from "@/lib/api/contract";
-import { Card, Icon, SectionTitle } from "@/components/ui";
+import { Button, Icon, Modal } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 /** Label data yang didukung endpoint import BE: simulasi (bawaan) atau historis. */
@@ -36,21 +36,15 @@ interface Props<Row> {
  * Laporan pratinjau dan commit bentuknya sama dari server.
  */
 export function ImportCsvCard<Row>(props: Props<Row>) {
-  const { title, subtitle, canImport, gateNote } = props;
+  const { title, subtitle, canImport } = props;
+  const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [labelData, setLabelData] = useState<ImportDataLabel>("simulasi");
   const [laporan, setLaporan] = useState<BeImportReport<Row> | null>(null);
   const [busy, setBusy] = useState<"preview" | "commit" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!canImport) {
-    return (
-      <Card>
-        <SectionTitle title={title} subtitle={subtitle} />
-        <p className="small muted">{gateNote}</p>
-      </Card>
-    );
-  }
+  if (!canImport) return null;
 
   function unduhTemplate() {
     const url = URL.createObjectURL(new Blob([props.templateCsv], { type: "text/csv" }));
@@ -81,49 +75,61 @@ export function ImportCsvCard<Row>(props: Props<Row>) {
   const bisaCommit = !!file && !!laporan && !laporan.commit && busy === null;
 
   return (
-    <Card data-tour="import-csv">
-      <SectionTitle title={title} subtitle={subtitle}
-        action={<button type="button" className="button secondary" onClick={unduhTemplate}><Icon icon={Download} size={15} />Unduh template CSV</button>} />
-      <div className="schedule-form">
-        <label><span className="field-label">Label data</span>
-          <Select label="Label data impor" value={labelData} onChange={v => { setLabelData(v); setLaporan(null); }} options={[{ value: "simulasi", label: "Simulasi" }, { value: "historis", label: "Historis" }]} />
-        </label>
-        <label><span className="field-label">File CSV</span>
-          <input type="file" accept=".csv,text/csv" onChange={e => { setFile(e.target.files?.[0] ?? null); setLaporan(null); setError(null); }} />
-        </label>
-        {error && <p className="small crit-text" role="alert">{error}</p>}
-        <div className="dialog-actions">
-          <button type="button" className="button secondary" disabled={!file || busy !== null} onClick={() => void kirim(false)}>
-            <Icon icon={Eye} size={15} />{busy === "preview" ? "Memeriksa…" : "Pratinjau"}
-          </button>
-          <button type="button" className="button primary" disabled={!bisaCommit} onClick={() => void kirim(true)}>
-            <Icon icon={Upload} size={15} />{busy === "commit" ? "Mengimpor…" : "Impor sekarang"}
-          </button>
-        </div>
-        {laporan && (
-          <div>
-            <p className="small" role="status">
-              Total {laporan.total_baris} baris, {laporan.valid} valid, {laporan.gagal} gagal
-              {laporan.commit ? `, ${laporan.dibuat} data dibuat.` : ". Pratinjau belum menyimpan apa pun."}
-              {laporan.label_data ? ` Label data: ${laporan.label_data}.` : ""}
-            </p>
-            {!!laporan.rows.length && (
-              <div className="table-wrap"><table className="schedule-table">
-                <thead><tr>{props.columns.map((c, i) => <th key={i} className={c.numeric ? "numeric" : undefined}>{c.header}</th>)}</tr></thead>
-                <tbody>{laporan.rows.map((row, i) => (
-                  <tr key={props.rowKey(row, i)}>{props.columns.map((c, j) => <td key={j} className={c.numeric ? "numeric" : undefined}>{c.cell(row)}</td>)}</tr>
-                ))}</tbody>
-              </table></div>
-            )}
-            {!!laporan.errors.length && (
-              <div className="table-wrap"><table className="schedule-table">
-                <thead><tr><th>Baris</th><th>Kesalahan</th></tr></thead>
-                <tbody>{laporan.errors.map((e, i) => <tr key={i}><td className="numeric">{e.baris}</td><td>{e.pesan}</td></tr>)}</tbody>
-              </table></div>
+    <>
+      <Button variant="secondary" data-tour="import-csv" onClick={() => setOpen(true)}>
+        <Icon icon={Upload} size={15} />Import CSV
+      </Button>
+      {open && (
+        <Modal title={title} onClose={() => setOpen(false)} className="import-csv-modal">
+          <div className="schedule-form">
+            <div className="import-csv-head">
+              <p className="small muted">{subtitle}</p>
+              <Button variant="secondary" onClick={unduhTemplate}>
+                <Icon icon={Download} size={15} />Unduh template CSV
+              </Button>
+            </div>
+            <label><span className="field-label">Label data</span>
+              <Select label="Label data impor" value={labelData} onChange={v => { setLabelData(v); setLaporan(null); }} options={[{ value: "simulasi", label: "Simulasi" }, { value: "historis", label: "Historis" }]} />
+            </label>
+            <label><span className="field-label">File CSV</span>
+              <input type="file" accept=".csv,text/csv" onChange={e => { setFile(e.target.files?.[0] ?? null); setLaporan(null); setError(null); }} />
+            </label>
+            {error && <p className="small crit-text" role="alert">{error}</p>}
+            <div className="dialog-actions">
+              <Button variant="secondary" onClick={() => setOpen(false)}>Tutup</Button>
+              <Button variant="secondary" disabled={!file || busy !== null} onClick={() => void kirim(false)}>
+                <Icon icon={Eye} size={15} />{busy === "preview" ? "Memeriksa…" : "Pratinjau"}
+              </Button>
+              <Button variant="primary" disabled={!bisaCommit} onClick={() => void kirim(true)}>
+                <Icon icon={Upload} size={15} />{busy === "commit" ? "Mengimpor…" : "Impor sekarang"}
+              </Button>
+            </div>
+            {laporan && (
+              <div>
+                <p className="small" role="status">
+                  Total {laporan.total_baris} baris, {laporan.valid} valid, {laporan.gagal} gagal
+                  {laporan.commit ? `, ${laporan.dibuat} data dibuat.` : ". Pratinjau belum menyimpan apa pun."}
+                  {laporan.label_data ? ` Label data: ${laporan.label_data}.` : ""}
+                </p>
+                {!!laporan.rows.length && (
+                  <div className="table-wrap"><table className="schedule-table">
+                    <thead><tr>{props.columns.map((c, i) => <th key={i} className={c.numeric ? "numeric" : undefined}>{c.header}</th>)}</tr></thead>
+                    <tbody>{laporan.rows.map((row, i) => (
+                      <tr key={props.rowKey(row, i)}>{props.columns.map((c, j) => <td key={j} className={c.numeric ? "numeric" : undefined}>{c.cell(row)}</td>)}</tr>
+                    ))}</tbody>
+                  </table></div>
+                )}
+                {!!laporan.errors.length && (
+                  <div className="table-wrap"><table className="schedule-table">
+                    <thead><tr><th>Baris</th><th>Kesalahan</th></tr></thead>
+                    <tbody>{laporan.errors.map((e, i) => <tr key={i}><td className="numeric">{e.baris}</td><td>{e.pesan}</td></tr>)}</tbody>
+                  </table></div>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
-    </Card>
+        </Modal>
+      )}
+    </>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Card, SectionTitle, Table } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 import { useResource } from "@/lib/api/resource";
+import { displayText } from "@/lib/display-text";
 
 interface LineDedication { line_id: string; allowed_sku_ids: string; pack_size_codes: string; source_aseptic_tank_id: string; speed_packph: string }
 interface FinishedCompatibility { line_id: string; finished_sku_id: string; liquid_sku_id: string; pack_size_code: string; market_variant: string; eligible: string }
@@ -21,13 +22,13 @@ export function ProductionLines() {
       : !lines.data ? <p className="muted" role="status">Memuat konfigurasi lini…</p>
       : <>
         <label className="schedule-form production-search"><span className="field-label">Lini produksi</span><Select label="Filter lini produksi" value={selected} onChange={setSelected} options={[{ value: "", label: "Semua lini" }, ...lines.data.dedications.map(line => ({ value: line.line_id, label: line.line_id }))]} /></label>
-        <Table variant="schedule"><thead><tr><th>Lini</th><th>Tangki sumber</th><th>Produk</th><th>Ukuran kemasan</th><th>Kecepatan (pak/jam)</th></tr></thead><tbody>{shown.map(line => <tr key={line.line_id}><td><strong>{line.line_id}</strong></td><td>{line.source_aseptic_tank_id || "Belum tersedia"}</td><td>{line.allowed_sku_ids.split(";").join(", ")}</td><td>{line.pack_size_codes.split(";").join(", ")}</td><td>{line.speed_packph || "Belum tersedia"}</td></tr>)}</tbody></Table>
+        <Table variant="schedule"><thead><tr><th>Lini</th><th>Tangki sumber</th><th>Produk</th><th>Ukuran kemasan</th><th>Kecepatan (pak/jam)</th></tr></thead><tbody>{shown.map(line => <tr key={line.line_id}><td><strong>{line.line_id}</strong></td><td>{line.source_aseptic_tank_id || "Belum tersedia"}</td><td>{line.allowed_sku_ids.split(";").join(", ")}</td><td>{line.pack_size_codes.split(";").map(code => displayText(code.trim())).join(", ")}</td><td>{line.speed_packph || "Belum tersedia"}</td></tr>)}</tbody></Table>
         {!shown.length && <p className="muted">Konfigurasi lini belum tersedia.</p>}
       </>}
     </Card>
     {lines.data && <Card>
       <SectionTitle title="Kompatibilitas finished SKU" subtitle={`${compatibility.length} relasi SKU pada lini terpilih. Nilai kelayakan mengikuti master backend.`} />
-      {!compatibility.length ? <p className="muted">Belum ada kompatibilitas SKU untuk lini ini.</p> : <Table variant="schedule"><thead><tr><th>Lini</th><th>Finished SKU</th><th>Produk</th><th>Kemasan</th><th>Pasar</th><th>Eligible</th></tr></thead><tbody>{compatibility.map(line => <tr key={`${line.line_id}:${line.finished_sku_id}`}><td>{line.line_id}</td><td>{line.finished_sku_id}</td><td>{line.liquid_sku_id}</td><td>{line.pack_size_code}</td><td>{line.market_variant}</td><td>{line.eligible}</td></tr>)}</tbody></Table>}
+      {!compatibility.length ? <p className="muted">Belum ada kompatibilitas SKU untuk lini ini.</p> : <Table variant="schedule"><thead><tr><th>Lini</th><th>Finished SKU</th><th>Produk</th><th>Kemasan</th><th>Pasar</th><th>Kelayakan</th></tr></thead><tbody>{compatibility.map(line => <tr key={`${line.line_id}:${line.finished_sku_id}`}><td>{line.line_id}</td><td>{line.finished_sku_id}</td><td>{line.liquid_sku_id}</td><td>{displayText(line.pack_size_code)}</td><td>{displayText(line.market_variant)}</td><td>{displayText(line.eligible)}</td></tr>)}</tbody></Table>}
     </Card>}
   </>;
 }

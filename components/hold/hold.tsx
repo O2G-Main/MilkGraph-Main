@@ -10,7 +10,7 @@ import { can } from "@/lib/roles";
 import { pastHolds } from "@/mock/ops";
 import { API_MODE } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
-import { Badge, Button, Card, Icon, Modal, PageHeading, SectionTitle, Table, Textarea } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Icon, Modal, PageHeading, SectionTitle, Table, Textarea } from "@/components/ui";
 import type { Tone } from "@/mock/types";
 import { GenealogyReport, lotAction } from "@/components/trace/genealogy";
 
@@ -97,8 +97,8 @@ export function HoldList() {
     </div>
     {!hasDemoHolds && <section className="callout"><Icon icon={PackageX} size={18} /><div><strong>Belum ada pengajuan hold di demo ini</strong><p>Jalankan trace maju dari RT-04 di halaman Traceability, lalu ajukan daftar hold ke QA.</p></div><Link className="text-link" href="/trace">Buka Traceability<Icon icon={ArrowRight} size={14} /></Link></section>}
     <div className="kg-layout">
-      <Card><SectionTitle title="Pengajuan hold" /><Table variant="select"><thead><tr><th>Pengajuan</th><th>Pemicu</th><th className="numeric">Lot</th><th className="numeric">Pak</th><th>Status</th></tr></thead><tbody>{holds.map(h => <tr key={h.id} className={open?.id === h.id ? "selected" : ""} onClick={() => setOpenId(h.id)}><td><button className="row-button" aria-pressed={open?.id === h.id} onClick={() => setOpenId(h.id)}><strong className="mono">{h.id}</strong></button><span className="table-sub">{h.by} · {h.at}</span></td><td data-label="Pemicu"><span className="mono">{h.trigger}</span><span className="table-sub">Sumber {h.rt}</span></td><td data-label="Lot" className="numeric">{h.lots.length}</td><td data-label="Pak" className="numeric">{number(packsOf(h))}</td><td data-label="Status"><Badge tone={STATUS[h.status].tone}>{STATUS[h.status].label}</Badge></td></tr>)}</tbody></Table></Card>
-      <aside className="kg-detail" aria-live="polite">{open && <>
+      <Card><SectionTitle title="Pengajuan hold" /><Table variant="select"><thead><tr><th>Pengajuan</th><th>Pemicu</th><th className="numeric">Lot</th><th className="numeric">Pak</th><th>Status</th></tr></thead><tbody>{holds.map(h => <tr key={h.id} className={open?.id === h.id ? "selected" : ""} onClick={() => setOpenId(h.id)}><td><button className="row-button" aria-pressed={open?.id === h.id} onClick={() => setOpenId(h.id)}><strong className="mono">{h.id}</strong></button><span className="table-sub">{h.by} · {h.at}</span></td><td data-label="Pemicu"><span className="mono">{h.trigger}</span><span className="table-sub">Sumber {h.rt}</span></td><td data-label="Lot" className="numeric">{h.lots.length}</td><td data-label="Pak" className="numeric">{number(packsOf(h))}</td><td data-label="Status"><Badge tone={STATUS[h.status].tone}>{STATUS[h.status].label}</Badge></td></tr>)}{!holds.length && <tr><td colSpan={5}><EmptyState title="Data kosong" description="Belum ada pengajuan hold atau recall." /></td></tr>}</tbody></Table></Card>
+      <aside className="kg-detail" aria-live="polite">{open ? <>
         <div className="kg-detail-top"><Badge tone={STATUS[open.status].tone}>{STATUS[open.status].label}</Badge><span className="mono small">{open.id}</span></div>
         <h2>{open.lots.length} lot dari {open.rt}</h2>
         <p className="small muted">Pemicu {open.trigger}. Diajukan {open.by}, {open.at}.{open.note && ` "${open.note}"`}</p>
@@ -107,7 +107,7 @@ export function HoldList() {
         {allowed && editable && open.status === "diajukan" && <div className="page-actions"><Button variant="secondary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("ditolak"); }}><Icon icon={X} size={16} />Tolak</Button><Button variant="primary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("aktif"); }}><Icon icon={Check} size={16} />Setujui hold</Button></div>}
         {allowed && editable && open.status === "aktif" && <Button variant="secondary" disabled={submitting} onClick={() => { setNote(""); setSubmitError(null); setDialog("dilepas"); }}><Icon icon={PackageCheck} size={16} />Lepas hold</Button>}
         {!editable && <p className="small muted">Ini riwayat dari sebelum demo dan hanya bisa dibaca.</p>}
-      </>}</aside>
+      </> : <EmptyState title="Data kosong" description="Pilih pengajuan hold untuk melihat rincian." />}</aside>
     </div>
     {report && open && <GenealogyReport hold={open} onClose={() => setReport(false)} />}
     {dialog && open && <Modal title={ACTION[dialog].title} onClose={() => { setDialog(null); setSubmitError(null); }}><form onSubmit={submit}><Badge>Data simulasi</Badge><p className="dialog-summary">{open.id}: {open.lots.length} lot, {number(packsOf(open))} pak. {ACTION[dialog].text}</p>{submitError && <p className="crit-text small">{submitError}</p>}<label className="field-label" htmlFor="hold-review-note">Catatan {ACTION[dialog].noteRequired ? "(wajib)" : "(opsional)"}</label><Textarea id="hold-review-note" value={note} onChange={e => setNote(e.target.value)} required={ACTION[dialog].noteRequired} maxLength={500} placeholder={dialog === "dilepas" ? "Contoh: uji ulang sampel retensi negatif." : dialog === "ditolak" ? "Contoh: kontribusi RT-04 di bawah ambang deteksi." : "Contoh: ambil sampel retensi semua lot untuk uji ulang."} /><div className="dialog-actions"><Button variant="secondary" onClick={() => { setDialog(null); setSubmitError(null); }} disabled={submitting}>Batal</Button><Button type="submit" variant="primary" disabled={submitting || (ACTION[dialog].noteRequired && !note.trim())}>{submitting ? "Memproses…" : ACTION[dialog].button}<Icon icon={Check} size={16} /></Button></div></form></Modal>}

@@ -7,7 +7,7 @@ import { attainment, isLate, mayHandle, runState, type Run } from "@/lib/operati
 import { can } from "@/lib/roles";
 import { SHIFT, checkSchedule, clockOf, toMinutes, type ScheduleItem } from "@/lib/production";
 import { demandPlan, fillers } from "@/mock/ops";
-import { Badge, Button, Card, Icon, Input, Modal, PageHeading, PageLink, SectionTitle, Table } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Icon, Input, Modal, PageHeading, PageLink, SectionTitle, Table } from "@/components/ui";
 import { Select, TimeField } from "@/components/ui/fields";
 import { API_MODE } from "@/lib/api/client";
 import { PenjadwalanApi } from "./penjadwalan-api";
@@ -82,7 +82,7 @@ export function Penjadwalan({ initialDate }: { initialDate: string }) {
                   </tr>
                 );
               })}
-              {!items.length && <tr><td colSpan={8} className="muted">Belum ada jadwal di shift ini.{allowed ? " Tambah jadwal untuk mulai." : ""}</td></tr>}
+              {!items.length && <tr><td colSpan={(allowed || mayRun) ? 8 : 7}><EmptyState title="Data kosong" description={`Belum ada jadwal di shift ini.${allowed ? " Tambah jadwal untuk mulai." : ""}`} /></td></tr>}
             </tbody>
         </Table>
       </Card>

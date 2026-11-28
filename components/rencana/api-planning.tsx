@@ -99,7 +99,13 @@ export function ApiPlanning({ page, initial }: { page: "flow" | "recommendations
   }
 
   return <div className={`page-enter ${styles.page}`}>
-    <div className="page-heading"><div><h1>{title}</h1><p>{page === "flow" ? "Usulan mingguan, batch terhubung, dan urutan alat dari data produksi." : page === "recommendations" ? "Rekomendasi berdasarkan prediksi produksi, tanpa simulasi kapasitas lokal." : "Periksa prediksi dan fakta produksi sebelum mencatat keputusan rekomendasi."}</p></div></div>
+    <div className="page-heading">
+      <div><h1>{title}</h1><p>{page === "flow" ? "Usulan mingguan, batch terhubung, dan urutan alat dari data produksi." : page === "recommendations" ? "Rekomendasi berdasarkan prediksi produksi, tanpa simulasi kapasitas lokal." : "Periksa prediksi dan fakta produksi sebelum mencatat keputusan rekomendasi."}</p></div>
+      <div className="page-actions">
+        <Link className={buttonClass("secondary")} href="/produksi?tab=kondisi">Kembali ke Produksi</Link>
+        <Link className={buttonClass("secondary")} href="/produksi?tab=prediksi">Cek Prediksi Produksi</Link>
+      </div>
+    </div>
     <nav className="plan-links" aria-label="Tahap rencana"><Link href="/rencana/alur" onClick={rememberSelection} aria-current={page === "flow" ? "page" : undefined}>Alur rencana</Link><Link href="/rencana/upgrade" onClick={rememberSelection} aria-current={page === "recommendations" ? "page" : undefined}>Rekomendasi upgrade</Link><Link href="/rencana" onClick={rememberSelection} aria-current={page === "decisions" ? "page" : undefined}>Kelayakan & keputusan</Link></nav>
     <Card>
       <SectionTitle title="Tanggal & batch produksi" subtitle="Tanggal awal mengikuti respons harian server. Pilih tanggal lain untuk melihat data historis." />

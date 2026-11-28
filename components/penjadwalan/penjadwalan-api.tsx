@@ -11,7 +11,7 @@ import {
   type BeImportPoRow, type BePo, type BeSchedule, type BeScheduleNarrate,
 } from "@/lib/api/contract";
 import { ImportCsvCard } from "@/components/import-csv-card";
-import { Badge, Button, Card, Icon, Input, Modal, PageHeading, SectionTitle, Table } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Icon, Input, Modal, PageHeading, SectionTitle, Table } from "@/components/ui";
 import { Select } from "@/components/ui/fields";
 
 const number = (n: number) => new Intl.NumberFormat("id-ID").format(Math.round(n));
@@ -78,6 +78,25 @@ function ScheduleTools({ role }: { role: string }) {
   return (
     <div className="page-enter penjadwalan-page">
       <PageHeading title="PO & versi jadwal" subtitle="Daftar PO dan generator global dari semua PO aktif. Versinya terpisah dari urutan batch harian.">
+        <ImportCsvCard<BeImportPoRow>
+          title="Import CSV PO"
+          subtitle="Satu baris CSV adalah satu baris SKU; baris dengan po_id sama digabung menjadi satu PO. Pratinjau dulu, baris yang gagal dilewati saat impor."
+          templateCsv={PO_IMPORT_TEMPLATE}
+          templateName="template-po.csv"
+          importPath="/pos/import"
+          role={role}
+          canImport={permissions.includes("plan.decide") || permissions.includes("import.csv")}
+          gateNote="Import PO untuk Planner, Manager, dan Supervisor lewat permission plan.decide atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca daftar PO di atas."
+          invalidate={[POS, LATEST, "/schedules", "/dashboard/executive"]}
+          rowKey={r => r.po_id}
+          columns={[
+            { header: "PO", cell: r => <strong className="mono">{r.po_id}</strong> },
+            { header: "Prioritas", numeric: true, cell: r => r.priority },
+            { header: "Batas waktu", cell: r => fmtWaktu(r.due_datetime) },
+            { header: "Baris SKU", numeric: true, cell: r => r.jumlah_baris },
+            { header: "Total", numeric: true, cell: r => `${number(r.total_liter)} L` },
+          ]}
+        />
         {write && <Button variant="primary" onClick={() => setAdding(true)}><Icon icon={CalendarPlus} size={16} />Tambah PO</Button>}
       </PageHeading>
       {error && <p className="crit-text" role="alert">{error}</p>}
@@ -100,35 +119,15 @@ function ScheduleTools({ role }: { role: string }) {
               <td>{fmtWaktu(p.due_datetime)}</td>
               <td>{p.label_data ? <Badge tone="warn">{p.label_data}</Badge> : <span className="small muted">-</span>}</td>
             </tr>)}
-            {!pos.length && <tr><td colSpan={5} className="muted">Belum ada PO di server.</td></tr>}
+            {!pos.length && <tr><td colSpan={5}><EmptyState title="Data kosong" description="Belum ada PO di server." /></td></tr>}
           </tbody>
         </Table>
       </Card>
 
-      <ImportCsvCard<BeImportPoRow>
-        title="Import CSV PO"
-        subtitle="Satu baris CSV adalah satu baris SKU; baris dengan po_id sama digabung menjadi satu PO. Pratinjau dulu, baris yang gagal dilewati saat impor."
-        templateCsv={PO_IMPORT_TEMPLATE}
-        templateName="template-po.csv"
-        importPath="/pos/import"
-        role={role}
-        canImport={permissions.includes("plan.decide") || permissions.includes("import.csv")}
-        gateNote="Import PO untuk Planner, Manager, dan Supervisor lewat permission plan.decide atau import.csv di server, dengan Superadmin sebagai cadangan. Role lain cukup membaca daftar PO di atas."
-        invalidate={[POS, LATEST, "/schedules", "/dashboard/executive"]}
-        rowKey={r => r.po_id}
-        columns={[
-          { header: "PO", cell: r => <strong className="mono">{r.po_id}</strong> },
-          { header: "Prioritas", numeric: true, cell: r => r.priority },
-          { header: "Batas waktu", cell: r => fmtWaktu(r.due_datetime) },
-          { header: "Baris SKU", numeric: true, cell: r => r.jumlah_baris },
-          { header: "Total", numeric: true, cell: r => `${number(r.total_liter)} L` },
-        ]}
-      />
-
       <Card data-tour="sched-table">
         <SectionTitle title="Jadwal produksi" subtitle={schedule ? `Jendela ${fmtWaktu(schedule.window.start)} sampai ${fmtWaktu(schedule.window.end)}, digenerate ${fmtWaktu(schedule.generated_at)}.` : "Belum ada jadwal tergenerate."}
           action={write ? <Button variant="primary" disabled={busy !== null} onClick={generate}><Icon icon={Play} size={15} />{busy === "generate" ? "Menggenerate…" : "Generate jadwal"}</Button> : undefined} />
-        {!schedule && <p className="muted">{noSchedule ? "Server belum punya jadwal. " : ""}{write ? "Pakai tombol Generate jadwal untuk membuat versi pertama dari daftar PO." : "Jadwal dibuat oleh Planner atau Superadmin."}</p>}
+        {!schedule && <EmptyState title="Data kosong" description={`${noSchedule ? "Server belum punya jadwal. " : ""}${write ? "Pakai tombol Generate jadwal untuk membuat versi pertama dari daftar PO." : "Jadwal dibuat oleh Planner atau Superadmin."}`} />}
         {schedule && [...byFm.entries()].map(([fm, runs]) => (
           <div key={fm}>
             <h3 className="small"><strong>{fm}</strong></h3>
@@ -165,7 +164,7 @@ function ScheduleTools({ role }: { role: string }) {
             <td>{fmtWaktu(f.planned_completion)}</td>
             <td>{f.root_causes?.length ? f.root_causes.join(", ") : <span className="small muted">Tidak ada</span>}</td>
           </tr>)}
-          {!schedule.fulfilment.length && <tr><td colSpan={5} className="muted">Tidak ada data fulfilment pada jadwal ini.</td></tr>}
+          {!schedule.fulfilment.length && <tr><td colSpan={5}><EmptyState title="Data kosong" description="Tidak ada data fulfilment pada jadwal ini." /></td></tr>}
           </tbody>
         </Table>
       </Card>}

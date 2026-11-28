@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/fields";
 import { API_MODE, apiSend } from "@/lib/api/client";
 import { useResource } from "@/lib/api/resource";
 import { useDemo } from "@/lib/demo";
+import { displayText } from "@/lib/display-text";
 import { skuName, skuOption } from "./sku-label";
 
 interface MasterSummary {
@@ -311,10 +312,10 @@ export function MasterDataView() {
                       <tr key={a.asset_id}>
                         <td><span className="mono"><strong>{a.asset_id}</strong></span></td>
                         <td>{a.asset_name}</td>
-                        <td><Badge>{a.asset_type}</Badge></td>
-                        <td className="small muted">{a.area}</td>
-                        <td><Badge tone={a.clean_status === "CLEAN" ? "ok" : "warn"}>{a.clean_status || "CLEAN"}</Badge></td>
-                        <td><Badge tone="neutral">{a.operational_status || "AVAILABLE"}</Badge></td>
+                        <td><Badge>{displayText(a.asset_type)}</Badge></td>
+                        <td className="small muted">{displayText(a.area)}</td>
+                        <td><Badge tone={a.clean_status === "CLEAN" ? "ok" : "warn"}>{displayText(a.clean_status || "CLEAN")}</Badge></td>
+                        <td><Badge tone="neutral">{displayText(a.operational_status || "AVAILABLE")}</Badge></td>
                       </tr>
                     ))
                   )}
@@ -353,7 +354,7 @@ export function MasterDataView() {
                         <td><strong>{c.source_asset_id}</strong></td>
                         <td><strong>{c.destination_asset_id}</strong></td>
                         <td>{c.via_asset_id ? <Badge tone="ok">{c.via_asset_id}</Badge> : <span className="muted">-</span>}</td>
-                        <td><span className="mono small">{c.flow_type}</span></td>
+                        <td><span className="small">{displayText(c.flow_type)}</span></td>
                       </tr>
                     ))
                   )}
@@ -388,8 +389,8 @@ export function MasterDataView() {
                     <td><span className="mono"><strong>{s.finished_sku_id}</strong></span></td>
                     <td>{skuName(s)}</td>
                     <td><Badge tone="neutral">{s.liquid_sku_id}</Badge></td>
-                    <td><span className="mono">{s.pack_size_code}</span></td>
-                    <td><Badge tone={s.market_variant === "LOCAL" ? "ok" : "warn"}>{s.market_variant}</Badge></td>
+                    <td><span className="mono">{displayText(s.pack_size_code)}</span></td>
+                    <td><Badge tone={s.market_variant === "LOCAL" ? "ok" : "warn"}>{displayText(s.market_variant)}</Badge></td>
                     <td className="small muted">{s.shelf_life_days ? `${s.shelf_life_days} hari` : "Sesuai SOP"}</td>
                   </tr>
                 ))}
@@ -430,7 +431,7 @@ export function MasterDataView() {
                     <td>{l.line_name}</td>
                     <td><Badge>{l.technology}</Badge></td>
                     <td><Badge tone="ok">{l.source_aseptic_tank_id}</Badge></td>
-                    <td className="mono small">{l.allowed_pack_size_codes}</td>
+                    <td className="small">{l.allowed_pack_size_codes.split(";").map(code => displayText(code.trim())).join(", ")}</td>
                     <td className="mono small">{l.allowed_sku_ids}</td>
                   </tr>
                 ))
@@ -501,7 +502,7 @@ export function MasterDataView() {
                 <dl className="fact-list" style={{ marginTop: "14px" }}>
                   <div>
                     <dt>Kondisi Pemicu</dt>
-                    <dd className="mono">{classifyResult.condition}</dd>
+                    <dd>{displayText(classifyResult.condition)}</dd>
                   </div>
                   <div>
                     <dt>Kebutuhan CIP</dt>
